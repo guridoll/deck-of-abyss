@@ -11461,3 +11461,723 @@ button,
     flex-basis: 240px !important;
   }
 }
+
+
+/* mobile landscape battle layout fix */
+@media (max-width: 900px) {
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .screen,
+  .game-screen,
+  .battle-screen,
+  #battleScreen,
+  #gameScreen {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* 戦闘中は情報を圧縮して、手札を複数枚見えるようにする */
+  .battle-container,
+  .battle-area,
+  #battleArea {
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+
+  .enemy-area,
+  .player-area,
+  .battle-status,
+  .status-area {
+    margin: 4px 0 !important;
+    padding: 6px !important;
+  }
+
+  .enemy-image,
+  .battle-enemy-image,
+  .enemy-portrait {
+    max-width: min(32vw, 150px) !important;
+    max-height: min(24vh, 130px) !important;
+  }
+
+  .hand,
+  .hand-area,
+  .player-hand,
+  #playerHand,
+  #handArea {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 8px 8px 12px !important;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+  }
+
+  .hand .card,
+  .hand-area .card,
+  .player-hand .card,
+  #playerHand .card,
+  #handArea .card,
+  .battle-card {
+    flex: 0 0 auto !important;
+    width: clamp(94px, 26vw, 130px) !important;
+    min-width: clamp(94px, 26vw, 130px) !important;
+    max-width: 130px !important;
+    min-height: 142px !important;
+    padding: 8px !important;
+    font-size: 12px !important;
+    scroll-snap-align: start;
+    box-sizing: border-box;
+  }
+
+  .card-title,
+  .card-name {
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+  }
+
+  .card-description,
+  .card-desc,
+  .card-effect {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+  }
+
+  .card-cost,
+  .card-value,
+  .rarity-badge {
+    transform: scale(0.9);
+  }
+
+  .battle-actions,
+  .battle-buttons,
+  .command-area {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: center !important;
+  }
+
+  button,
+  .btn {
+    min-height: 40px;
+    touch-action: manipulation;
+  }
+}
+
+/* 横持ち時は戦闘画面を横幅活用してより遊びやすくする */
+@media (max-width: 950px) and (orientation: landscape) {
+  body {
+    overflow-y: auto;
+  }
+
+  .battle-container,
+  .battle-area,
+  #battleArea {
+    display: grid !important;
+    grid-template-columns: minmax(220px, 34vw) 1fr !important;
+    grid-template-rows: auto 1fr !important;
+    align-items: start !important;
+    column-gap: 10px !important;
+    row-gap: 6px !important;
+    max-height: 100vh;
+  }
+
+  .enemy-area,
+  .battle-status,
+  .status-area {
+    grid-column: 1 !important;
+  }
+
+  .player-area,
+  .hand,
+  .hand-area,
+  .player-hand,
+  #playerHand,
+  #handArea {
+    grid-column: 2 !important;
+  }
+
+  .enemy-image,
+  .battle-enemy-image,
+  .enemy-portrait {
+    max-width: min(26vw, 170px) !important;
+    max-height: min(42vh, 170px) !important;
+  }
+
+  .hand .card,
+  .hand-area .card,
+  .player-hand .card,
+  #playerHand .card,
+  #handArea .card,
+  .battle-card {
+    width: clamp(100px, 15vw, 132px) !important;
+    min-width: clamp(100px, 15vw, 132px) !important;
+    max-width: 132px !important;
+    min-height: 142px !important;
+  }
+}
+
+/* 縦持ちでも1枚だけにならないよう、カード幅を強制的に抑える */
+@media (max-width: 520px) and (orientation: portrait) {
+  .hand .card,
+  .hand-area .card,
+  .player-hand .card,
+  #playerHand .card,
+  #handArea .card,
+  .battle-card {
+    width: 30vw !important;
+    min-width: 30vw !important;
+    max-width: 118px !important;
+  }
+
+  .hand,
+  .hand-area,
+  .player-hand,
+  #playerHand,
+  #handArea {
+    gap: 6px !important;
+  }
+}
+
+
+/* =========================================================
+   6.1-6.8 inch smartphone optimization
+   - 戦闘: 無理な縦スクロールを抑え、カードを複数枚見せる
+   - 山札カスタマイズ/図鑑: グリッド化・高さ制限・内部スクロール化
+   ========================================================= */
+
+@media (max-width: 920px) {
+  :root {
+    --mobile-safe-top: env(safe-area-inset-top, 0px);
+    --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-gap: clamp(5px, 1.2vw, 10px);
+    --mobile-card-w: clamp(92px, 28vw, 124px);
+    --mobile-card-h: clamp(128px, 38vw, 164px);
+    --mobile-panel-radius: 14px;
+  }
+
+  html,
+  body {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: contain;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    padding-top: var(--mobile-safe-top);
+    padding-bottom: var(--mobile-safe-bottom);
+  }
+
+  .screen,
+  .game-screen,
+  .menu-screen,
+  .battle-screen,
+  #titleScreen,
+  #menuScreen,
+  #battleScreen,
+  #deckCustomizeScreen,
+  #libraryScreen,
+  #collectionScreen,
+  #petLibraryScreen,
+  #enemyLibraryScreen {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-height: 100dvh;
+    max-height: none;
+    overflow-x: hidden !important;
+    box-sizing: border-box;
+  }
+
+  button,
+  .btn,
+  .menu-button,
+  .primary-button,
+  .secondary-button {
+    min-height: 40px !important;
+    padding: 8px 12px !important;
+    font-size: clamp(12px, 3.4vw, 15px) !important;
+    touch-action: manipulation;
+  }
+
+  /* ---------- Battle screen ---------- */
+
+  #battleScreen,
+  .battle-screen {
+    height: 100dvh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .battle-container,
+  .battle-area,
+  #battleArea {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 6px !important;
+    gap: 5px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .battle-header,
+  .battle-top,
+  .level-header,
+  .battle-status,
+  .status-area,
+  .enemy-area,
+  .player-area {
+    flex-shrink: 0 !important;
+    margin: 2px 0 !important;
+    padding: 5px 6px !important;
+    border-radius: var(--mobile-panel-radius) !important;
+    box-sizing: border-box !important;
+  }
+
+  .battle-header h1,
+  .battle-header h2,
+  .battle-title,
+  .level-title {
+    font-size: clamp(15px, 4.2vw, 20px) !important;
+    margin: 0 !important;
+    line-height: 1.15 !important;
+  }
+
+  .enemy-area,
+  .enemy-info,
+  .battle-enemy {
+    display: grid !important;
+    grid-template-columns: minmax(88px, 31vw) 1fr !important;
+    align-items: center !important;
+    column-gap: 8px !important;
+    min-height: 0 !important;
+  }
+
+  .enemy-image,
+  .battle-enemy-image,
+  .enemy-portrait,
+  .enemy-area img {
+    max-width: min(30vw, 132px) !important;
+    max-height: min(20dvh, 128px) !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+
+  .enemy-name,
+  .enemy-hp,
+  .player-hp,
+  .battle-text,
+  .status-text {
+    font-size: clamp(11px, 3.1vw, 14px) !important;
+    line-height: 1.25 !important;
+  }
+
+  .buff-area,
+  .debuff-area,
+  .status-icons,
+  .passive-badges,
+  .battle-badges {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 3px !important;
+    max-height: 44px !important;
+    overflow: hidden !important;
+  }
+
+  .battle-log,
+  #battleLog,
+  .log-area {
+    max-height: 52px !important;
+    overflow-y: auto !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    padding: 4px 6px !important;
+  }
+
+  .hand,
+  .hand-area,
+  .player-hand,
+  #playerHand,
+  #handArea {
+    flex: 1 1 auto !important;
+    min-height: calc(var(--mobile-card-h) + 18px) !important;
+    max-height: calc(var(--mobile-card-h) + 24px) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 7px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding: 6px 8px 10px !important;
+    box-sizing: border-box !important;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .hand .card,
+  .hand-area .card,
+  .player-hand .card,
+  #playerHand .card,
+  #handArea .card,
+  .battle-card {
+    flex: 0 0 var(--mobile-card-w) !important;
+    width: var(--mobile-card-w) !important;
+    min-width: var(--mobile-card-w) !important;
+    max-width: var(--mobile-card-w) !important;
+    min-height: var(--mobile-card-h) !important;
+    max-height: var(--mobile-card-h) !important;
+    padding: 7px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    box-sizing: border-box !important;
+    scroll-snap-align: start;
+    overflow: hidden !important;
+  }
+
+  .card-title,
+  .card-name {
+    font-size: clamp(11px, 3.1vw, 13px) !important;
+    line-height: 1.12 !important;
+    margin-bottom: 3px !important;
+  }
+
+  .card-description,
+  .card-desc,
+  .card-effect {
+    font-size: clamp(9px, 2.65vw, 11px) !important;
+    line-height: 1.2 !important;
+  }
+
+  .card-cost,
+  .card-value,
+  .rarity-badge {
+    transform: scale(0.82);
+    transform-origin: top right;
+  }
+
+  .battle-actions,
+  .battle-buttons,
+  .command-area,
+  .turn-actions {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 5px 6px !important;
+    overflow-x: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ---------- Landscape battle: 6.1-6.8 inch phone friendly ---------- */
+
+  @media (orientation: landscape) {
+    #battleScreen,
+    .battle-screen {
+      height: 100dvh !important;
+      overflow: hidden !important;
+    }
+
+    .battle-container,
+    .battle-area,
+    #battleArea {
+      display: grid !important;
+      grid-template-columns: minmax(210px, 32vw) minmax(0, 1fr) !important;
+      grid-template-rows: auto minmax(0, 1fr) auto !important;
+      column-gap: 8px !important;
+      row-gap: 5px !important;
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+      padding: 6px 8px !important;
+    }
+
+    .battle-header,
+    .battle-top,
+    .level-header {
+      grid-column: 1 / -1 !important;
+    }
+
+    .enemy-area,
+    .battle-status,
+    .status-area {
+      grid-column: 1 !important;
+      max-height: calc(100dvh - 58px) !important;
+      overflow: hidden !important;
+    }
+
+    .player-area {
+      grid-column: 2 !important;
+      min-height: 0 !important;
+    }
+
+    .hand,
+    .hand-area,
+    .player-hand,
+    #playerHand,
+    #handArea {
+      grid-column: 2 !important;
+      min-height: 150px !important;
+      max-height: calc(100dvh - 104px) !important;
+      align-self: end !important;
+    }
+
+    .battle-actions,
+    .battle-buttons,
+    .command-area,
+    .turn-actions {
+      grid-column: 1 / -1 !important;
+    }
+
+    .enemy-area,
+    .enemy-info,
+    .battle-enemy {
+      grid-template-columns: 86px 1fr !important;
+    }
+
+    .enemy-image,
+    .battle-enemy-image,
+    .enemy-portrait,
+    .enemy-area img {
+      max-width: min(14vw, 112px) !important;
+      max-height: min(34dvh, 116px) !important;
+    }
+
+    .hand .card,
+    .hand-area .card,
+    .player-hand .card,
+    #playerHand .card,
+    #handArea .card,
+    .battle-card {
+      flex-basis: clamp(86px, 14vw, 118px) !important;
+      width: clamp(86px, 14vw, 118px) !important;
+      min-width: clamp(86px, 14vw, 118px) !important;
+      max-width: 118px !important;
+      min-height: 128px !important;
+      max-height: 150px !important;
+    }
+  }
+
+  /* ---------- Deck customize / Library / History ---------- */
+
+  #deckCustomizeScreen,
+  .deck-customize-screen,
+  #libraryScreen,
+  #collectionScreen,
+  #petLibraryScreen,
+  #enemyLibraryScreen,
+  .library-screen,
+  .collection-screen,
+  .history-screen,
+  #battleHistoryScreen {
+    height: 100dvh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  .screen-title,
+  .page-title,
+  #deckCustomizeScreen h1,
+  #deckCustomizeScreen h2,
+  #libraryScreen h1,
+  #libraryScreen h2,
+  #collectionScreen h1,
+  #collectionScreen h2 {
+    flex-shrink: 0 !important;
+    font-size: clamp(17px, 5vw, 23px) !important;
+    margin: 4px 0 8px !important;
+    line-height: 1.15 !important;
+  }
+
+  .deck-customize-layout,
+  .deck-customize-container,
+  .customize-layout,
+  .library-layout,
+  .collection-layout,
+  .history-layout {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) auto !important;
+    gap: 8px !important;
+    overflow: hidden !important;
+  }
+
+  .deck-summary,
+  .deck-count,
+  .filter-area,
+  .library-tabs,
+  .collection-tabs,
+  .tab-buttons,
+  .history-summary {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    padding: 4px 2px 7px !important;
+    max-height: 52px !important;
+    box-sizing: border-box !important;
+  }
+
+  .deck-card-list,
+  .card-pool,
+  .customize-card-list,
+  .owned-card-list,
+  .library-list,
+  .collection-list,
+  .enemy-library-list,
+  .pet-library-list,
+  .history-list,
+  .history-detail,
+  #deckCardList,
+  #cardPool,
+  #libraryList,
+  #enemyLibraryList,
+  #petLibraryList,
+  #historyList {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding: 6px 4px 12px !important;
+    box-sizing: border-box !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .deck-card-list .card,
+  .card-pool .card,
+  .customize-card-list .card,
+  .owned-card-list .card,
+  #deckCardList .card,
+  #cardPool .card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 118px !important;
+    padding: 7px !important;
+    font-size: 11px !important;
+    box-sizing: border-box !important;
+  }
+
+  .library-card,
+  .collection-card,
+  .enemy-card,
+  .pet-card,
+  .history-card,
+  .history-item,
+  .monster-card,
+  .book-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: 118px !important;
+    padding: 8px !important;
+    box-sizing: border-box !important;
+  }
+
+  .library-card img,
+  .collection-card img,
+  .enemy-card img,
+  .pet-card img,
+  .monster-card img,
+  .book-card img {
+    max-width: 72px !important;
+    max-height: 72px !important;
+    object-fit: contain !important;
+  }
+
+  .deck-actions,
+  .customize-actions,
+  .library-actions,
+  .history-actions,
+  .footer-actions {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 7px !important;
+    overflow-x: auto !important;
+    justify-content: center !important;
+    padding: 6px 4px calc(6px + var(--mobile-safe-bottom)) !important;
+    box-sizing: border-box !important;
+  }
+
+  .modal,
+  .result-modal,
+  .detail-modal,
+  .history-modal,
+  .modal-content {
+    max-width: calc(100vw - 18px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+  }
+}
+
+@media (max-width: 420px) {
+  :root {
+    --mobile-card-w: clamp(86px, 29vw, 112px);
+    --mobile-card-h: clamp(122px, 39vw, 154px);
+  }
+
+  .deck-card-list,
+  .card-pool,
+  .customize-card-list,
+  .owned-card-list,
+  .library-list,
+  .collection-list,
+  .enemy-library-list,
+  .pet-library-list,
+  .history-list,
+  .history-detail,
+  #deckCardList,
+  #cardPool,
+  #libraryList,
+  #enemyLibraryList,
+  #petLibraryList,
+  #historyList {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+}
+
+@media (min-width: 421px) and (max-width: 920px) {
+  .library-list,
+  .collection-list,
+  .enemy-library-list,
+  .pet-library-list,
+  #libraryList,
+  #enemyLibraryList,
+  #petLibraryList {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
