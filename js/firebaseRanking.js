@@ -198,6 +198,38 @@
     return String(enemy && enemy.name || id || '???');
   }
 
+  function readLocalJson(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function getDiscoveredCardNames() {
+    const data = readLocalJson('cardBattleDiscoveredCards', {});
+    return new Set(Object.keys(data || {}).filter((name) => data[name]));
+  }
+
+  function getDiscoveredPassiveIds() {
+    const data = readLocalJson('cardBattleDiscoveredPassives', {});
+    return new Set(Object.keys(data || {}).filter((id) => data[id]));
+  }
+
+  function getKnownCardName(cardName) {
+    const discovered = getDiscoveredCardNames();
+    const name = String(cardName || '');
+    return name && discovered.has(name) ? name : '???';
+  }
+
+  function getKnownPassiveName(passive) {
+    const discovered = getDiscoveredPassiveIds();
+    const id = String(passive && passive.id || '');
+    if (!id || !discovered.has(id)) return '???';
+    return String(passive && passive.name || id || '???');
+  }
+
   function aggregatePopularCards(items) {
     const counts = new Map();
 
@@ -214,7 +246,7 @@
         count,
       }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja'))
-      .slice(0, 10);
+      .slice(0, 20);
   }
 
   function aggregateEnemyStats(items) {
@@ -262,7 +294,7 @@
     return cards.map((card, index) => `
       <div class="ranking-stat-row">
         <span class="ranking-stat-rank">${index + 1}</span>
-        <strong>${escapeHtml(card.name)}</strong>
+        <strong>${escapeHtml(getKnownCardName(card.name))}</strong>
         <span>${card.count}回プレイ</span>
       </div>
     `).join('');
@@ -276,11 +308,9 @@
 
     return stats.map((enemy) => {
       const displayName = getKnownEnemyName(enemy);
-      const levelText = displayName === '???' ? 'Lv.?' : `Lv.${Number(enemy.level || 1)}`;
       return `
         <div class="ranking-stat-row enemy">
           <strong>${escapeHtml(displayName)}</strong>
-          <span>${levelText}</span>
           <span>倒された数 ${Number(enemy.defeated || 0)}</span>
           <span>やられた数 ${Number(enemy.defeatedPlayer || 0)}</span>
         </div>
@@ -288,11 +318,52 @@
     }).join('');
   }
 
+  function aggregatePopularPassives(items) {
+    const counts = new Map();
+
+    items.forEach((item) => {
+      const passives = normalizePassives(item.passives);
+      passives.forEach((passive) => {
+        const key = passive.id || passive.name;
+        if (!key) return;
+
+        const current = counts.get(key) || {
+          id: passive.id || '',
+          name: passive.name || passive.id || '???',
+          count: 0,
+        };
+        current.count += 1;
+        counts.set(key, current);
+      });
+    });
+
+    return [...counts.values()]
+      .sort((a, b) => b.count - a.count || String(a.name).localeCompare(String(b.name), 'ja'))
+      .slice(0, 10);
+  }
+
+  function renderPopularPassives(items) {
+    const passives = aggregatePopularPassives(items);
+    if (!passives.length) {
+      return '<div class="ranking-empty">まだパッシブ選択データがありません。</div>';
+    }
+
+    return passives.map((passive, index) => `
+      <div class="ranking-stat-row">
+        <span class="ranking-stat-rank">${index + 1}</span>
+        <strong>${escapeHtml(getKnownPassiveName(passive))}</strong>
+        <span>${Number(passive.count || 0)}回選択</span>
+      </div>
+    `).join('');
+  }
+
   function renderRankingStats(items) {
     const popularCards = document.getElementById('ranking-popular-cards');
+    const popularPassives = document.getElementById('ranking-popular-passives');
     const enemyStats = document.getElementById('ranking-enemy-stats');
 
     if (popularCards) popularCards.innerHTML = renderPopularCards(items);
+    if (popularPassives) popularPassives.innerHTML = renderPopularPassives(items);
     if (enemyStats) enemyStats.innerHTML = renderEnemyStats(items);
   }
 
@@ -351,7 +422,7 @@
     return items.map((item, index) => {
       const rankClass = index < 3 ? ` top-${index + 1}` : '';
       const enemies = normalizeEnemies(item.enemies);
-      const lastEnemy = enemies.length ? enemies[enemies.length - 1].name : '';
+      const lastEnemy = enemies.length ? getKnownEnemyName(enemies[enemies.length - 1]) : '';
       const resultLabel = getResultLabel(item.result);
       return `
         <article class="ranking-item${rankClass}">
@@ -381,10 +452,12 @@
     const list = document.getElementById('ranking-list');
     const status = document.getElementById('ranking-player-status');
     const popularCards = document.getElementById('ranking-popular-cards');
+    const popularPassives = document.getElementById('ranking-popular-passives');
     const enemyStats = document.getElementById('ranking-enemy-stats');
 
     if (list) list.innerHTML = '<div class="ranking-empty">ランキングを読み込み中...</div>';
     if (popularCards) popularCards.innerHTML = '<div class="ranking-empty">集計を読み込み中...</div>';
+    if (popularPassives) popularPassives.innerHTML = '<div class="ranking-empty">集計を読み込み中...</div>';
     if (enemyStats) enemyStats.innerHTML = '<div class="ranking-empty">集計を読み込み中...</div>';
 
     try {
@@ -396,6 +469,7 @@
       console.warn('ranking load failed', error);
       if (list) list.innerHTML = `<div class="ranking-empty">ランキングを取得できませんでした。${escapeHtml(error.message || '')}</div>`;
       if (popularCards) popularCards.innerHTML = '<div class="ranking-empty">集計を取得できませんでした。</div>';
+      if (popularPassives) popularPassives.innerHTML = '<div class="ranking-empty">集計を取得できませんでした。</div>';
       if (enemyStats) enemyStats.innerHTML = '<div class="ranking-empty">集計を取得できませんでした。</div>';
       if (status) status.textContent = 'ランキング取得に失敗しました。';
     }

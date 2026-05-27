@@ -11582,3 +11582,19 @@ body.battle-defeat-slowmo .battle-area {
     gap: 4px;
   }
 }
+
+
+/* Ranking stats additions */
+.ranking-stats-card-wide {
+  grid-column: 1 / -1;
+}
+
+.ranking-stat-row.enemy {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+@media (max-width: 760px) {
+  .ranking-stat-row.enemy {
+    grid-template-columns: 1fr;
+  }
+}
