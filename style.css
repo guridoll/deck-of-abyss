@@ -11535,6 +11535,18 @@ body.battle-defeat-slowmo .battle-area {
   overflow-y: auto;
 }
 
+.ranking-rarity-group {
+  display: grid;
+  gap: 7px;
+}
+
+.ranking-rarity-heading {
+  margin-top: 4px;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .ranking-stat-row {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
@@ -11548,7 +11560,7 @@ body.battle-defeat-slowmo .battle-area {
 }
 
 .ranking-stat-row.enemy {
-  grid-template-columns: minmax(0, 1fr) 48px auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
 .ranking-stat-row strong {

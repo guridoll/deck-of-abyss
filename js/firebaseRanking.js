@@ -230,7 +230,25 @@
     return String(passive && passive.name || id || '???');
   }
 
-  function aggregatePopularCards(items) {
+  function getCardRankingRarity(cardName) {
+    if (window.DeckCardMetadata && typeof window.DeckCardMetadata.getCardRarityByName === 'function') {
+      return window.DeckCardMetadata.getCardRarityByName(cardName) || 'unknown';
+    }
+    return 'unknown';
+  }
+
+  function getCardRankingRarityMeta(rarity) {
+    const map = {
+      normal: { title: 'ノーマル' },
+      rare: { title: 'レア' },
+      epic: { title: 'エピック' },
+      legendary: { title: 'レジェンダリー' },
+      unknown: { title: '未分類' },
+    };
+    return map[rarity] || map.unknown;
+  }
+
+  function aggregatePopularCards(items, limit = 20) {
     const counts = new Map();
 
     items.forEach((item) => {
@@ -240,13 +258,34 @@
       });
     });
 
-    return [...counts.entries()]
+    const cards = [...counts.entries()]
       .map(([name, count]) => ({
         name,
         count,
+        rarity: getCardRankingRarity(name),
       }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja'))
-      .slice(0, 20);
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja'));
+
+    return Number.isFinite(limit) ? cards.slice(0, limit) : cards;
+  }
+
+  function aggregatePopularCardsByRarity(items) {
+    const groups = new Map();
+    const rarityOrder = ['normal', 'rare', 'epic', 'legendary', 'unknown'];
+
+    aggregatePopularCards(items, Infinity).forEach((card) => {
+      const rarity = rarityOrder.includes(card.rarity) ? card.rarity : 'unknown';
+      if (!groups.has(rarity)) groups.set(rarity, []);
+      groups.get(rarity).push(card);
+    });
+
+    return rarityOrder
+      .map((rarity) => ({
+        rarity,
+        meta: getCardRankingRarityMeta(rarity),
+        cards: groups.has(rarity) ? groups.get(rarity).slice(0, 20) : [],
+      }))
+      .filter((group) => group.cards.length);
   }
 
   function aggregateEnemyStats(items) {
@@ -286,16 +325,21 @@
   }
 
   function renderPopularCards(items) {
-    const cards = aggregatePopularCards(items);
-    if (!cards.length) {
+    const groups = aggregatePopularCardsByRarity(items);
+    if (!groups.length) {
       return '<div class="ranking-empty">まだカード使用データがありません。</div>';
     }
 
-    return cards.map((card, index) => `
-      <div class="ranking-stat-row">
-        <span class="ranking-stat-rank">${index + 1}</span>
-        <strong>${escapeHtml(getKnownCardName(card.name))}</strong>
-        <span>${card.count}回プレイ</span>
+    return groups.map((group) => `
+      <div class="ranking-rarity-group ranking-rarity-${escapeHtml(group.rarity)}">
+        <div class="ranking-rarity-heading">${escapeHtml(group.meta.title)}</div>
+        ${group.cards.map((card, index) => `
+          <div class="ranking-stat-row">
+            <span class="ranking-stat-rank">${index + 1}</span>
+            <strong>${escapeHtml(getKnownCardName(card.name))}</strong>
+            <span>${card.count}回プレイ</span>
+          </div>
+        `).join('')}
       </div>
     `).join('');
   }
@@ -311,8 +355,8 @@
       return `
         <div class="ranking-stat-row enemy">
           <strong>${escapeHtml(displayName)}</strong>
-          <span>倒された数 ${Number(enemy.defeated || 0)}</span>
-          <span>やられた数 ${Number(enemy.defeatedPlayer || 0)}</span>
+          <span>この敵を倒した回数：${Number(enemy.defeated || 0)}</span>
+          <span>この敵に倒された回数：${Number(enemy.defeatedPlayer || 0)}</span>
         </div>
       `;
     }).join('');
@@ -439,7 +483,7 @@
             </div>
             <details class="ranking-detail-box">
               <summary>構成を見る</summary>
-              <div class="ranking-detail">山札：${escapeHtml(getDeckSummary(item.deck, 8))}</div>
+              <div class="ranking-detail">山札：${escapeHtml(getDeckSummary(item.deck, Infinity))}</div>
               <div class="ranking-detail">パッシブ：${escapeHtml(getPassiveSummary(item.passives, 8))}</div>
             </details>
           </div>

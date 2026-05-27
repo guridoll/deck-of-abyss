@@ -667,6 +667,15 @@ const PET_POOL = [
 
   CARD_POOL.forEach(normalizeCardRarity);
 
+  if (typeof window !== 'undefined') {
+   window.DeckCardMetadata = {
+    getCardRarityByName(cardName) {
+     const card = CARD_POOL.find(item => item.name === cardName);
+     return card ? getCardRarity(card) : 'unknown';
+    },
+   };
+  }
+
   function isBasicInitialCardName(cardName) {
    return BASIC_INITIAL_CARD_NAMES.includes(cardName);
   }
