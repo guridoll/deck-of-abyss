@@ -11497,3 +11497,88 @@ body.battle-defeat-slowmo .battle-area {
     font-size: 18px;
   }
 }
+
+
+/* Ranking stats */
+.ranking-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 14px 0;
+}
+
+.ranking-stats-card {
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(15, 23, 42, 0.66);
+  border: 1px solid rgba(196, 181, 253, 0.24);
+  text-align: left;
+  min-width: 0;
+}
+
+.ranking-stats-card h2 {
+  margin: 0 0 8px;
+  color: #f8fafc;
+  font-size: 18px;
+}
+
+.ranking-stats-note {
+  margin: -2px 0 8px;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.ranking-stats-list {
+  display: grid;
+  gap: 7px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ranking-stat-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  color: #dbeafe;
+  font-size: 12px;
+}
+
+.ranking-stat-row.enemy {
+  grid-template-columns: minmax(0, 1fr) 48px auto auto;
+}
+
+.ranking-stat-row strong {
+  color: #f8fafc;
+  overflow-wrap: anywhere;
+}
+
+.ranking-stat-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.14);
+  color: #fde68a;
+  font-weight: 900;
+}
+
+@media (max-width: 760px) {
+  .ranking-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .ranking-stats-list {
+    max-height: none;
+  }
+
+  .ranking-stat-row.enemy {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

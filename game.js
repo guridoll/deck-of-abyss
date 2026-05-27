@@ -1069,6 +1069,7 @@ const PET_POOL = [
   let currentRunPetId = 'none';
   let currentRunPassiveIds = [];
   let currentRunEnemyHistory = [];
+  let currentRunCardPlayCounts = {};
   const SAVE_DATA_STORAGE_KEY = 'cardBattleSaveDataV1';
   const SAVE_SLOT_COUNT = 3;
   const SAVE_SLOT_STORAGE_KEY_PREFIX = 'cardBattleSaveDataV1_slot';
@@ -1672,6 +1673,7 @@ const PET_POOL = [
     reachedLevel,
     playTimeMs: Math.max(0, Date.now() - runKey),
     cardsUsed: Math.max(Number(previous?.cardsUsed || 0), Number(battleResultStats.cardsUsed || 0)),
+    cardPlayCounts: structuredClone(currentRunCardPlayCounts || battleResultStats.cardPlayCounts || previous?.cardPlayCounts || {}),
     damageDealt: Math.max(Number(previous?.damageDealt || 0), Number(battleResultStats.damageDealt || 0)),
     damageTaken: Math.max(Number(previous?.damageTaken || 0), Number(battleResultStats.damageTaken || 0)),
     remainingHp: battleResultStats.remainingHp || 0,
@@ -4384,6 +4386,7 @@ function saveDeckCustomize() {
    currentRunPetId = selectedPetId || 'none';
    currentRunPassiveIds = [];
    currentRunEnemyHistory = [];
+   currentRunCardPlayCounts = {};
    playerPassives = {
     maxHp: 0,
     attack: 0,
@@ -4894,6 +4897,7 @@ function playSound(type) {
     endedAt: null,
     result: null,
     cardsUsed: 0,
+    cardPlayCounts: {},
     damageDealt: 0,
     damageTaken: 0,
     remainingHp: 0,
@@ -6188,6 +6192,20 @@ function startEnemyTimerOnFirstCard() {
  startEnemyTimer();
 }
 
+function recordRunCardPlay(card) {
+   if (!card || !card.name) return;
+
+   const name = String(card.name);
+   currentRunCardPlayCounts[name] = Math.max(0, Number(currentRunCardPlayCounts[name] || 0)) + 1;
+
+   if (battleResultStats && !battleResultStats.endedAt) {
+    if (!battleResultStats.cardPlayCounts || typeof battleResultStats.cardPlayCounts !== 'object') {
+     battleResultStats.cardPlayCounts = {};
+    }
+    battleResultStats.cardPlayCounts[name] = Math.max(0, Number(battleResultStats.cardPlayCounts[name] || 0)) + 1;
+   }
+}
+
 function playPlayerCard(id, options = {}) {
    if (player && player.cooldown && Number(player.cooldownTimer || 0) <= 0) {
     player.cooldown = false;
@@ -6212,6 +6230,7 @@ function playPlayerCard(id, options = {}) {
     battleResultStats.cardsUsed++;
     recordAchievementMax('maxCardsUsedInBattle', battleResultStats.cardsUsed);
    }
+   recordRunCardPlay(card);
    recordCardUseAchievement();
    if (card.type === 'chaos-hand') recordAchievementStat('chaosHandUses');
    if (card.type === 'echo-repeat') recordAchievementStat('echoUses');

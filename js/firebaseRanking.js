@@ -95,6 +95,15 @@
     );
   }
 
+  function normalizeCardPlayCounts(cardPlayCounts) {
+    if (!cardPlayCounts || typeof cardPlayCounts !== 'object') return {};
+    return Object.fromEntries(
+      Object.entries(cardPlayCounts)
+        .map(([name, count]) => [String(name), Math.max(0, Math.floor(Number(count || 0)))])
+        .filter(([, count]) => count > 0)
+    );
+  }
+
   function normalizePassives(passives) {
     if (!Array.isArray(passives)) return [];
     return passives.slice(0, 80).map((passive) => ({
@@ -128,6 +137,7 @@
       recordedAt,
       playTimeMs: Math.max(0, Math.floor(Number(entry.playTimeMs || 0))),
       cardsUsed: Math.max(0, Math.floor(Number(entry.cardsUsed || 0))),
+      cardPlayCounts: normalizeCardPlayCounts(entry.cardPlayCounts),
       damageDealt: Math.max(0, Math.floor(Number(entry.damageDealt || 0))),
       damageTaken: Math.max(0, Math.floor(Number(entry.damageTaken || 0))),
       remainingHp: Math.max(0, Math.floor(Number(entry.remainingHp || 0))),
@@ -171,6 +181,121 @@
     return `${visible.join(' / ')}${rest > 0 ? ` / 他${rest}個` : ''}`;
   }
 
+  function getEncounteredEnemyIds() {
+    try {
+      const raw = localStorage.getItem('cardBattleEncounteredEnemies');
+      const data = raw ? JSON.parse(raw) : {};
+      return new Set(Object.keys(data || {}).filter((id) => data[id]));
+    } catch (error) {
+      return new Set();
+    }
+  }
+
+  function getKnownEnemyName(enemy) {
+    const encountered = getEncounteredEnemyIds();
+    const id = String(enemy && enemy.id || '');
+    if (!id || !encountered.has(id)) return '???';
+    return String(enemy && enemy.name || id || '???');
+  }
+
+  function aggregatePopularCards(items) {
+    const counts = new Map();
+
+    items.forEach((item) => {
+      const cardPlayCounts = normalizeCardPlayCounts(item.cardPlayCounts);
+      Object.entries(cardPlayCounts).forEach(([cardName, count]) => {
+        counts.set(cardName, (counts.get(cardName) || 0) + Number(count || 0));
+      });
+    });
+
+    return [...counts.entries()]
+      .map(([name, count]) => ({
+        name,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja'))
+      .slice(0, 10);
+  }
+
+  function aggregateEnemyStats(items) {
+    const stats = new Map();
+
+    items.forEach((item) => {
+      const enemies = normalizeEnemies(item.enemies);
+      enemies.forEach((enemy, index) => {
+        const id = String(enemy.id || enemy.name || `unknown-${index}`);
+        if (!stats.has(id)) {
+          stats.set(id, {
+            id,
+            name: enemy.name || id,
+            level: Number(enemy.level || 1),
+            defeated: 0,
+            defeatedPlayer: 0,
+            total: 0,
+          });
+        }
+
+        const stat = stats.get(id);
+        stat.level = Math.max(Number(stat.level || 1), Number(enemy.level || 1));
+        stat.total += 1;
+
+        const isLastEnemy = index === enemies.length - 1;
+        if (item.result === 'lose' && isLastEnemy) {
+          stat.defeatedPlayer += 1;
+        } else {
+          stat.defeated += 1;
+        }
+      });
+    });
+
+    return [...stats.values()]
+      .sort((a, b) => (b.defeatedPlayer + b.defeated) - (a.defeatedPlayer + a.defeated) || b.level - a.level)
+      .slice(0, 30);
+  }
+
+  function renderPopularCards(items) {
+    const cards = aggregatePopularCards(items);
+    if (!cards.length) {
+      return '<div class="ranking-empty">まだカード使用データがありません。</div>';
+    }
+
+    return cards.map((card, index) => `
+      <div class="ranking-stat-row">
+        <span class="ranking-stat-rank">${index + 1}</span>
+        <strong>${escapeHtml(card.name)}</strong>
+        <span>${card.count}回プレイ</span>
+      </div>
+    `).join('');
+  }
+
+  function renderEnemyStats(items) {
+    const stats = aggregateEnemyStats(items);
+    if (!stats.length) {
+      return '<div class="ranking-empty">まだ敵戦績データがありません。</div>';
+    }
+
+    return stats.map((enemy) => {
+      const displayName = getKnownEnemyName(enemy);
+      const levelText = displayName === '???' ? 'Lv.?' : `Lv.${Number(enemy.level || 1)}`;
+      return `
+        <div class="ranking-stat-row enemy">
+          <strong>${escapeHtml(displayName)}</strong>
+          <span>${levelText}</span>
+          <span>倒された数 ${Number(enemy.defeated || 0)}</span>
+          <span>やられた数 ${Number(enemy.defeatedPlayer || 0)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderRankingStats(items) {
+    const popularCards = document.getElementById('ranking-popular-cards');
+    const enemyStats = document.getElementById('ranking-enemy-stats');
+
+    if (popularCards) popularCards.innerHTML = renderPopularCards(items);
+    if (enemyStats) enemyStats.innerHTML = renderEnemyStats(items);
+  }
+
   function dedupeBestRuns(docs) {
     const bestByName = new Map();
     docs.forEach((doc) => {
@@ -195,7 +320,7 @@
       .slice(0, 20);
   }
 
-  async function loadRanking() {
+  async function loadRankingData() {
     const firestore = initFirebase();
     if (!firestore) throw initError || new Error('Firebaseに接続できません。');
 
@@ -203,10 +328,19 @@
       .collection(RANKING_COLLECTION)
       .orderBy('reachedLevel', 'desc')
       .orderBy('recordedAt', 'desc')
-      .limit(100)
+      .limit(200)
       .get();
 
-    return dedupeBestRuns(snapshot.docs);
+    const allItems = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    return {
+      rankingItems: dedupeBestRuns(snapshot.docs),
+      allItems,
+    };
+  }
+
+  async function loadRanking() {
+    const data = await loadRankingData();
+    return data.rankingItems;
   }
 
   function renderRankingItems(items) {
@@ -246,15 +380,23 @@
   async function refreshRankingScreen() {
     const list = document.getElementById('ranking-list');
     const status = document.getElementById('ranking-player-status');
+    const popularCards = document.getElementById('ranking-popular-cards');
+    const enemyStats = document.getElementById('ranking-enemy-stats');
+
     if (list) list.innerHTML = '<div class="ranking-empty">ランキングを読み込み中...</div>';
+    if (popularCards) popularCards.innerHTML = '<div class="ranking-empty">集計を読み込み中...</div>';
+    if (enemyStats) enemyStats.innerHTML = '<div class="ranking-empty">集計を読み込み中...</div>';
 
     try {
-      const items = await loadRanking();
-      if (list) list.innerHTML = renderRankingItems(items);
+      const data = await loadRankingData();
+      if (list) list.innerHTML = renderRankingItems(data.rankingItems);
+      renderRankingStats(data.allItems);
       if (status) status.textContent = 'ランキングを更新しました。';
     } catch (error) {
       console.warn('ranking load failed', error);
       if (list) list.innerHTML = `<div class="ranking-empty">ランキングを取得できませんでした。${escapeHtml(error.message || '')}</div>`;
+      if (popularCards) popularCards.innerHTML = '<div class="ranking-empty">集計を取得できませんでした。</div>';
+      if (enemyStats) enemyStats.innerHTML = '<div class="ranking-empty">集計を取得できませんでした。</div>';
       if (status) status.textContent = 'ランキング取得に失敗しました。';
     }
   }
