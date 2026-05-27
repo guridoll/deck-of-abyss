@@ -51,6 +51,28 @@
     </div>
   </div>
 
+
+  <div id="player-name-screen" class="container title-screen player-name-screen" style="display:none;">
+    <div class="title-card player-name-card">
+      <div class="title-logo" aria-label="Deck of Abyss">
+        <div class="title-kicker">PLAYER NAME</div>
+        <h1>Deck of Abyss</h1>
+        <p class="title-subtitle">ランキングに登録する名前を入力してください</p>
+      </div>
+
+      <div class="player-name-form">
+        <label for="new-player-name-input">プレイヤー名</label>
+        <input id="new-player-name-input" class="ranking-name-input player-name-input" type="text" maxlength="16" placeholder="player" autocomplete="nickname" />
+        <div id="new-player-name-error" class="player-name-error"></div>
+      </div>
+
+      <div class="controls player-name-actions">
+        <button class="ui-button ui-button-primary title-battle-button" onclick="confirmNewPlayerName()">この名前で開始</button>
+        <button class="ui-button ui-button-secondary" onclick="backToStartScreen()">戻る</button>
+      </div>
+    </div>
+  </div>
+
   <div id="title-screen" class="container title-screen" style="display:none;">
     <div class="title-outside-decor title-outside-decor-menu" data-title-decor="menu" aria-hidden="true"></div>
     <div class="title-card menu-card title-adventure-card">
@@ -77,6 +99,7 @@
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showPassiveLibraryScreen()">パッシブ一覧</button>
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showAchievementLibraryScreen()">実績一覧</button>
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showBattleHistoryScreen()">戦闘履歴</button>
+        <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showRankingScreen()">ランキング</button>
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showHelpScreen()">遊び方</button>
       </div>
 
@@ -410,7 +433,37 @@
       <div id="log"></div>
     </div>
   </div>
-  <audio id="menu-bgm" src="assets/s/2wxaha28ers5.mp3" preload="auto" loop></audio>
+
+  <div id="ranking-screen" class="container title-screen ranking-screen" style="display:none;">
+    <div class="ranking-page-card">
+      <div class="ranking-header">
+        <div>
+          <div class="ranking-kicker">ONLINE RANKING</div>
+          <h1>ランキング</h1>
+          <p>到達レベルの最高記録を表示します。</p>
+        </div>
+      </div>
+
+      <div class="ranking-current-player-box">
+        <div class="ranking-current-player-label">現在のプレイヤー</div>
+        <div id="ranking-current-player" class="ranking-current-player-name">player</div>
+      </div>
+
+      <div class="ranking-actions">
+        <button class="ui-button ui-button-secondary" onclick="window.refreshRankingScreen && window.refreshRankingScreen()">ランキング更新</button>
+      </div>
+
+      <div id="ranking-list" class="ranking-list">
+        <div class="ranking-empty">ランキングを読み込み中...</div>
+      </div>
+
+      <div class="ranking-footer">
+        <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニューへ戻る</button>
+      </div>
+    </div>
+  </div>
+
+<audio id="menu-bgm" src="assets/s/2wxaha28ers5.mp3" preload="auto" loop></audio>
   <script src="images.js"></script>
   <script src="js/enemy/enemies.js"></script>
   <script src="js/library/cardLibrary.js"></script>
@@ -422,6 +475,9 @@
   <script src="js/view/saveSlotsView.js"></script>
   <script src="js/enemy/enemyProgress.js"></script>
   <script src="js/library/enemyLibrary.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="js/firebaseRanking.js"></script>
   <script src="game.js"></script>
 
   <script>

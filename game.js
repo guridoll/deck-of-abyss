@@ -1368,6 +1368,43 @@ const PET_POOL = [
   function startNewGameData() {
    playUiSelectSound();
 
+   currentScreen = 'player-name';
+   render();
+
+   const input = document.getElementById('new-player-name-input');
+   if (input) {
+    const currentName = window.DeckFirebaseRanking && typeof window.DeckFirebaseRanking.getPlayerName === 'function'
+     ? window.DeckFirebaseRanking.getPlayerName()
+     : '';
+    input.value = currentName && currentName !== '名無し' ? currentName : '';
+    setTimeout(() => input.focus(), 0);
+   }
+  }
+
+  function confirmNewPlayerName() {
+   const input = document.getElementById('new-player-name-input');
+   const error = document.getElementById('new-player-name-error');
+   const rawName = input ? input.value : '';
+   const playerName = rawName.trim().replace(/\s+/g, ' ');
+
+   if (!playerName) {
+    if (error) error.textContent = 'プレイヤー名を入力してください。';
+    if (input) input.focus();
+    return;
+   }
+
+   if (window.DeckFirebaseRanking && typeof window.DeckFirebaseRanking.setPlayerName === 'function') {
+    window.DeckFirebaseRanking.setPlayerName(playerName);
+   } else {
+    try {
+     localStorage.setItem('deckOfAbyssRankingPlayerName', playerName.slice(0, 16));
+    } catch (err) {
+     console.warn('player name save failed', err);
+    }
+   }
+
+   if (error) error.textContent = '';
+
    currentSaveSlot = null;
    clearRuntimeDiscoveryStorage();
 
@@ -1651,6 +1688,12 @@ const PET_POOL = [
 
    history.unshift(entry);
    saveBattleHistory(history.slice(0, MAX_BATTLE_HISTORY_COUNT));
+
+   if (window.DeckFirebaseRanking && typeof window.DeckFirebaseRanking.submitBattleResult === 'function') {
+    window.DeckFirebaseRanking.submitBattleResult(entry).catch(error => {
+     console.warn('Firebase ranking submit failed', error);
+    });
+   }
   }
 
   function loadAchievements() {
@@ -9349,6 +9392,17 @@ function showCardLibraryScreen() {
    render();
   }
 
+  function showRankingScreen() {
+   playUiSelectSound();
+
+   currentScreen = 'ranking';
+
+   render();
+   if (window.DeckFirebaseRanking && typeof window.DeckFirebaseRanking.prepareRankingScreen === 'function') {
+    window.DeckFirebaseRanking.prepareRankingScreen();
+   }
+  }
+
   function showHelpScreen() {
    playUiSelectSound();
 
@@ -9484,6 +9538,8 @@ function showCardLibraryScreen() {
   }
 
   window.switchEnemyLibraryPhase = switchEnemyLibraryPhase;
+  window.showRankingScreen = showRankingScreen;
+  window.confirmNewPlayerName = confirmNewPlayerName;
 
   
   const passiveLibrary = window.GamePassiveLibrary.createPassiveLibrary({
@@ -9806,6 +9862,11 @@ function render() {
     if (loadButton) loadButton.disabled = false;
    }
 
+   const playerNameScreen = document.getElementById('player-name-screen');
+   if (playerNameScreen) {
+    playerNameScreen.style.display = currentScreen === 'player-name' ? 'flex' : 'none';
+   }
+
    const loadSlotScreen = document.getElementById('load-slot-screen');
    if (loadSlotScreen) {
     loadSlotScreen.style.display = currentScreen === 'load-slot' ? 'flex' : 'none';
@@ -9824,6 +9885,8 @@ function render() {
    document.getElementById('passive-library-screen').style.display = currentScreen === 'passive-library' ? 'flex' : 'none';
    document.getElementById('achievement-library-screen').style.display = currentScreen === 'achievement-library' ? 'flex' : 'none';
    document.getElementById('battle-history-screen').style.display = currentScreen === 'battle-history' ? 'flex' : 'none';
+   const rankingScreen = document.getElementById('ranking-screen');
+   if (rankingScreen) rankingScreen.style.display = currentScreen === 'ranking' ? 'flex' : 'none';
    document.getElementById('help-screen').style.display = currentScreen === 'help' ? 'flex' : 'none';
    document.getElementById('clear-screen').style.display = currentScreen === 'clear' ? 'flex' : 'none';
    document.getElementById('customize-screen').style.display = currentScreen === 'customize' ? 'block' : 'none';
