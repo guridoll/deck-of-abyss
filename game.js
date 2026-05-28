@@ -568,6 +568,43 @@ const PET_POOL = [
    },
   ];
 
+  const CURSE_CARD_POOL = [
+   {
+    name: '呪い：空白',
+    type: 'curse-blank',
+    text: '特に効果なし。山札を圧迫する。',
+    curse: true,
+    rarity: 'curse',
+   },
+   {
+    name: '呪い：疼く刻印',
+    type: 'curse-reload-damage',
+    value: 2,
+    text: '手札にある状態でリロードすると2ダメージを受ける。',
+    curse: true,
+    rarity: 'curse',
+   },
+   {
+    name: '呪い：脆い魂',
+    type: 'curse-vulnerable',
+    value: 2,
+    text: '手札にある状態でダメージを受ける時、ダメージ+2。',
+    curse: true,
+    rarity: 'curse',
+   },
+   {
+    name: '呪い：重い指',
+    type: 'curse-reload-draw-down',
+    value: 1,
+    text: '手札にある状態でリロードすると、次のドロー枚数-1。',
+    curse: true,
+    rarity: 'curse',
+   },
+  ];
+
+  CARD_POOL.push(...CURSE_CARD_POOL);
+
+
   const BASIC_INITIAL_CARD_NAMES = [
    '弱攻撃',
    '攻撃',
@@ -660,7 +697,8 @@ const PET_POOL = [
    card.rarity = rarity;
    card.legendary = rarity === 'legendary';
    card.epic = rarity === 'epic' || rarity === 'legendary';
-   card.rare = rarity !== 'normal';
+   card.rare = rarity !== 'normal' && rarity !== 'curse';
+   card.curse = rarity === 'curse' || Boolean(card.curse);
 
    return rarity;
   }
@@ -688,8 +726,44 @@ const PET_POOL = [
    return getCardRarity(card) === 'epic' || getCardRarity(card) === 'legendary';
   }
 
+  function isCurseCard(card) {
+   return getCardRarity(card) === 'curse' || Boolean(card?.curse);
+  }
+
   function isRareCard(card) {
-   return getCardRarity(card) !== 'normal';
+   const rarity = getCardRarity(card);
+   return rarity !== 'normal' && rarity !== 'curse';
+  }
+
+  function getCurseCardValue(card, fallback = 0) {
+   const value = Number(card?.value);
+   return Number.isFinite(value) ? value : fallback;
+  }
+
+  function getHandCurseCards(type = null) {
+   if (!player || !Array.isArray(player.hand)) return [];
+   return player.hand.filter(card => isCurseCard(card) && (!type || card.type === type));
+  }
+
+  function collectReloadCurseEffects(cards) {
+   return (Array.isArray(cards) ? cards : []).reduce((effects, card) => {
+    if (!isCurseCard(card)) return effects;
+    if (card.type === 'curse-reload-damage') {
+     effects.damage += getCurseCardValue(card, 2);
+    } else if (card.type === 'curse-reload-draw-down') {
+     effects.drawPenalty += getCurseCardValue(card, 1);
+    }
+    return effects;
+   }, { damage: 0, drawPenalty: 0 });
+  }
+
+  function queueReloadCurseEffects(cards) {
+   if (!player) return;
+   const effects = collectReloadCurseEffects(cards);
+   player.pendingReloadCurseDamage = Math.max(0, Number(player.pendingReloadCurseDamage || 0)) + effects.damage;
+   player.pendingReloadDrawPenalty = Math.max(0, Number(player.pendingReloadDrawPenalty || 0)) + effects.drawPenalty;
+   if (effects.damage > 0) addLog(`呪いが疼く：次のリロード時に${effects.damage}ダメージ`);
+   if (effects.drawPenalty > 0) addLog(`呪いが重くなる：次のリロード時ドロー-${effects.drawPenalty}`);
   }
 
   function getCardRarity(card) {
@@ -702,7 +776,12 @@ const PET_POOL = [
    if (rarity === 'legendary') return 'L';
    if (rarity === 'epic') return 'E';
    if (rarity === 'rare') return 'R';
+   if (rarity === 'curse') return '!';
    return '';
+  }
+
+  function hasCardRarityDisplay(card) {
+   return Boolean(getCardRarityBadge(card));
   }
 
   function getCardRarityClass(card) {
@@ -715,6 +794,7 @@ const PET_POOL = [
    if (rarity === 'legendary') return 'LEGENDARY';
    if (rarity === 'epic') return 'EPIC';
    if (rarity === 'rare') return 'RARE';
+   if (rarity === 'curse') return 'CURSE';
    return '';
   }
 
@@ -1065,6 +1145,16 @@ const PET_POOL = [
   let selectedShopCardIds = [];
   let selectedShopRemoveCardName = null;
   let currentShopRerollsUsed = 0;
+  let pendingRandomEvent = null;
+  let pendingRandomEventNextLevel = null;
+  let pendingRandomEventSteps = [];
+  let pendingRandomEventStepIndex = 0;
+  let pendingRandomEventChoices = [];
+  let pendingRandomEventAccepted = false;
+  let pendingRandomEventRolling = false;
+  let pendingRandomEventRollOutcome = null;
+  let pendingRandomEventReveals = [];
+  let pendingRandomEventAwaitingConfirm = false;
   let popupOffsetIndex = 0;
   let shopOpenedForLevel = null;
   let currentPassiveChoices = [];
@@ -1079,6 +1169,7 @@ const PET_POOL = [
   let currentRunPassiveIds = [];
   let currentRunEnemyHistory = [];
   let currentRunCardPlayCounts = {};
+  let currentRunRandomEvents = [];
   const SAVE_DATA_STORAGE_KEY = 'cardBattleSaveDataV1';
   const SAVE_SLOT_COUNT = 3;
   const SAVE_SLOT_STORAGE_KEY_PREFIX = 'cardBattleSaveDataV1_slot';
@@ -1093,6 +1184,7 @@ const PET_POOL = [
   const ACHIEVEMENT_STATS_STORAGE_KEY = 'cardBattleAchievementStats';
   const BATTLE_HISTORY_STORAGE_KEY = 'cardBattleBattleHistory';
   const CUSTOM_DECK_PRESETS_STORAGE_KEY = 'cardBattleCustomDeckPresetsV1';
+  const RANDOM_EVENTS_STORAGE_KEY = 'cardBattleRandomEvents';
   const CUSTOM_DECK_PRESET_COUNT = 3;
   const MAX_BATTLE_HISTORY_COUNT = 30;
 
@@ -1101,6 +1193,7 @@ const PET_POOL = [
    return {
     saveVersion: 4,
     savedAt: null,
+    playerName: '',
     discoveredEnemies: {},
     discoveredCards: {},
     discoveredPassives: {},
@@ -1109,6 +1202,7 @@ const PET_POOL = [
     achievementStats: getDefaultAchievementStats(),
     battleHistory: [],
     deckPresets: getEmptyCustomDeckPresets(),
+    randomEvents: {},
     deckCustomize: getInitialDeckCustomize(),
     selectedPetId: 'none',
     petLevel: 1,
@@ -1158,10 +1252,12 @@ const PET_POOL = [
    save.achievementStats = normalizeAchievementStats(save.achievementStats);
    save.battleHistory = normalizeBattleHistory(save.battleHistory);
    save.deckPresets = normalizeCustomDeckPresets(save.deckPresets);
+   save.randomEvents = save.randomEvents && typeof save.randomEvents === 'object' ? save.randomEvents : {};
    save.deckCustomize = save.deckCustomize && typeof save.deckCustomize === 'object' ? normalizeDeckCustomizeForSave(save.deckCustomize) : getInitialDeckCustomize();
    save.selectedPetId = save.selectedPetId || 'none';
    save.petLevel = Math.min(MAX_PET_LEVEL, Math.max(1, Number(save.petLevel || 1)));
    save.savedAt = save.savedAt || null;
+   save.playerName = String(save.playerName || '').trim().replace(/\s+/g, ' ').slice(0, 16);
 
    return save;
   }
@@ -1232,15 +1328,60 @@ const PET_POOL = [
   function getSaveSlotSummary(slot) {
    const save = readSaveSlot(slot);
    if (!save) return null;
+   const enemyCatalog = getEnemyCatalog();
+   const enemyIds = new Set(enemyCatalog.map(enemy => enemy.id));
+   const passiveOptions = getPassiveOptions();
+   const passiveIds = new Set(passiveOptions.map(passive => passive.id));
+   const achievementDefinitions = getAchievementDefinitions();
+   const highestClearLevel = normalizeBattleHistory(save.battleHistory)
+    .filter(item => item.result !== 'lose')
+    .reduce((max, item) => Math.max(max, Number(item.reachedLevel || 0)), 0);
 
    return {
     slot,
     savedAtText: formatSaveDate(save.savedAt),
-    cardCount: Object.keys(save.discoveredCards || {}).length,
-    enemyCount: Object.keys(save.discoveredEnemies || {}).length,
-    passiveCount: Object.keys(save.discoveredPassives || {}).length,
+    playerName: save.playerName || getCurrentPlayerName(),
+    cardCount: Object.keys(save.discoveredCards || {}).filter(cardName => CARD_POOL.some(card => card.name === cardName)).length,
+    cardTotal: CARD_POOL.length,
+    enemyCount: Object.keys(save.discoveredEnemies || {}).filter(enemyId => enemyIds.has(enemyId)).length,
+    enemyTotal: enemyCatalog.length,
+    passiveCount: Object.keys(save.discoveredPassives || {}).filter(passiveId => passiveIds.has(passiveId)).length,
+    passiveTotal: passiveOptions.length,
+   achievementCount: Object.keys(save.achievements || {}).filter(achievementId => save.achievements[achievementId]).length,
+   achievementTotal: achievementDefinitions.length,
+    eventCount: Object.keys(save.randomEvents || {}).filter(eventId => getRandomEventById(eventId)).length,
+    eventTotal: getRandomEventDefinitions().length,
+    highestClearLevel: highestClearLevel || Number(save.achievementStats?.highestLevel || 0),
     petName: getPetById(save.selectedPetId || 'none')?.name || 'なし',
    };
+  }
+
+  function getCurrentPlayerName() {
+   if (window.DeckFirebaseRanking && typeof window.DeckFirebaseRanking.getPlayerName === 'function') {
+    return window.DeckFirebaseRanking.getPlayerName();
+   }
+
+   try {
+    return String(localStorage.getItem('deckOfAbyssRankingPlayerName') || '').trim().replace(/\s+/g, ' ').slice(0, 16);
+   } catch (error) {
+    return '';
+   }
+  }
+
+  function setCurrentPlayerName(playerName) {
+   const normalized = String(playerName || '').trim().replace(/\s+/g, ' ').slice(0, 16);
+   if (!normalized) return;
+
+   if (window.DeckFirebaseRanking && typeof window.DeckFirebaseRanking.setPlayerName === 'function') {
+    window.DeckFirebaseRanking.setPlayerName(normalized);
+    return;
+   }
+
+   try {
+    localStorage.setItem('deckOfAbyssRankingPlayerName', normalized);
+   } catch (err) {
+    console.warn('player name save failed', err);
+   }
   }
 
   function getAllSaveSlotSummaries() {
@@ -1255,6 +1396,7 @@ const PET_POOL = [
    if (storageKey === ACHIEVEMENT_STATS_STORAGE_KEY) return 'achievementStats';
    if (storageKey === BATTLE_HISTORY_STORAGE_KEY) return 'battleHistory';
    if (storageKey === CUSTOM_DECK_PRESETS_STORAGE_KEY) return 'deckPresets';
+   if (storageKey === RANDOM_EVENTS_STORAGE_KEY) return 'randomEvents';
    return null;
   }
 
@@ -1349,6 +1491,10 @@ const PET_POOL = [
   function applySaveDataToState(save) {
    const normalized = normalizeSaveData(save);
 
+   if (normalized.playerName) {
+    setCurrentPlayerName(normalized.playerName);
+   }
+
    savedDeckCustomize = normalizeDeckCustomizeForSave(normalized.deckCustomize);
    deckCustomize = structuredClone(savedDeckCustomize);
    selectedPetId = normalized.selectedPetId || 'none';
@@ -1362,6 +1508,7 @@ const PET_POOL = [
    safeWriteJson(ACHIEVEMENT_STATS_STORAGE_KEY, normalizeAchievementStats(normalized.achievementStats));
    safeWriteJson(BATTLE_HISTORY_STORAGE_KEY, normalizeBattleHistory(normalized.battleHistory));
    safeWriteJson(CUSTOM_DECK_PRESETS_STORAGE_KEY, normalizeCustomDeckPresets(normalized.deckPresets));
+   safeWriteJson(RANDOM_EVENTS_STORAGE_KEY, normalized.randomEvents || {});
   }
 
   function clearRuntimeDiscoveryStorage() {
@@ -1373,6 +1520,7 @@ const PET_POOL = [
    localStorage.removeItem(ACHIEVEMENT_STATS_STORAGE_KEY);
    localStorage.removeItem(BATTLE_HISTORY_STORAGE_KEY);
    localStorage.removeItem(CUSTOM_DECK_PRESETS_STORAGE_KEY);
+   localStorage.removeItem(RANDOM_EVENTS_STORAGE_KEY);
   }
 
   function startNewGameData() {
@@ -1489,6 +1637,7 @@ const PET_POOL = [
 
   function buildCurrentSaveSnapshot() {
    return normalizeSaveData({
+    playerName: getCurrentPlayerName(),
     discoveredEnemies: loadRuntimeDiscoveryMap(ENCOUNTERED_ENEMIES_STORAGE_KEY),
     discoveredCards: loadDiscoveredCards(),
     discoveredPassives: loadRuntimeDiscoveryMap(DISCOVERED_PASSIVES_STORAGE_KEY),
@@ -1497,6 +1646,7 @@ const PET_POOL = [
     achievementStats: loadAchievementStats(),
     battleHistory: loadBattleHistory(),
     deckPresets: loadCustomDeckPresets(),
+    randomEvents: loadRandomEventProgress(),
     deckCustomize: sanitizeDeckCustomize(savedDeckCustomize),
     selectedPetId,
     petLevel,
@@ -1559,6 +1709,7 @@ const PET_POOL = [
     reflectKills: 0,
     freezeDamage: 0,
     freezeHits: 0,
+    freezeApplications: 0,
     burnApplications: 0,
     burnHalves: 0,
     statusGuards: 0,
@@ -1691,6 +1842,7 @@ const PET_POOL = [
     deck: structuredClone(currentRunDeckSnapshot || savedDeckCustomize || {}),
     passives: passiveIds.map(id => ({ id, name: getPassiveDisplayNameById(id) })),
     enemies: Array.isArray(currentRunEnemyHistory) ? structuredClone(currentRunEnemyHistory) : [],
+    events: Array.isArray(currentRunRandomEvents) ? structuredClone(currentRunRandomEvents) : [],
    };
 
    if (existingIndex >= 0) {
@@ -1725,33 +1877,65 @@ const PET_POOL = [
 
   function getAchievementDefinitions() {
    return [
+    { id: 'first_battle', tier: '初級', icon: '⚔️', name: '奈落の入口', description: '戦闘を1回開始する。', target: 1, statKey: 'totalBattles', progressText: value => `${value} / 1戦` },
     { id: 'first_win', tier: '初級', icon: '🏆', name: '初勝利', description: '戦闘に1回勝利する。', target: 1, statKey: 'totalWins', progressText: value => `${value} / 1勝` },
-    { id: 'critical_first', tier: '初級', icon: '💥', name: 'クリティカル！', description: 'クリティカルを1回発生させる。', target: 1, statKey: 'criticalHits', progressText: value => `${value} / 1回` },
-    { id: 'card_discover_20', tier: '初級', icon: '🃏', name: 'カードコレクター', description: 'カードを20種類発見する。', target: 20, statKey: 'discoveredCardCount', progressText: value => `${value} / 20種類` },
+    { id: 'cards_50', tier: '初級', icon: '🃏', name: '手札ならし', description: 'カードを累計50枚使用する。', target: 50, statKey: 'totalCardsUsed', progressText: value => `${value} / 50枚` },
+    { id: 'reload_20', tier: '初級', icon: '🔄', name: 'リロード入門', description: 'リロードを累計20回行う。', target: 20, statKey: 'totalReloads', progressText: value => `${value} / 20回` },
+    { id: 'critical_first', tier: '初級', icon: '💥', name: '会心のひらめき', description: 'クリティカルを1回発生させる。', target: 1, statKey: 'criticalHits', progressText: value => `${value} / 1回` },
+    { id: 'enemy_discover_3', tier: '初級', icon: '👁️', name: '敵影を追う', description: '敵を3種類図鑑に登録する。', target: 3, statKey: 'discoveredEnemyCount', progressText: value => `${value} / 3種類` },
+    { id: 'card_discover_10', tier: '初級', icon: '📚', name: 'カード収集の芽', description: 'カードを10種類発見する。', target: 10, statKey: 'discoveredCardCount', progressText: value => `${value} / 10種類` },
+    { id: 'passive_discover_3', tier: '初級', icon: '✨', name: '才能の気配', description: 'パッシブを3種類発見する。', target: 3, statKey: 'discoveredPassiveCount', progressText: value => `${value} / 3種類` },
 
+    { id: 'wins_10', tier: '中級', icon: '🏅', name: '勝利の積み重ね', description: '累計10勝する。', target: 10, statKey: 'totalWins', progressText: value => `${value} / 10勝` },
+    { id: 'wins_30', tier: '中級', icon: '🏅', name: '奈落の常連', description: '累計30勝する。', target: 30, statKey: 'totalWins', progressText: value => `${value} / 30勝` },
+    { id: 'level_10_reach', tier: '中級', icon: '🧭', name: '深層への道', description: 'Lv10以上の敵に到達する。', target: 10, statKey: 'highestLevel', progressText: value => `最高Lv.${value} / 10` },
     { id: 'cards_300', tier: '中級', icon: '🎴', name: 'カード使い込み', description: 'カードを累計300枚使用する。', target: 300, statKey: 'totalCardsUsed', progressText: value => `${value} / 300枚` },
-    { id: 'wins_20', tier: '中級', icon: '🏅', name: '勝利の積み重ね', description: '累計20勝する。', target: 20, statKey: 'totalWins', progressText: value => `${value} / 20勝` },
+    { id: 'cards_1000', tier: '中級', icon: '🎴', name: '山札の呼吸', description: 'カードを累計1000枚使用する。', target: 1000, statKey: 'totalCardsUsed', progressText: value => `${value} / 1000枚` },
     { id: 'damage_10000', tier: '中級', icon: '⚔️', name: 'ダメージディーラー', description: '累計10000ダメージを与える。', target: 10000, statKey: 'totalDamageDealt', progressText: value => `${value} / 10000` },
-    { id: 'freeze_damage_500', tier: '中級', icon: '❄️', name: '凍てつく世界', description: '凍結状態の敵に累計500ダメージを与える。', target: 500, statKey: 'freezeDamage', progressText: value => `${value} / 500` },
-    { id: 'burn_50', tier: '中級', icon: '🔥', name: '炎上注意', description: '火傷を累計50回付与する。', target: 50, statKey: 'burnApplications', progressText: value => `${value} / 50回` },
+    { id: 'damage_taken_3000', tier: '中級', icon: '🩸', name: '傷だらけの前進', description: '累計3000ダメージを受ける。', target: 3000, statKey: 'totalDamageTaken', progressText: value => `${value} / 3000` },
+    { id: 'card_discover_25', tier: '中級', icon: '📚', name: 'カードコレクター', description: 'カードを25種類発見する。', target: 25, statKey: 'discoveredCardCount', progressText: value => `${value} / 25種類` },
+    { id: 'enemy_discover_8', tier: '中級', icon: '👁️', name: '敵性調査', description: '敵を8種類図鑑に登録する。', target: 8, statKey: 'discoveredEnemyCount', progressText: value => `${value} / 8種類` },
+    { id: 'passive_discover_10', tier: '中級', icon: '✨', name: '才能の採集者', description: 'パッシブを10種類発見する。', target: 10, statKey: 'discoveredPassiveCount', progressText: value => `${value} / 10種類` },
+    { id: 'passive_select_20', tier: '中級', icon: '🧩', name: 'ビルド練習中', description: 'パッシブを累計20回取得する。', target: 20, statKey: 'selectedPassiveTotal', progressText: value => `${value} / 20回` },
+    { id: 'freeze_20', tier: '中級', icon: '❄️', name: '凍てつく手札', description: '凍結を累計20回付与する。', target: 20, statKey: 'freezeApplications', progressText: value => `${value} / 20回` },
+    { id: 'burn_50', tier: '中級', icon: '🔥', name: '火傷上手', description: '火傷を累計50回付与する。', target: 50, statKey: 'burnApplications', progressText: value => `${value} / 50回` },
     { id: 'block_80', tier: '中級', icon: '🛡️', name: '鉄壁', description: '戦闘中に防御値80以上になる。', target: 80, statKey: 'maxBlock', progressText: value => `最大${value} / 80` },
-    { id: 'reload_100', tier: '中級', icon: '🔄', name: '超速装填', description: 'リロードを累計100回行う。', target: 100, statKey: 'totalReloads', progressText: value => `${value} / 100回` },
+    { id: 'reload_150', tier: '中級', icon: '🔄', name: '回転する山札', description: 'リロードを累計150回行う。', target: 150, statKey: 'totalReloads', progressText: value => `${value} / 150回` },
 
+    { id: 'wins_75', tier: '上級', icon: '🏆', name: '勝ち筋の証明', description: '累計75勝する。', target: 75, statKey: 'totalWins', progressText: value => `${value} / 75勝` },
+    { id: 'level_15_reach', tier: '上級', icon: '🧭', name: '深淵の中腹', description: 'Lv15以上の敵に到達する。', target: 15, statKey: 'highestLevel', progressText: value => `最高Lv.${value} / 15` },
     { id: 'no_damage_10', tier: '上級', icon: '✨', name: '無傷の達人', description: '被ダメージ0で累計10回勝利する。', target: 10, statKey: 'noDamageWins', progressText: value => `${value} / 10勝` },
     { id: 'hp_one_win', tier: '上級', icon: '❤️‍🔥', name: '不屈', description: 'HP1で勝利する。', target: 1, statKey: 'hpOneWins', progressText: value => `${value} / 1回` },
     { id: 'cards_in_battle_25', tier: '上級', icon: '🚀', name: '暴走機関', description: '1戦でカードを25枚以上使用する。', target: 25, statKey: 'maxCardsUsedInBattle', progressText: value => `最大${value} / 25枚` },
+    { id: 'cards_3000', tier: '上級', icon: '🎴', name: '千手のカード使い', description: 'カードを累計3000枚使用する。', target: 3000, statKey: 'totalCardsUsed', progressText: value => `${value} / 3000枚` },
+    { id: 'critical_100', tier: '上級', icon: '💥', name: '会心の達人', description: 'クリティカルを累計100回発生させる。', target: 100, statKey: 'criticalHits', progressText: value => `${value} / 100回` },
+    { id: 'single_hit_100', tier: '上級', icon: '🗡️', name: '伝説の一撃', description: '1回の攻撃で100ダメージ以上与える。', target: 100, statKey: 'highestSingleHit', progressText: value => `最大${value} / 100` },
     { id: 'reflect_kill', tier: '上級', icon: '🪞', name: '完全反射', description: '反射ダメージで敵にとどめを刺す。', target: 1, statKey: 'reflectKills', progressText: value => `${value} / 1回` },
     { id: 'delay_300', tier: '上級', icon: '⏳', name: '時間停止', description: '敵行動を累計300秒遅延させる。', target: 300, statKey: 'totalEnemyDelaySeconds', progressText: value => `${value} / 300秒` },
-    { id: 'single_hit_100', tier: '上級', icon: '💫', name: '伝説の一撃', description: '1回の攻撃で100ダメージ以上与える。', target: 100, statKey: 'highestSingleHit', progressText: value => `最大${value} / 100` },
+    { id: 'status_guard_30', tier: '上級', icon: '🛡️', name: '状態異常対策', description: '状態異常防御を累計30回使う。', target: 30, statKey: 'statusGuards', progressText: value => `${value} / 30回` },
+    { id: 'passive_select_75', tier: '上級', icon: '🧩', name: '構築家', description: 'パッシブを累計75回取得する。', target: 75, statKey: 'selectedPassiveTotal', progressText: value => `${value} / 75回` },
+    { id: 'enemy_discover_15', tier: '上級', icon: '👁️', name: '魔物研究家', description: '敵を15種類図鑑に登録する。', target: 15, statKey: 'discoveredEnemyCount', progressText: value => `${value} / 15種類` },
 
     { id: 'all_cards', tier: '廃人向け', icon: '📚', name: 'カードマスター', description: '全カードを発見する。', target: () => CARD_POOL.length, statKey: 'discoveredCardCount', progressText: value => `${value} / ${CARD_POOL.length}種類` },
-    { id: 'level_20_win', tier: '廃人向け', icon: '👑', name: '終焉を超えし者', description: 'Lv20以上の敵に勝利する。', target: 1, statKey: 'level20Wins', progressText: value => `${value} / 1回` },
-    { id: 'critical_100', tier: '廃人向け', icon: '🌟', name: '会心の達人', description: 'クリティカルを累計100回発生させる。', target: 100, statKey: 'criticalHits', progressText: value => `${value} / 100回` },
+    { id: 'all_enemies', tier: '廃人向け', icon: '👁️', name: '奈落図鑑完成', description: '全敵を図鑑に登録する。', target: () => getEnemyCatalog().length, statKey: 'discoveredEnemyCount', progressText: value => `${value} / ${getEnemyCatalog().length}種類` },
+    { id: 'all_passives', tier: '廃人向け', icon: '✨', name: '才能の書庫', description: '全パッシブを発見する。', target: () => getPassiveOptions().length, statKey: 'discoveredPassiveCount', progressText: value => `${value} / ${getPassiveOptions().length}種類` },
+    { id: 'level_20_win', tier: '廃人向け', icon: '🏁', name: '終点を越えし者', description: 'Lv20以上の敵に勝利する。', target: 1, statKey: 'level20Wins', progressText: value => `${value} / 1回` },
+    { id: 'level_20_win_5', tier: '廃人向け', icon: '🏁', name: '深淵周回者', description: 'Lv20以上の敵に累計5回勝利する。', target: 5, statKey: 'level20Wins', progressText: value => `${value} / 5回` },
+    { id: 'wins_200', tier: '廃人向け', icon: '👑', name: '勝利の亡者', description: '累計200勝する。', target: 200, statKey: 'totalWins', progressText: value => `${value} / 200勝` },
+    { id: 'cards_10000', tier: '廃人向け', icon: '🃏', name: '山札と一体化した者', description: 'カードを累計10000枚使用する。', target: 10000, statKey: 'totalCardsUsed', progressText: value => `${value} / 10000枚` },
+    { id: 'damage_100000', tier: '廃人向け', icon: '⚔️', name: '六桁火力', description: '累計100000ダメージを与える。', target: 100000, statKey: 'totalDamageDealt', progressText: value => `${value} / 100000` },
+    { id: 'critical_500', tier: '廃人向け', icon: '💥', name: '会心中毒', description: 'クリティカルを累計500回発生させる。', target: 500, statKey: 'criticalHits', progressText: value => `${value} / 500回` },
+    { id: 'single_hit_300', tier: '廃人向け', icon: '🗡️', name: '奈落割り', description: '1回の攻撃で300ダメージ以上与える。', target: 300, statKey: 'highestSingleHit', progressText: value => `最大${value} / 300` },
+    { id: 'block_250', tier: '廃人向け', icon: '🛡️', name: '城塞化', description: '戦闘中に防御値250以上になる。', target: 250, statKey: 'maxBlock', progressText: value => `最大${value} / 250` },
 
     { id: 'secret_chaos', tier: '隠し', icon: '🌀', name: 'カオス中毒', description: 'カオスハンドを累計10回使用する。', hidden: true, target: 10, statKey: 'chaosHandUses', progressText: value => `${value} / 10回` },
-    { id: 'secret_echo', tier: '隠し', icon: '🔁', name: '反響する力', description: 'エコーを累計10回使用する。', hidden: true, target: 10, statKey: 'echoUses', progressText: value => `${value} / 10回` },
-    { id: 'secret_fortune', tier: '隠し', icon: '🍀', name: '運命操作', description: 'フォーチュンセットを累計15回使用する。', hidden: true, target: 15, statKey: 'fortuneUses', progressText: value => `${value} / 15回` },
+    { id: 'secret_chaos_50', tier: '隠し', icon: '🌀', name: '混沌の常連', description: 'カオスハンドを累計50回使用する。', hidden: true, target: 50, statKey: 'chaosHandUses', progressText: value => `${value} / 50回` },
+    { id: 'secret_echo', tier: '隠し', icon: '🔂', name: '反響する力', description: 'エコーを累計10回使用する。', hidden: true, target: 10, statKey: 'echoUses', progressText: value => `${value} / 10回` },
+    { id: 'secret_echo_50', tier: '隠し', icon: '🔂', name: '残響の支配者', description: 'エコーを累計50回使用する。', hidden: true, target: 50, statKey: 'echoUses', progressText: value => `${value} / 50回` },
+    { id: 'secret_fortune', tier: '隠し', icon: '🎲', name: '運命操作', description: 'フォーチュンセットを累計15回使用する。', hidden: true, target: 15, statKey: 'fortuneUses', progressText: value => `${value} / 15回` },
+    { id: 'secret_fortune_60', tier: '隠し', icon: '🎲', name: '確率の支配者', description: 'フォーチュンセットを累計60回使用する。', hidden: true, target: 60, statKey: 'fortuneUses', progressText: value => `${value} / 60回` },
     { id: 'secret_burn_half', tier: '隠し', icon: '🔥', name: '弱火調理', description: '火傷で敵の攻撃を累計30回半減させる。', hidden: true, target: 30, statKey: 'burnHalves', progressText: value => `${value} / 30回` },
+    { id: 'secret_reflect_damage_2000', tier: '隠し', icon: '🪞', name: '鏡面地獄', description: '反射で累計2000ダメージを与える。', hidden: true, target: 2000, statKey: 'reflectDamage', progressText: value => `${value} / 2000` },
    ];
   }
 
@@ -1762,6 +1946,17 @@ const PET_POOL = [
   function getDynamicAchievementValue(statKey, stats = loadAchievementStats()) {
    if (statKey === 'discoveredCardCount') {
     return Object.keys(loadDiscoveredCards() || {}).filter(cardName => CARD_POOL.some(card => card.name === cardName)).length;
+   }
+   if (statKey === 'discoveredEnemyCount') {
+    const enemyIds = new Set(getEnemyCatalog().map(enemy => enemy.id));
+    return Object.keys(loadEncounteredEnemies() || {}).filter(enemyId => enemyIds.has(enemyId)).length;
+   }
+   if (statKey === 'discoveredPassiveCount') {
+    const passiveIds = new Set(getPassiveOptions().map(passive => passive.id));
+    return Object.keys(loadDiscoveredPassives() || {}).filter(passiveId => passiveIds.has(passiveId)).length;
+   }
+   if (statKey === 'selectedPassiveTotal') {
+    return Object.values(loadDiscoveredPassives() || {}).reduce((sum, passive) => sum + Math.max(0, Number(passive?.selectedCount || 0)), 0);
    }
    return Math.max(0, Number(stats[statKey] || 0));
   }
@@ -1923,11 +2118,15 @@ const PET_POOL = [
   }
 
   function recordPassiveDiscovery(passiveId) {
-   return passiveProgress.recordPassiveDiscovery(passiveId);
+   const result = passiveProgress.recordPassiveDiscovery(passiveId);
+   evaluateAchievements();
+   return result;
   }
 
   function recordPassiveDiscoveries(passives) {
-   return passiveProgress.recordPassiveDiscoveries(passives);
+   const result = passiveProgress.recordPassiveDiscoveries(passives);
+   evaluateAchievements();
+   return result;
   }
 
   function getInitialDeckCustomize() {
@@ -2124,6 +2323,7 @@ function roundToTenthSecond(value) {
 
 function getCardCooldownSeconds(card) {
  if (!card) return 1;
+ if (isCurseCard(card)) return 0.5;
 
  const cooldownByName = {
   '弱攻撃': 0.5,
@@ -2635,6 +2835,542 @@ function getRandomPassiveChoices(count = 3, options = getNormalPassiveOptions())
  recordPassiveDiscoveries(choices);
 
  return choices;
+}
+
+const RANDOM_EVENT_CHANCE = 0.3;
+
+function getRandomEventDefinitions() {
+ return [
+  { id: 'traveler_luggage', title: '旅人の荷物', description: '誰かが落としていった荷物が、まだ温かいまま残されている。', effect: 'ランダムなカードを1枚追加する', downside: 'なし', steps: [{ type: 'addRandomCards', count: 1, pool: 'all' }] },
+  { id: 'blood_contract', title: '血の契約', description: '赤黒い羊皮紙が、強いカードと小さな代償を求めている。', effect: 'レアカード候補3枚から1枚選んで追加する', downside: '最大HP-2', steps: [{ type: 'maxHp', amount: -2 }, { type: 'cardChoice', count: 3, pool: 'rare' }] },
+  { id: 'old_chest', title: '古びた宝箱', description: '錆びた留め金の奥に、使えそうなカードが眠っている。', effect: 'ランダムなカードを2枚追加する', downside: 'なし', steps: [{ type: 'addRandomCards', count: 2, pool: 'all' }] },
+  { id: 'cursed_chest', title: '呪われた宝箱', description: '中身は魅力的だが、開けた瞬間に山札の一部が軋む。', effect: 'レアカードをランダムで1枚追加する', downside: 'ランダムな所持カードを1枚削除する', steps: [{ type: 'addRandomCards', count: 1, pool: 'rare' }, { type: 'removeRandom' }] },
+  { id: 'mystery_merchant', title: '謎の商人', description: '顔の見えない商人が、代金の代わりに生命力を少しだけ求める。', effect: 'カード候補3枚から1枚選んで追加する', downside: '最大HP-1', steps: [{ type: 'maxHp', amount: -1 }, { type: 'cardChoice', count: 3, pool: 'all' }] },
+  { id: 'dark_doctor', title: '闇医者', description: '粗雑だが確かな処置。強くはなるが、何かを失う。', effect: '最大HP+3', downside: 'ランダムな所持カードを1枚削除する', steps: [{ type: 'maxHp', amount: 3 }, { type: 'removeRandom' }] },
+  { id: 'life_spring', title: '生命の泉', description: '淡い光を放つ泉が、肉体の器を少し広げる。', effect: '最大HP+2', downside: 'なし', steps: [{ type: 'maxHp', amount: 2 }] },
+  { id: 'abyss_spring', title: '深淵の泉', description: '力は満ちる。しかし呪いも山札へ流れ込む。', effect: '最大HP+5', downside: '呪いカードを2枚追加する', steps: [{ type: 'maxHp', amount: 5 }, { type: 'addCurseCards', count: 2 }] },
+  { id: 'warrior_memory', title: '戦士の記憶', description: '刃を振るった者たちの記憶が、攻撃の型を示す。', effect: '攻撃系カード候補3枚から1枚選んで追加する', downside: 'なし', steps: [{ type: 'cardChoice', count: 3, pool: 'attack' }] },
+  { id: 'guardian_memory', title: '守護者の記憶', description: '守るために戦った者の記憶が、耐える術を授ける。', effect: '防御・回復系カード候補3枚から1枚選んで追加する', downside: 'なし', steps: [{ type: 'cardChoice', count: 3, pool: 'guard' }] },
+  { id: 'grimoire_fragment', title: '魔導書の断片', description: '読めない文字列の一部だけが、状態異常の術式として理解できる。', effect: '状態異常系カード候補3枚から1枚選んで追加する', downside: '最大HP-1', steps: [{ type: 'maxHp', amount: -1 }, { type: 'cardChoice', count: 3, pool: 'status' }] },
+  { id: 'desire_altar', title: '欲望の祭壇', description: '祭壇は希少な才能を囁く。代償は軽くない。', effect: 'ランダムなレアパッシブを1つ獲得する', downside: '最大HP-5', steps: [{ type: 'maxHp', amount: -5 }, { type: 'passiveRandom', pool: 'rare' }] },
+  { id: 'small_altar', title: '小さな祭壇', description: '小さな祈りに、小さな才能と呪いが返ってくる。', effect: 'ランダムなパッシブを1つ獲得する', downside: '呪いカードを1枚追加する', steps: [{ type: 'passiveRandom', pool: 'all' }, { type: 'addCurseCards', count: 1 }] },
+  { id: 'forgetting_fog', title: '忘却の霧', description: '霧の中で、不要な戦い方をひとつ忘れられる。', effect: '山札からカードを1枚選んで削除する', downside: 'なし', steps: [{ type: 'removeChoice' }] },
+  { id: 'selection_ritual', title: '選別の儀式', description: '捨てるものを決めた者だけが、より強い札を選べる。', effect: '山札から1枚削除し、レアカード候補3枚から1枚選んで追加する', downside: 'なし', steps: [{ type: 'removeChoice' }, { type: 'cardChoice', count: 3, pool: 'rare' }] },
+  { id: 'ghost_smith', title: '鍛冶師の亡霊', description: '亡霊が刃の記憶を打ち直し、山札へ投げ込む。', effect: '攻撃系カードをランダムで1枚追加する', downside: '最大HP-2', steps: [{ type: 'maxHp', amount: -2 }, { type: 'addRandomCards', count: 1, pool: 'attack' }] },
+  { id: 'lucky_coin', title: '幸運のコイン', description: '表なら希少な札。裏なら何も起きない。ただそれだけだ。', effect: '50%の確率でレアカードをランダムで1枚追加する', downside: '失敗時：何も獲得できない', steps: [{ type: 'chance', rate: 0.5, success: [{ type: 'addRandomCards', count: 1, pool: 'rare' }], fail: [] }] },
+  { id: 'abyss_bet', title: '深淵の賭け', description: '深淵はレジェンダリーの札をちらつかせる。手を伸ばした時点で生命力を奪われ、外れれば呪いも背負う。', effect: '15%の確率でレジェンダリーカードをランダムで1枚追加する', downside: '受諾時：最大HP-6 / 失敗時：最大HP-3、呪いカード3枚追加', steps: [{ type: 'maxHp', amount: -6 }, { type: 'chance', rate: 0.15, success: [{ type: 'addRandomCards', count: 1, pool: 'legendary' }], fail: [{ type: 'maxHp', amount: -3 }, { type: 'addCurseCards', count: 3 }] }] },
+  { id: 'quiet_rest', title: '静かな休息', description: '短い休息の中で、不要な札を手放せる。少しだけ体力の器は縮む。', effect: '山札からカードを1枚選んで削除する', downside: '最大HP-1', steps: [{ type: 'maxHp', amount: -1 }, { type: 'removeChoice' }] },
+  { id: 'ominous_sign', title: '不吉な気配', description: '何も得られない。ただ、呪いだけが山札へ紛れ込む。', effect: 'なし', downside: '呪いカードを1枚追加する', steps: [{ type: 'addCurseCards', count: 1 }] },
+  { id: 'epic_bargain', title: '星喰いの取引', description: '星の残滓がエピックカードを囁く。代償は深く、成功率も低い。', effect: '20%の確率でエピックカードをランダムで1枚追加する', downside: '受諾時：最大HP-3 / 失敗時：呪いカード2枚追加', steps: [{ type: 'maxHp', amount: -3 }, { type: 'chance', rate: 0.2, success: [{ type: 'addRandomCards', count: 1, pool: 'epic' }], fail: [{ type: 'addCurseCards', count: 2 }] }] },
+ ];
+}
+
+function getRandomEventById(eventId) {
+ return getRandomEventDefinitions().find(event => event.id === eventId) || null;
+}
+
+function hasRandomEventDownside(event) {
+ const text = String(event?.downside || '').trim();
+ if (!text) return false;
+ if (text === 'なし' || text.startsWith('縺ｪ縺')) return false;
+ return true;
+}
+
+function loadRandomEventProgress() {
+ return loadDiscoveryMap(RANDOM_EVENTS_STORAGE_KEY);
+}
+
+function saveRandomEventProgress(progress) {
+ saveDiscoveryMap(RANDOM_EVENTS_STORAGE_KEY, progress && typeof progress === 'object' ? progress : {});
+}
+
+function recordRandomEventProgress(eventId, outcome = 'seen') {
+ if (!eventId) return;
+ const progress = loadRandomEventProgress();
+ const current = progress[eventId] || {};
+ const next = {
+  ...current,
+  firstSeenAt: current.firstSeenAt || Date.now(),
+  lastSeenAt: Date.now(),
+  seenCount: Math.max(0, Number(current.seenCount || 0)) + (outcome === 'seen' ? 1 : 0),
+  acceptedCount: Math.max(0, Number(current.acceptedCount || 0)) + (outcome === 'accepted' ? 1 : 0),
+  rejectedCount: Math.max(0, Number(current.rejectedCount || 0)) + (outcome === 'rejected' ? 1 : 0),
+ };
+ progress[eventId] = next;
+ saveRandomEventProgress(progress);
+}
+
+function getRandomEventCardPool(poolType = 'all') {
+ const basePool = CARD_POOL.filter(card => !isCurseCard(card));
+ let pool = [...basePool];
+ if (poolType === 'rare') {
+  return basePool.filter(card => getCardRarity(card) === 'rare');
+ } else if (poolType === 'epic') {
+  return basePool.filter(card => getCardRarity(card) === 'epic');
+ } else if (poolType === 'legendary') {
+  return basePool.filter(card => getCardRarity(card) === 'legendary');
+ } else if (poolType === 'attack') {
+  pool = basePool.filter(card => getCardCustomizeCategory(card) === 'attack');
+ } else if (poolType === 'guard') {
+  pool = basePool.filter(card => getCardCustomizeCategory(card) === 'defense' || ['heal', 'rare-heal', 'risky-heal'].includes(card.type));
+ } else if (poolType === 'status') {
+  pool = basePool.filter(card => getCardCustomizeCategory(card) === 'status');
+ }
+ return pool.length ? pool : basePool;
+}
+
+function getRandomCurseCardPool() {
+ return CURSE_CARD_POOL.length ? CURSE_CARD_POOL : CARD_POOL.filter(card => isCurseCard(card));
+}
+
+function sampleRandomItems(items, count = 1) {
+ const source = Array.isArray(items) ? [...items] : [];
+ const picked = [];
+ while (source.length > 0 && picked.length < count) {
+  const index = Math.floor(Math.random() * source.length);
+  picked.push(source.splice(index, 1)[0]);
+ }
+ return picked;
+}
+
+function addCardToDeckByName(cardName, source = 'イベント') {
+ const card = getCanonicalCardByName(cardName);
+ if (!card) return null;
+ deckCustomize[card.name] = Math.max(0, Number(deckCustomize[card.name] || 0)) + 1;
+ currentRunDeckSnapshot = structuredClone(deckCustomize);
+ recordCardDiscovery(card.name);
+ addLog(`${source}：${card.name}を追加`);
+ return card;
+}
+
+function removeCardFromDeckByName(cardName, source = 'イベント') {
+ if (!cardName || !deckCustomize[cardName]) return null;
+ deckCustomize[cardName] -= 1;
+ if (deckCustomize[cardName] <= 0) delete deckCustomize[cardName];
+ currentRunDeckSnapshot = structuredClone(deckCustomize);
+ addLog(`${source}：${cardName}を削除`);
+ return cardName;
+}
+
+function adjustEventMaxHp(amount) {
+ const delta = Number(amount || 0);
+ if (!delta) return 0;
+ const minBonus = 1 - MAX_HP;
+ const before = Number(playerPassives.maxHp || 0);
+ playerPassives.maxHp = Math.max(minBonus, before + delta);
+ if (player) player.hp = Math.min(getPlayerMaxHp(), Math.max(1, Number(player.hp || 1)));
+ const actual = playerPassives.maxHp - before;
+ if (actual) addLog(`イベント：最大HP${actual > 0 ? '+' : ''}${actual}`);
+ return actual;
+}
+
+function addRandomPassiveFromEvent(poolType = 'all') {
+ let pool = poolType === 'rare' ? getRarePassiveOptions() : getPassiveOptions();
+ pool = filterAlreadyOwnedUniquePassives(pool);
+ if (!pool.length && poolType === 'rare') pool = filterAlreadyOwnedUniquePassives(getNormalPassiveOptions());
+ if (!pool.length) return null;
+ const passive = sampleRandomItems(pool, 1)[0];
+ passive.apply();
+ recordPassiveDiscovery(passive.id);
+ currentRunPassiveIds.push(passive.id);
+ addLog(`イベント：パッシブ「${passive.name}」を獲得`);
+ return passive;
+}
+
+function showRandomEventReveal(action, cards) {
+ pendingRandomEventReveals = (Array.isArray(cards) ? cards : []).map(card => ({ action, card }));
+ pendingRandomEventAwaitingConfirm = true;
+ render();
+}
+
+function applyRandomEventOutcomeStep(step) {
+ if (!step) return;
+
+ if (step.type === 'maxHp') {
+  adjustEventMaxHp(step.amount);
+  return;
+ }
+
+ if (step.type === 'addRandomCards') {
+  const pool = getRandomEventCardPool(step.pool);
+  const cards = sampleRandomItems(pool, Math.max(1, Number(step.count || 1)));
+  cards.forEach(card => addCardToDeckByName(card.name));
+  pendingRandomEventReveals.push(...cards.map(card => ({ action: 'add', card })));
+  return;
+ }
+
+ if (step.type === 'addCurseCards') {
+  const cards = sampleRandomItems(getRandomCurseCardPool(), Math.max(1, Number(step.count || 1)));
+  cards.forEach(card => addCardToDeckByName(card.name, '呪い'));
+  pendingRandomEventReveals.push(...cards.map(card => ({ action: 'curse', card })));
+  return;
+ }
+
+ if (step.type === 'removeRandom') {
+  const removable = getRemovableDeckCards();
+  if (!removable.length) return;
+  const card = sampleRandomItems(removable, 1)[0];
+  removeCardFromDeckByName(card.name);
+  pendingRandomEventReveals.push({ action: 'remove', card });
+  return;
+ }
+
+ if (step.type === 'passiveRandom') {
+  addRandomPassiveFromEvent(step.pool);
+ }
+}
+
+function executeRandomEventStep(step) {
+ if (!step) return true;
+
+ if (step.type === 'maxHp') {
+  adjustEventMaxHp(step.amount);
+  return true;
+ }
+
+ if (step.type === 'addRandomCards') {
+  const pool = getRandomEventCardPool(step.pool);
+  const cards = sampleRandomItems(pool, Math.max(1, Number(step.count || 1)));
+  cards.forEach(card => addCardToDeckByName(card.name));
+  showRandomEventReveal('add', cards);
+  return false;
+ }
+
+ if (step.type === 'addCurseCards') {
+  const cards = sampleRandomItems(getRandomCurseCardPool(), Math.max(1, Number(step.count || 1)));
+  cards.forEach(card => addCardToDeckByName(card.name, '呪い'));
+  showRandomEventReveal('curse', cards);
+  return false;
+ }
+
+ if (step.type === 'removeRandom') {
+  const removable = getRemovableDeckCards();
+  if (!removable.length) return true;
+  const card = sampleRandomItems(removable, 1)[0];
+  removeCardFromDeckByName(card.name);
+  showRandomEventReveal('remove', [card]);
+  return false;
+ }
+
+ if (step.type === 'passiveRandom') {
+  addRandomPassiveFromEvent(step.pool);
+  return true;
+ }
+
+ if (step.type === 'chance') {
+  pendingRandomEventRolling = true;
+  pendingRandomEventRollOutcome = null;
+  pendingRandomEventReveals = [];
+  pendingRandomEventAwaitingConfirm = false;
+  render();
+
+  setTimeout(() => {
+   if (!pendingRandomEvent || !pendingRandomEventAccepted || pendingRandomEventSteps[pendingRandomEventStepIndex] !== step) return;
+
+   const success = Math.random() < Number(step.rate || 0);
+   pendingRandomEventRolling = false;
+   pendingRandomEventRollOutcome = success ? 'success' : 'fail';
+   pendingRandomEventReveals = [];
+   addLog(success ? 'イベント：賭けに成功' : 'イベント：賭けに失敗');
+   (success ? (step.success || []) : (step.fail || [])).forEach(applyRandomEventOutcomeStep);
+   pendingRandomEventAwaitingConfirm = true;
+   render();
+  }, 1200);
+
+  return false;
+ }
+
+ if (step.type === 'cardChoice') {
+  pendingRandomEventChoices = sampleRandomItems(getRandomEventCardPool(step.pool), Math.max(1, Number(step.count || 3)));
+  return false;
+ }
+
+ if (step.type === 'removeChoice') {
+  pendingRandomEventChoices = getRemovableDeckCards();
+  if (!pendingRandomEventChoices.length) return true;
+  return false;
+ }
+
+ return true;
+}
+
+function continueRandomEventSteps() {
+ while (pendingRandomEventStepIndex < pendingRandomEventSteps.length) {
+  const step = pendingRandomEventSteps[pendingRandomEventStepIndex];
+  const completed = executeRandomEventStep(step);
+  if (!completed) {
+   render();
+   return;
+  }
+  pendingRandomEventStepIndex += 1;
+ }
+ finishRandomEvent();
+}
+
+function shouldOfferRandomEvent(clearedLevel, nextLevel) {
+ return clearedLevel < 20
+  && !shouldShowPassiveChoice(nextLevel)
+  && !shouldShowShopAfterVictory(clearedLevel)
+  && Math.random() < RANDOM_EVENT_CHANCE;
+}
+
+function beginRandomEvent(nextLevel) {
+ const events = getRandomEventDefinitions();
+ pendingRandomEvent = sampleRandomItems(events, 1)[0] || null;
+ if (!pendingRandomEvent) {
+  startNextBattleFromPendingLevel(nextLevel);
+  return;
+ }
+ pendingRandomEventNextLevel = nextLevel;
+ pendingRandomEventSteps = structuredClone(pendingRandomEvent.steps || []);
+ pendingRandomEventStepIndex = 0;
+ pendingRandomEventChoices = [];
+ pendingRandomEventAccepted = false;
+ pendingRandomEventRolling = false;
+ pendingRandomEventRollOutcome = null;
+ pendingRandomEventReveals = [];
+ pendingRandomEventAwaitingConfirm = false;
+ gameOver = false;
+
+ stopEnemyTimer();
+ stopReload();
+ stopCooldown();
+ stopDeckReload();
+ recordRandomEventProgress(pendingRandomEvent.id, 'seen');
+ currentRunRandomEvents.push({
+  id: pendingRandomEvent.id,
+  title: pendingRandomEvent.title,
+  level: Math.max(1, Number(pendingRandomEventNextLevel || enemyLevel || 1)),
+  seenAt: Date.now(),
+ });
+ render();
+}
+
+function acceptRandomEvent() {
+ playUiSelectSound();
+ if (!pendingRandomEvent || pendingRandomEventAccepted) return;
+ pendingRandomEventAccepted = true;
+ recordRandomEventProgress(pendingRandomEvent.id, 'accepted');
+ continueRandomEventSteps();
+}
+
+function declineRandomEvent() {
+ playUiSelectSound();
+ if (!pendingRandomEvent) return;
+ recordRandomEventProgress(pendingRandomEvent.id, 'rejected');
+ finishRandomEvent();
+}
+
+function confirmRandomEventResult() {
+ playUiSelectSound();
+ if (!pendingRandomEvent || !pendingRandomEventAccepted || !pendingRandomEventAwaitingConfirm || pendingRandomEventRolling) return;
+ pendingRandomEventAwaitingConfirm = false;
+ pendingRandomEventRollOutcome = null;
+ pendingRandomEventReveals = [];
+ pendingRandomEventStepIndex += 1;
+ continueRandomEventSteps();
+}
+
+function chooseRandomEventCard(cardName) {
+ playUiSelectSound();
+ if (!pendingRandomEvent || !pendingRandomEventAccepted) return;
+ const step = pendingRandomEventSteps[pendingRandomEventStepIndex];
+ if (!step || step.type !== 'cardChoice') return;
+ addCardToDeckByName(cardName);
+ pendingRandomEventChoices = [];
+ pendingRandomEventStepIndex += 1;
+ continueRandomEventSteps();
+}
+
+function chooseRandomEventRemoveCard(cardName) {
+ playUiSelectSound();
+ if (!pendingRandomEvent || !pendingRandomEventAccepted) return;
+ const step = pendingRandomEventSteps[pendingRandomEventStepIndex];
+ if (!step || step.type !== 'removeChoice') return;
+ removeCardFromDeckByName(cardName);
+ pendingRandomEventChoices = [];
+ pendingRandomEventStepIndex += 1;
+ continueRandomEventSteps();
+}
+
+function finishRandomEvent() {
+ const next = pendingRandomEventNextLevel;
+ pendingRandomEvent = null;
+ pendingRandomEventNextLevel = null;
+ pendingRandomEventSteps = [];
+ pendingRandomEventStepIndex = 0;
+ pendingRandomEventChoices = [];
+ pendingRandomEventAccepted = false;
+ pendingRandomEventRolling = false;
+ pendingRandomEventRollOutcome = null;
+ pendingRandomEventReveals = [];
+ pendingRandomEventAwaitingConfirm = false;
+ if (next) {
+  startNextBattleFromPendingLevel(next);
+ } else {
+  render();
+ }
+}
+
+function clearPendingRandomEvent() {
+ pendingRandomEvent = null;
+ pendingRandomEventNextLevel = null;
+ pendingRandomEventSteps = [];
+ pendingRandomEventStepIndex = 0;
+ pendingRandomEventChoices = [];
+ pendingRandomEventAccepted = false;
+ pendingRandomEventRolling = false;
+ pendingRandomEventRollOutcome = null;
+ pendingRandomEventReveals = [];
+ pendingRandomEventAwaitingConfirm = false;
+}
+
+function getCurrentRandomEventChoiceStep() {
+ if (!pendingRandomEventAccepted) return null;
+ return pendingRandomEventSteps[pendingRandomEventStepIndex] || null;
+}
+
+function renderRandomEventModal() {
+ const modal = document.getElementById('random-event-actions');
+ if (!modal) return;
+ const visible = Boolean(pendingRandomEvent);
+ modal.style.display = visible ? 'flex' : 'none';
+ if (!visible) return;
+
+ const title = document.getElementById('random-event-title');
+ const description = document.getElementById('random-event-description');
+ const effect = document.getElementById('random-event-effect');
+ const downside = document.getElementById('random-event-downside');
+ const result = document.getElementById('random-event-result');
+ const list = document.getElementById('random-event-choice-list');
+ const actions = document.getElementById('random-event-actions-row');
+ const step = getCurrentRandomEventChoiceStep();
+ const hasReveals = pendingRandomEventReveals.length > 0;
+ const awaitingConfirm = Boolean(pendingRandomEventAwaitingConfirm);
+
+ if (title) title.textContent = pendingRandomEvent.title;
+ if (description) description.textContent = pendingRandomEvent.description;
+ if (effect) effect.textContent = pendingRandomEvent.effect;
+ if (downside) {
+  const downsideWrap = downside.closest('div');
+  const infoGrid = downside.closest('.random-event-info-grid');
+  const hasDownside = hasRandomEventDownside(pendingRandomEvent);
+  if (infoGrid) infoGrid.classList.toggle('no-downside', !hasDownside);
+  if (downsideWrap) downsideWrap.style.display = hasDownside ? '' : 'none';
+  downside.textContent = hasDownside ? pendingRandomEvent.downside : '';
+ }
+ if (actions) {
+  if (!pendingRandomEventAccepted) {
+   actions.style.display = 'flex';
+   actions.innerHTML = '<button class="ui-button ui-button-primary" onclick="acceptRandomEvent()">受け入れる</button><button class="ui-button ui-button-secondary" onclick="declineRandomEvent()">拒否する</button>';
+  } else if (awaitingConfirm) {
+   actions.style.display = 'flex';
+   actions.innerHTML = '<button class="ui-button ui-button-primary" onclick="confirmRandomEventResult()">確認</button>';
+  } else {
+   actions.style.display = 'none';
+   actions.innerHTML = '';
+  }
+ }
+ if (result) {
+  if (pendingRandomEventRolling) {
+   result.innerHTML = '<div class="random-event-roll-effect"><span></span><span></span><span></span></div><strong>運命が回っています...</strong>';
+  } else if (pendingRandomEventRollOutcome) {
+   result.innerHTML = pendingRandomEventRollOutcome === 'success'
+    ? '<strong class="random-event-roll-success">成功！ 深淵が応えました。</strong>'
+    : '<strong class="random-event-roll-fail">失敗... 深淵は沈黙しました。</strong>';
+  } else {
+   result.textContent = pendingRandomEventAccepted
+    ? (awaitingConfirm ? (hasReveals ? (pendingRandomEventReveals[0]?.action === 'remove' ? 'このカードが削除されます。確認してください。' : 'このカードが追加されます。確認してください。') : '結果を確認してください。') : step?.type === 'cardChoice' ? '追加するカードを選んでください。' : step?.type === 'removeChoice' ? '削除するカードを選んでください。' : 'イベント処理中...')
+    : '受け入れる前に効果を確認してください。';
+  }
+ }
+ if (!list) return;
+ list.innerHTML = '';
+ if (hasReveals) {
+  pendingRandomEventReveals.forEach(({ action, card }) => {
+   const div = document.createElement('div');
+   div.className = `random-event-choice-card random-event-reveal-card ${action === 'remove' ? 'remove-choice' : ''} ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}`;
+   const note = action === 'remove' ? 'このカードが1枚削除されます' : action === 'curse' ? '呪いカードが追加されます' : 'このカードが追加されます';
+   div.innerHTML = `
+    <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)}</strong></div>
+    <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
+    <div class="random-event-choice-note">${escapeHtml(note)}</div>
+   `;
+   list.appendChild(div);
+  });
+  return;
+ }
+ if (!pendingRandomEventAccepted || !step) return;
+
+ if (step.type === 'cardChoice') {
+  pendingRandomEventChoices.forEach(card => {
+   const button = document.createElement('button');
+   button.className = `random-event-choice-card ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}`;
+   button.onclick = () => chooseRandomEventCard(card.name);
+   button.innerHTML = `
+    <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)}</strong></div>
+    <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
+    <div class="random-event-choice-note">${escapeHtml(getCardRarityDisplayName(card))}</div>
+   `;
+   list.appendChild(button);
+  });
+ }
+
+ if (step.type === 'removeChoice') {
+  pendingRandomEventChoices.forEach(card => {
+   const button = document.createElement('button');
+   button.className = `random-event-choice-card remove-choice ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}`;
+   button.onclick = () => chooseRandomEventRemoveCard(card.name);
+   button.innerHTML = `
+    <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)} ×${card.count}</strong></div>
+    <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
+    <div class="random-event-choice-note">このカードを1枚削除</div>
+   `;
+   list.appendChild(button);
+  });
+ }
+}
+
+function renderRandomEventLibraryScreen() {
+ const list = document.getElementById('random-event-library-list');
+ if (!list) return;
+ const progress = loadRandomEventProgress();
+ const definitions = getRandomEventDefinitions();
+ const seenCount = definitions.filter(event => progress[event.id]).length;
+
+ list.innerHTML = `
+  <div class="random-event-library-summary">遭遇済み：${seenCount} / ${definitions.length}</div>
+ `;
+
+ definitions.forEach(event => {
+  const entry = progress[event.id];
+  const discovered = Boolean(entry);
+  const card = document.createElement('div');
+  card.className = `random-event-library-card${discovered ? '' : ' undiscovered'}`;
+  card.innerHTML = discovered ? `
+   <div class="random-event-library-card-head">
+    <div class="random-event-library-mark">EVENT</div>
+    <div class="random-event-library-title">${escapeHtml(event.title)}</div>
+   </div>
+   <div class="random-event-library-description">${escapeHtml(event.description)}</div>
+   <div class="random-event-library-effects">
+    <span class="effect">効果：${escapeHtml(event.effect)}</span>
+    ${hasRandomEventDownside(event) ? `<span class="downside">デメリット：${escapeHtml(event.downside)}</span>` : ''}
+   </div>
+   <div class="random-event-library-stats">
+    <span><strong>${Number(entry.seenCount || 0)}</strong><small>遭遇</small></span>
+    <span><strong>${Number(entry.acceptedCount || 0)}</strong><small>受諾</small></span>
+    <span><strong>${Number(entry.rejectedCount || 0)}</strong><small>拒否</small></span>
+   </div>
+  ` : `
+   <div class="random-event-library-card-head">
+    <div class="random-event-library-mark unknown">LOCKED</div>
+    <div class="random-event-library-title">???</div>
+   </div>
+   <div class="random-event-library-description">未遭遇のランダムイベントです。</div>
+  `;
+  list.appendChild(card);
+ });
 }
 
 function choosePassive(passiveId) {
@@ -3696,7 +4432,27 @@ function startEnemyTimer() {
     if (player.reloadTimer <= 0) {
      stopReload();
 
-     const newCards = drawCards(RELOAD_DRAW_COUNT + playerPassives.reloadDrawBonus, true);
+     const curseDamage = Math.max(0, Number(player.pendingReloadCurseDamage || 0));
+     const drawPenalty = Math.max(0, Number(player.pendingReloadDrawPenalty || 0));
+     player.pendingReloadCurseDamage = 0;
+     player.pendingReloadDrawPenalty = 0;
+
+     if (curseDamage > 0) {
+      const curseResult = applyDamage(player, curseDamage, { ignoreBlock: true, preserveBlock: true });
+      showDamagePopup('player-hp-change', `-${curseResult.damage}`);
+      triggerDamageShake('.player-img');
+      addLog(`呪いの反動：${curseResult.damage}ダメージ`);
+      checkWinner();
+      if (gameOver) {
+       render();
+       return;
+      }
+     }
+
+     if (drawPenalty > 0) addLog(`呪いの重圧：ドロー-${drawPenalty}`);
+
+     const drawCount = Math.max(1, RELOAD_DRAW_COUNT + playerPassives.reloadDrawBonus - drawPenalty);
+     const newCards = drawCards(drawCount, true);
 
      player.hand.push(...newCards);
      if (player.pendingReloadDoublePlay) {
@@ -3721,6 +4477,7 @@ function startEnemyTimer() {
    if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || !player || player.reloading || player.cooldown || isPlayerFrozen()) return;
    if (player.hand.length === 0) return;
 
+   queueReloadCurseEffects(player.hand);
    player.hand = [];
 
    addLog('手札をすべて捨てた');
@@ -4281,6 +5038,7 @@ function showCustomizeScreen() {
    markCurrentBattleAsLossBeforeLeaving('タイトルへ戻ったため敗北扱いになりました');
    clearPlayerParalysis();
    cancelPendingBattleChoices();
+   clearPendingRandomEvent();
 
    battleActionToken++;
    stopEnemyTimer();
@@ -4298,6 +5056,7 @@ function showCustomizeScreen() {
    markCurrentBattleAsLossBeforeLeaving('タイトルへ戻ったため敗北扱いになりました');
    clearPlayerParalysis();
    cancelPendingBattleChoices();
+   clearPendingRandomEvent();
    stopBossRevivalTimers();
    bossRevivalInProgress = false;
 
@@ -4396,6 +5155,7 @@ function saveDeckCustomize() {
    currentRunPassiveIds = [];
    currentRunEnemyHistory = [];
    currentRunCardPlayCounts = {};
+   currentRunRandomEvents = [];
    playerPassives = {
     maxHp: 0,
     attack: 0,
@@ -4475,6 +5235,11 @@ function saveDeckCustomize() {
 
    if (shouldShowShopAfterVictory(enemyLevel)) {
     openShop(next);
+    return;
+   }
+
+   if (shouldOfferRandomEvent(enemyLevel, next)) {
+    beginRandomEvent(next);
     return;
    }
 
@@ -4565,6 +5330,8 @@ function saveDeckCustomize() {
     endureNextAttack: false,
     nextReloadDoublePlayReady: false,
     pendingReloadDoublePlay: false,
+    pendingReloadCurseDamage: 0,
+    pendingReloadDrawPenalty: 0,
     doublePlayNextCard: false,
     lastPlayedCardForEcho: null,
      bloodAwakenAttackBoostUses: 0,
@@ -5082,6 +5849,12 @@ function playSound(type) {
    const frozenVulnerabilityApplied = frozenVulnerabilityBonus > 0 && incomingDamage > 0;
    if (frozenVulnerabilityApplied) {
     incomingDamage = Math.ceil(incomingDamage * (1 + frozenVulnerabilityBonus));
+   }
+   const vulnerableCurseCards = target === player && incomingDamage > 0 ? getHandCurseCards('curse-vulnerable') : [];
+   if (vulnerableCurseCards.length > 0) {
+    const curseBonus = vulnerableCurseCards.reduce((total, card) => total + getCurseCardValue(card, 2), 0);
+    incomingDamage += curseBonus;
+    addLog(`呪いが傷を広げた：ダメージ+${curseBonus}`);
    }
    const ignoreBlock = Boolean(options.ignoreBlock);
    const preserveBlock = Boolean(options.preserveBlock);
@@ -6247,6 +7020,10 @@ function playPlayerCard(id, options = {}) {
 
    startEnemyTimerOnFirstCard();
    triggerNormalCardUseEffect(card);
+   if (isCurseCard(card)) {
+    addLog(`呪いカード：${card.name}（効果なし）`);
+    playSound('miss');
+   }
    if (isAttackCardType(card.type)) {
     triggerAttackStep('.player-img', 'player');
    }
@@ -8179,6 +8956,8 @@ function getCustomizeTabs() {
   }
 
   function getCardCustomizeCategory(card) {
+   if (isCurseCard(card)) return 'status';
+
    if (card.type === 'attack'
     || card.type === 'gamble-attack'
     || card.type === 'double-slash'
@@ -8345,10 +9124,10 @@ function renderCustomizeScreen() {
      div.className = `customize-card ${getCardVisualClass(card)} ${card.type}-card${getCardRarityClass(card)}`;
 
      div.innerHTML = `
-      ${isRareCard(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
+      ${hasCardRarityDisplay(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
       <div class="customize-card-header">
        <span>${getCardIcon(card.type)} ${card.name}</span>
-       <span>${isRareCard(card) ? getCardRarityDisplayName(card) : card.value}</span>
+       <span>${hasCardRarityDisplay(card) ? getCardRarityDisplayName(card) : card.value}</span>
       </div>
       <div class="customize-card-text">${getBaseCardDisplayText(card)}</div>
       <div class="card-cooldown">${getCardCooldownText(card)}</div>
@@ -8426,6 +9205,7 @@ return classes.join(' ');
   }
 
 function getCardIcon(type) {
+ if (String(type || '').startsWith('curse-')) return '☠';
    if (type === 'attack') return '⚔️';
    if (type === 'defense') return '🛡️';
    if (type === 'heal') return '💚';
@@ -9411,6 +10191,15 @@ function showCardLibraryScreen() {
    render();
   }
 
+  function showRandomEventLibraryScreen() {
+   playUiSelectSound();
+
+   currentScreen = 'random-event-library';
+
+   renderRandomEventLibraryScreen();
+   render();
+  }
+
   function showBattleHistoryScreen() {
    playUiSelectSound();
 
@@ -9875,6 +10664,9 @@ function render() {
    if (currentScreen === 'achievement-library') {
     renderAchievementLibraryScreen();
    }
+   if (currentScreen === 'random-event-library') {
+    renderRandomEventLibraryScreen();
+   }
 
    if (currentScreen === 'battle-history') {
     renderBattleHistoryScreen();
@@ -9912,6 +10704,7 @@ function render() {
    document.getElementById('enemy-library-screen').style.display = currentScreen === 'enemy-library' ? 'flex' : 'none';
    document.getElementById('passive-library-screen').style.display = currentScreen === 'passive-library' ? 'flex' : 'none';
    document.getElementById('achievement-library-screen').style.display = currentScreen === 'achievement-library' ? 'flex' : 'none';
+   document.getElementById('random-event-library-screen').style.display = currentScreen === 'random-event-library' ? 'flex' : 'none';
    document.getElementById('battle-history-screen').style.display = currentScreen === 'battle-history' ? 'flex' : 'none';
    const rankingScreen = document.getElementById('ranking-screen');
    if (rankingScreen) rankingScreen.style.display = currentScreen === 'ranking' ? 'flex' : 'none';
@@ -9930,6 +10723,8 @@ function render() {
     renderPetSelectScreen();
     return;
    }
+
+   renderRandomEventModal();
 
    if (currentScreen !== 'battle' || !player || !cpu) return;
 
@@ -10155,7 +10950,7 @@ const cards = document.getElementById('cards');
 
      button.innerHTML = `
       <div class="card-shine"></div>
-      ${isRareCard(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
+      ${hasCardRarityDisplay(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
       <div class="card-top">
        <div>${card.name}</div>
        <div class="card-icon">${getCardIcon(card.type)}</div>
@@ -10274,7 +11069,7 @@ const cards = document.getElementById('cards');
       button.innerHTML = `
        <div class="card-shine"></div>
        ${selected ? '<div class="selected-badge">選択中 ✓</div>' : ''}
-       ${isRareCard(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
+       ${hasCardRarityDisplay(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
        <div class="card-top">
         <div>${card.name}</div>
         <div class="card-icon">${getCardIcon(card.type)}</div>
@@ -10361,7 +11156,7 @@ const cards = document.getElementById('cards');
 
     if (victoryActions) {
      victoryActions.classList.toggle('defeat-result-modal', !playerWon);
-     victoryActions.style.display = (playerWon && (pendingPassiveChoice || pendingShopChoice)) ? 'none' : 'flex';
+     victoryActions.style.display = (playerWon && (pendingPassiveChoice || pendingShopChoice || pendingRandomEvent)) ? 'none' : 'flex';
     }
    } else {
     if (victoryResult) {
@@ -10378,6 +11173,7 @@ const cards = document.getElementById('cards');
   window.showCardLibraryScreen = showCardLibraryScreen;
 window.showPassiveLibraryScreen = showPassiveLibraryScreen;
 window.showAchievementLibraryScreen = showAchievementLibraryScreen;
+window.showRandomEventLibraryScreen = showRandomEventLibraryScreen;
 window.showEnemyLibraryScreen = showEnemyLibraryScreen;
 window.changeCardLibraryTab = changeCardLibraryTab;
 window.startNewGameData = startNewGameData;
@@ -10386,6 +11182,11 @@ window.loadGameDataFromSlot = loadGameDataFromSlot;
 window.backToStartScreen = backToStartScreen;
 window.showSaveSlotScreen = showSaveSlotScreen;
 window.saveCurrentGameDataToSlot = saveCurrentGameDataToSlot;
+window.acceptRandomEvent = acceptRandomEvent;
+window.confirmRandomEventResult = confirmRandomEventResult;
+window.declineRandomEvent = declineRandomEvent;
+window.chooseRandomEventCard = chooseRandomEventCard;
+window.chooseRandomEventRemoveCard = chooseRandomEventRemoveCard;
 window.saveFromTitleMenu = saveFromTitleMenu;
 window.startBattle = startBattle;
 window.applyDeckPreset = applyDeckPreset;

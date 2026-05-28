@@ -97,7 +97,8 @@
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showCardLibraryScreen()">カード図鑑</button>
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showEnemyLibraryScreen()">敵図鑑</button>
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showPassiveLibraryScreen()">パッシブ一覧</button>
-        <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showAchievementLibraryScreen()">実績一覧</button>
+                <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showRandomEventLibraryScreen()">イベント図鑑</button>
+<button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showAchievementLibraryScreen()">実績一覧</button>
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showBattleHistoryScreen()">戦闘履歴</button>
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showRankingScreen()">ランキング</button>
         <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showHelpScreen()">遊び方</button>
@@ -311,6 +312,30 @@
     </div>
 
 
+    <div id="random-event-actions" class="random-event-modal" style="display:none;">
+      <div class="random-event-dialog">
+        <div class="random-event-kicker">RANDOM EVENT</div>
+        <h2 id="random-event-title"></h2>
+        <p id="random-event-description" class="random-event-description"></p>
+        <div class="random-event-info-grid">
+          <div>
+            <span>効果</span>
+            <strong id="random-event-effect"></strong>
+          </div>
+          <div>
+            <span>デメリット</span>
+            <strong id="random-event-downside"></strong>
+          </div>
+        </div>
+        <div id="random-event-result" class="random-event-result"></div>
+        <div id="random-event-choice-list" class="random-event-choice-list"></div>
+        <div id="random-event-actions-row" class="random-event-actions-row">
+          <button class="ui-button ui-button-primary" onclick="acceptRandomEvent()">受け入れる</button>
+          <button class="ui-button ui-button-secondary" onclick="declineRandomEvent()">拒否する</button>
+        </div>
+      </div>
+    </div>
+
     <div id="passive-actions" class="passive-modal" style="display:none;">
       <div class="passive-dialog">
         <h2>新たな力を選択</h2>
@@ -477,6 +502,14 @@
           <h2>敵別 戦績集計</h2>
           <p class="ranking-stats-note">図鑑未登録の敵は ??? として表示されます。</p>
           <div id="ranking-enemy-stats" class="ranking-stats-list">
+            <div class="ranking-empty">集計を読み込み中...</div>
+          </div>
+        </div>
+
+        <div class="ranking-stats-card ranking-stats-card-wide">
+          <h2>遭遇イベント集計</h2>
+          <p class="ranking-stats-note">ランキング登録された周回で遭遇したランダムイベントです。</p>
+          <div id="ranking-event-stats" class="ranking-stats-list">
             <div class="ranking-empty">集計を読み込み中...</div>
           </div>
         </div>
@@ -703,6 +736,17 @@
     </div>
     <p class="library-description">プレイ中に達成した実績が記録されます。</p>
     <div id="achievement-library-list" class="achievement-library-list"></div>
+  </div>
+
+  <div id="random-event-library-screen" class="screen library-screen" style="display:none;">
+    <div class="library-header">
+      <h2>ランダムイベント図鑑</h2>
+      <div class="library-header-actions">
+        <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
+      </div>
+    </div>
+    <p class="library-description">遭遇したランダムイベントが記録されます。</p>
+    <div id="random-event-library-list" class="random-event-library-list"></div>
   </div>
 
   <div id="battle-history-screen" class="screen library-screen" style="display:none;">

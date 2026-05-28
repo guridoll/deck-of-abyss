@@ -121,6 +121,16 @@
     }));
   }
 
+  function normalizeEvents(events) {
+    if (!Array.isArray(events)) return [];
+    return events.slice(0, 40).map((event) => ({
+      id: String(event && event.id || ''),
+      title: String(event && event.title || event && event.id || '不明なイベント').slice(0, 60),
+      level: Math.max(1, Math.floor(Number(event && event.level || 1))),
+      seenAt: Math.max(0, Math.floor(Number(event && event.seenAt || 0))),
+    }));
+  }
+
   async function submitBattleResult(entry) {
     const firestore = initFirebase();
     if (!firestore || !entry) return { ok: false, reason: initError ? initError.message : 'not_initialized' };
@@ -146,6 +156,7 @@
       deck: normalizeDeck(entry.deck),
       passives: normalizePassives(entry.passives),
       enemies: normalizeEnemies(entry.enemies),
+      events: normalizeEvents(entry.events),
       updatedAt: window.firebase.firestore.FieldValue.serverTimestamp(),
     };
 
@@ -362,6 +373,46 @@
     }).join('');
   }
 
+  function aggregateEventStats(items) {
+    const stats = new Map();
+
+    items.forEach((item) => {
+      normalizeEvents(item.events).forEach((event) => {
+        const key = event.id || event.title;
+        if (!key) return;
+        const current = stats.get(key) || {
+          id: event.id || '',
+          title: event.title || event.id || '不明なイベント',
+          count: 0,
+          highestLevel: 0,
+        };
+        current.count += 1;
+        current.highestLevel = Math.max(Number(current.highestLevel || 0), Number(event.level || 0));
+        stats.set(key, current);
+      });
+    });
+
+    return [...stats.values()]
+      .sort((a, b) => b.count - a.count || b.highestLevel - a.highestLevel || String(a.title).localeCompare(String(b.title), 'ja'))
+      .slice(0, 30);
+  }
+
+  function renderEventStats(items) {
+    const events = aggregateEventStats(items);
+    if (!events.length) {
+      return '<div class="ranking-empty">まだ遭遇イベントデータがありません。</div>';
+    }
+
+    return events.map((event, index) => `
+      <div class="ranking-stat-row ranking-event-row">
+        <span class="ranking-stat-rank">${index + 1}</span>
+        <strong>${escapeHtml(event.title)}</strong>
+        <span>${Number(event.count || 0)}回遭遇</span>
+        <span>最高Lv${Number(event.highestLevel || 0)}</span>
+      </div>
+    `).join('');
+  }
+
   function aggregatePopularPassives(items) {
     const counts = new Map();
 
@@ -405,10 +456,12 @@
     const popularCards = document.getElementById('ranking-popular-cards');
     const popularPassives = document.getElementById('ranking-popular-passives');
     const enemyStats = document.getElementById('ranking-enemy-stats');
+    const eventStats = document.getElementById('ranking-event-stats');
 
     if (popularCards) popularCards.innerHTML = renderPopularCards(items);
     if (popularPassives) popularPassives.innerHTML = renderPopularPassives(items);
     if (enemyStats) enemyStats.innerHTML = renderEnemyStats(items);
+    if (eventStats) eventStats.innerHTML = renderEventStats(items);
   }
 
   function dedupeBestRuns(docs) {
@@ -467,6 +520,10 @@
       const rankClass = index < 3 ? ` top-${index + 1}` : '';
       const enemies = normalizeEnemies(item.enemies);
       const lastEnemy = enemies.length ? getKnownEnemyName(enemies[enemies.length - 1]) : '';
+      const events = normalizeEvents(item.events);
+      const eventSummary = events.length
+        ? events.map((event) => `${event.title}${event.level ? ` (Lv${event.level})` : ''}`).join(' / ')
+        : '遭遇イベントなし';
       const resultLabel = getResultLabel(item.result);
       return `
         <article class="ranking-item${rankClass}">
@@ -485,6 +542,7 @@
               <summary>構成を見る</summary>
               <div class="ranking-detail">山札：${escapeHtml(getDeckSummary(item.deck, Infinity))}</div>
               <div class="ranking-detail">パッシブ：${escapeHtml(getPassiveSummary(item.passives, 8))}</div>
+              <div class="ranking-detail">遭遇イベント：${escapeHtml(eventSummary)}</div>
             </details>
           </div>
         </article>
@@ -498,11 +556,13 @@
     const popularCards = document.getElementById('ranking-popular-cards');
     const popularPassives = document.getElementById('ranking-popular-passives');
     const enemyStats = document.getElementById('ranking-enemy-stats');
+    const eventStats = document.getElementById('ranking-event-stats');
 
     if (list) list.innerHTML = '<div class="ranking-empty">ランキングを読み込み中...</div>';
     if (popularCards) popularCards.innerHTML = '<div class="ranking-empty">集計を読み込み中...</div>';
     if (popularPassives) popularPassives.innerHTML = '<div class="ranking-empty">集計を読み込み中...</div>';
     if (enemyStats) enemyStats.innerHTML = '<div class="ranking-empty">集計を読み込み中...</div>';
+    if (eventStats) eventStats.innerHTML = '<div class="ranking-empty">集計を読み込み中...</div>';
 
     try {
       const data = await loadRankingData();
@@ -515,6 +575,7 @@
       if (popularCards) popularCards.innerHTML = '<div class="ranking-empty">集計を取得できませんでした。</div>';
       if (popularPassives) popularPassives.innerHTML = '<div class="ranking-empty">集計を取得できませんでした。</div>';
       if (enemyStats) enemyStats.innerHTML = '<div class="ranking-empty">集計を取得できませんでした。</div>';
+      if (eventStats) eventStats.innerHTML = '<div class="ranking-empty">集計を取得できませんでした。</div>';
       if (status) status.textContent = 'ランキング取得に失敗しました。';
     }
   }

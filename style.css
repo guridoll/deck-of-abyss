@@ -10308,6 +10308,46 @@ body.battle-defeat-slowmo .battle-area {
   text-shadow: 0 0 14px rgba(250,204,21,0.95) !important;
 }
 
+.card.curse-card,
+.shop-card.curse-card,
+.customize-card.curse-card,
+.library-card.curse-card {
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,0.14), transparent 34%),
+    linear-gradient(160deg, #111827, #3f1d46 48%, #020617) !important;
+  border-color: rgba(168,85,247,0.86) !important;
+  box-shadow:
+    0 0 0 2px rgba(88,28,135,0.58),
+    0 14px 28px rgba(0,0,0,0.42),
+    inset 0 0 22px rgba(15,23,42,0.78) !important;
+  color: #f5f3ff !important;
+}
+
+.curse-card .rare-badge {
+  background: linear-gradient(135deg, #4c1d95, #111827) !important;
+  color: #f5f3ff !important;
+  border-color: rgba(221,214,254,0.9) !important;
+  box-shadow: 0 0 12px rgba(168,85,247,0.78) !important;
+}
+
+.card.curse-card .card-shine,
+.card.curse-card .card-top,
+.card.curse-card .value,
+.card.curse-card .card-text,
+.shop-card.curse-card .card-shine,
+.shop-card.curse-card .card-top,
+.shop-card.curse-card .value,
+.shop-card.curse-card .card-text,
+.customize-card.curse-card .customize-card-header,
+.customize-card.curse-card .customize-card-text,
+.library-card.curse-card .card-shine,
+.library-card.curse-card .card-top,
+.library-card.curse-card .value,
+.library-card.curse-card .card-text {
+  color: #f5f3ff !important;
+  text-shadow: 0 0 10px rgba(168,85,247,0.75) !important;
+}
+
 .legendary-screen-flash {
   background: radial-gradient(circle, rgba(250,204,21,0.42), transparent 62%) !important;
 }
@@ -11605,8 +11645,378 @@ body.battle-defeat-slowmo .battle-area {
   grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
+.ranking-stat-row.ranking-event-row {
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  border-color: rgba(251, 191, 36, 0.22);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(14, 165, 233, 0.06));
+}
+
 @media (max-width: 760px) {
-  .ranking-stat-row.enemy {
+  .ranking-stat-row.enemy,
+  .ranking-stat-row.ranking-event-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Random events */
+.random-event-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 12, 18, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.random-event-dialog {
+  width: min(820px, 100%);
+  max-height: min(88vh, 760px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(35, 28, 22, 0.98), rgba(18, 20, 28, 0.98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.random-event-kicker {
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.random-event-dialog h2 {
+  margin: 6px 0 10px;
+  font-size: 28px;
+}
+
+.random-event-description {
+  margin: 0 0 16px;
+  color: #d7dce7;
+  line-height: 1.7;
+}
+
+.random-event-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.random-event-info-grid.no-downside {
+  grid-template-columns: 1fr;
+}
+
+.random-event-info-grid div {
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.random-event-info-grid span {
+  display: block;
+  margin-bottom: 6px;
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.random-event-info-grid strong {
+  color: #f8fafc;
+  line-height: 1.5;
+}
+
+.random-event-result {
+  min-height: 24px;
+  margin: 8px 0 14px;
+  color: #fde68a;
+  font-weight: 700;
+}
+
+.random-event-roll-effect {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-right: 10px;
+  vertical-align: middle;
+}
+
+.random-event-roll-effect span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.8);
+  animation: randomEventRollPulse 0.72s ease-in-out infinite;
+}
+
+.random-event-roll-effect span:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.random-event-roll-effect span:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+.random-event-roll-success {
+  color: #86efac;
+}
+
+.random-event-roll-fail {
+  color: #fca5a5;
+}
+
+@keyframes randomEventRollPulse {
+  0%, 100% {
+    transform: translateY(0) scale(0.72);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-5px) scale(1);
+    opacity: 1;
+  }
+}
+
+.random-event-choice-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.random-event-choice-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 132px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.94)) !important;
+  color: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 999px rgba(2, 6, 23, 0.24);
+}
+
+.random-event-choice-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.72);
+}
+
+.random-event-choice-title {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  color: #f8fafc !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.88);
+}
+
+.random-event-choice-text {
+  position: relative;
+  z-index: 1;
+  color: rgba(248, 250, 252, 0.94) !important;
+  font-size: 13px;
+  line-height: 1.5;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.88);
+}
+
+.random-event-choice-note {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+  color: #fde68a !important;
+  font-size: 12px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.82);
+}
+
+.random-event-choice-card.rare-card {
+  border-color: rgba(96, 165, 250, 0.78) !important;
+  box-shadow: inset 0 0 0 999px rgba(2, 6, 23, 0.30), 0 0 16px rgba(37, 99, 235, 0.24) !important;
+}
+
+.random-event-choice-card.epic-card {
+  border-color: rgba(196, 181, 253, 0.78) !important;
+  box-shadow: inset 0 0 0 999px rgba(2, 6, 23, 0.34), 0 0 18px rgba(124, 58, 237, 0.28) !important;
+}
+
+.random-event-choice-card.legendary-card {
+  border-color: rgba(250, 204, 21, 0.82) !important;
+  box-shadow: inset 0 0 0 999px rgba(2, 6, 23, 0.38), 0 0 18px rgba(250, 204, 21, 0.26) !important;
+}
+
+.random-event-choice-card.curse-card,
+.random-event-choice-card.remove-choice {
+  border-color: rgba(248, 113, 113, 0.72) !important;
+  box-shadow: inset 0 0 0 999px rgba(2, 6, 23, 0.38), 0 0 18px rgba(127, 29, 29, 0.28) !important;
+}
+
+.random-event-reveal-card {
+  cursor: default;
+  animation: randomEventRevealPop 0.26s ease-out both;
+}
+
+@keyframes randomEventRevealPop {
+  from {
+    transform: translateY(6px) scale(0.98);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.random-event-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.random-event-library-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  width: min(1100px, 100%);
+  margin: 0 auto;
+}
+
+.random-event-library-summary {
+  grid-column: 1 / -1;
+  padding: 14px 16px;
+  border: 1px solid rgba(251, 191, 36, 0.42);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(251, 191, 36, 0.16), rgba(14, 165, 233, 0.10)),
+    rgba(15, 23, 42, 0.82);
+  color: #fde68a;
+  font-weight: 800;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+}
+
+.random-event-library-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 190px;
+  padding: 16px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at top left, rgba(251, 191, 36, 0.16), transparent 34%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.96), rgba(31, 41, 55, 0.92));
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.random-event-library-card.undiscovered {
+  opacity: 0.72;
+  border-style: dashed;
+  background:
+    linear-gradient(160deg, rgba(17, 24, 39, 0.78), rgba(2, 6, 23, 0.72));
+}
+
+.random-event-library-card-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.random-event-library-mark {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border: 1px solid rgba(251, 191, 36, 0.52);
+  border-radius: 6px;
+  background: rgba(251, 191, 36, 0.16);
+  color: #fde68a;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.random-event-library-mark.unknown {
+  border-color: rgba(148, 163, 184, 0.38);
+  background: rgba(148, 163, 184, 0.10);
+  color: #cbd5e1;
+}
+
+.random-event-library-title {
+  color: #f8fafc;
+  font-size: 18px;
+  font-weight: 900;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.48);
+}
+
+.random-event-library-description,
+.random-event-library-effects,
+.random-event-library-stats {
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.random-event-library-effects,
+.random-event-library-stats {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.random-event-library-effects span {
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.random-event-library-effects .effect {
+  border: 1px solid rgba(74, 222, 128, 0.24);
+  background: rgba(34, 197, 94, 0.11);
+  color: #bbf7d0;
+}
+
+.random-event-library-effects .downside {
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  background: rgba(239, 68, 68, 0.11);
+  color: #fecaca;
+}
+
+.random-event-library-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.random-event-library-stats span {
+  display: grid;
+  gap: 2px;
+  padding: 8px 6px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  text-align: center;
+}
+
+.random-event-library-stats strong {
+  color: #f8fafc;
+  font-size: 18px;
+}
+
+.random-event-library-stats small {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .random-event-info-grid,
+  .random-event-library-stats {
     grid-template-columns: 1fr;
   }
 }

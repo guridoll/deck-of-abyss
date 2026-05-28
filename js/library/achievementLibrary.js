@@ -18,11 +18,11 @@
 
   function getAchievementTierMeta(tier) {
    const map = {
-    '初級': { icon: '🌱', subtitle: '自然に解除される基本実績', className: 'beginner' },
-    '中級': { icon: '🔥', subtitle: 'プレイを重ねて狙う実績', className: 'intermediate' },
-    '上級': { icon: '⚔️', subtitle: 'ビルドや立ち回りが必要な実績', className: 'advanced' },
-    '廃人向け': { icon: '👑', subtitle: '長期プレイ向けの高難度実績', className: 'master' },
-    '隠し': { icon: '❔', subtitle: '条件非表示の特殊実績', className: 'secret' },
+    '初級': { icon: '🌱', subtitle: '序盤で自然に解除できる基本実績', className: 'beginner' },
+    '中級': { icon: '🔥', subtitle: 'プレイを重ねると狙える実績', className: 'intermediate' },
+    '上級': { icon: '⚔️', subtitle: 'ビルドや立ち回りが求められる実績', className: 'advanced' },
+    '廃人向け': { icon: '🏁', subtitle: '長期プレイ向けの高難度実績', className: 'master' },
+    '隠し': { icon: '❓', subtitle: '条件非表示の特殊実績', className: 'secret' },
    };
    return map[tier] || { icon: '🏆', subtitle: '実績カテゴリ', className: 'default' };
   }

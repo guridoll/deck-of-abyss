@@ -45,13 +45,20 @@
      meta.textContent = `保存日時：${summary.savedAtText}`;
      card.appendChild(meta);
 
+     const player = document.createElement('div');
+     player.className = 'save-slot-meta';
+     player.textContent = `プレイヤー名：${summary.playerName || '未設定'}`;
+     card.appendChild(player);
+
      const details = document.createElement('div');
      details.className = 'save-slot-details';
      details.innerHTML = `
-      <span>敵：${summary.enemyCount}</span>
-      <span>カード：${summary.cardCount}</span>
-      <span>パッシブ：${summary.passiveCount}</span>
-      <span>ペット：${summary.petName}</span>
+      <span>敵：${summary.enemyCount}/${summary.enemyTotal}</span>
+      <span>カード：${summary.cardCount}/${summary.cardTotal}</span>
+      <span>パッシブ：${summary.passiveCount}/${summary.passiveTotal}</span>
+      <span>実績：${summary.achievementCount}/${summary.achievementTotal}</span>
+      <span>イベント：${summary.eventCount}/${summary.eventTotal}</span>
+      <span>最高クリアレベル：${summary.highestClearLevel || 0}</span>
      `;
      card.appendChild(details);
     }
