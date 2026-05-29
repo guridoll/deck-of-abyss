@@ -756,11 +756,25 @@ const PET_POOL = [
 
   if (typeof window !== 'undefined') {
    window.DeckCardMetadata = {
-    getCardRarityByName(cardName) {
-     const card = CARD_POOL.find(item => item.name === cardName);
-     return card ? getCardRarity(card) : 'unknown';
-    },
-   };
+     getCardRarityByName(cardName) {
+      const card = CARD_POOL.find(item => item.name === cardName);
+      return card ? getCardRarity(card) : 'unknown';
+     },
+     getCardDetailByName(cardName) {
+      const card = CARD_POOL.find(item => item.name === cardName);
+      if (!card) return null;
+      const rarity = getCardRarity(card);
+      const rarityLabel = rarity === 'legendary' ? 'レジェンダリー' : rarity === 'epic' ? 'エピック' : rarity === 'rare' ? 'レア' : rarity === 'curse' ? '呪い' : 'ノーマル';
+      return {
+       name: card.name,
+       rarity,
+       rarityLabel,
+       type: card.type || '',
+       text: getBaseCardDisplayText(card),
+       cooldown: getCardCooldownText(card),
+      };
+     },
+    };
   }
 
   function isBasicInitialCardName(cardName) {
@@ -2871,6 +2885,24 @@ function getPassiveOptions() {
  return [...getNormalPassiveOptions(), ...getRarePassiveOptions()];
 }
 
+if (typeof window !== 'undefined') {
+ window.DeckPassiveMetadata = {
+  getPassiveById(passiveId) {
+   const passive = getPassiveOptions().find(item => item.id === passiveId);
+   if (!passive) return null;
+   const rarity = passive.rarity || 'normal';
+   return {
+    id: passive.id,
+    name: passive.name,
+    icon: passive.icon || '✨',
+    rarity,
+    rarityLabel: rarity === 'rare' ? 'レア' : 'ノーマル',
+    text: passive.text || passive.description || '',
+   };
+  },
+ };
+}
+
 function isUniquePassiveRarity(passive) {
  const rarity = passive?.rarity || 'normal';
  return rarity === 'rare' || rarity === 'epic';
@@ -2933,6 +2965,21 @@ function getRandomEventById(eventId) {
  return getRandomEventDefinitions().find(event => event.id === eventId) || null;
 }
 
+if (typeof window !== 'undefined') {
+ window.DeckRandomEventMetadata = {
+  getEventById(eventId) {
+   const event = getRandomEventById(eventId);
+   return event ? {
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    effect: event.effect,
+    downside: hasRandomEventDownside(event) ? event.downside : '',
+   } : null;
+  },
+ };
+}
+
 function hasRandomEventDownside(event) {
  const text = String(event?.downside || '').trim();
  if (!text) return false;
@@ -2962,6 +3009,17 @@ function recordRandomEventProgress(eventId, outcome = 'seen') {
  };
  progress[eventId] = next;
  saveRandomEventProgress(progress);
+}
+
+function updateCurrentRunRandomEventOutcome(eventId, outcome) {
+ if (!eventId || !Array.isArray(currentRunRandomEvents)) return;
+ for (let i = currentRunRandomEvents.length - 1; i >= 0; i--) {
+  const event = currentRunRandomEvents[i];
+  if (event && event.id === eventId && !event.outcome) {
+   event.outcome = outcome;
+   return;
+  }
+ }
 }
 
 function getRandomEventCardPool(poolType = 'all') {
@@ -3260,6 +3318,7 @@ function acceptRandomEvent() {
  if (!pendingRandomEvent || pendingRandomEventAccepted) return;
  pendingRandomEventAccepted = true;
  recordRandomEventProgress(pendingRandomEvent.id, 'accepted');
+ updateCurrentRunRandomEventOutcome(pendingRandomEvent.id, 'accepted');
  continueRandomEventSteps();
 }
 
@@ -3267,6 +3326,7 @@ function declineRandomEvent() {
  playUiSelectSound();
  if (!pendingRandomEvent) return;
  recordRandomEventProgress(pendingRandomEvent.id, 'rejected');
+ updateCurrentRunRandomEventOutcome(pendingRandomEvent.id, 'rejected');
  finishRandomEvent();
 }
 
