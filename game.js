@@ -566,6 +566,55 @@ const PET_POOL = [
     rare: true,
     epic: true,
    },
+
+  {
+   name: '牽制斬り',
+   type: 'reload-first-draw',
+   value: 3,
+   text: '3ダメージ / リロード後、最初に使用した場合1ドロー',
+  },
+  {
+   name: '深追い',
+   type: 'pursuit-attack',
+   value: 5,
+   bonus: 3,
+   text: '5ダメージ / 手札が残り2枚以下なら+3ダメージ',
+  },
+  {
+   name: '返し刃',
+   type: 'counter-blade',
+   value: 4,
+   bonus: 4,
+   text: '4ダメージ / 敵が攻撃準備中なら+4ダメージ',
+  },
+  {
+   name: '受け流し',
+   type: 'parry-guard',
+   value: 4,
+   reloadReduce: 0.2,
+   text: '4ブロック / 次のリロード時間-0.2秒',
+  },
+  {
+   name: '備え',
+   type: 'prepared-guard',
+   value: 6,
+   text: '6ブロック / 手札が2枚以下なら1ドロー',
+  },
+  {
+   name: '氷針',
+   type: 'ice-needle',
+   value: 2,
+   chance: 0.2,
+   turns: 1,
+   text: '2ダメージ / 20%で凍結',
+  },
+  {
+   name: '即興戦術',
+   type: 'improvised-tactics',
+   value: 0,
+   text: 'ランダムなカードを1枚手札に加える（この戦闘中のみ）',
+   rare: true,
+  },
   ];
 
   const CURSE_CARD_POOL = [
@@ -2392,6 +2441,14 @@ function getCardCooldownSeconds(card) {
   'エコー': 3.5,
   'フォーチュンセット': 2,
   'アクションシフト': 3,
+  '牽制斬り': 0.5,
+  '深追い': 1,
+  '返し刃': 1,
+  '受け流し': 0.5,
+  '備え': 1,
+  '氷針': 0.5,
+  '即興戦術': 2,
+
  };
 
  const rawCooldown = card.cooldown ?? cooldownByName[card.name] ?? (card.rare ? 2 : 1);
@@ -2434,6 +2491,7 @@ function getEffectiveCardCooldownText(card) {
 
 function isAttackCardType(type) {
  return type === 'attack'
+  || type === 'reload-first-draw'
   || type === 'scaling-attack'
   || type === 'dein'
   || type === 'freeze'
@@ -2459,7 +2517,10 @@ function isAttackCardType(type) {
   || type === 'timer-execute-attack'
   || type === 'pierce-attack'
   || type === 'desperate-power'
-  || type === 'attack-defense';
+  || type === 'attack-defense'
+  || type === 'pursuit-attack'
+  || type === 'counter-blade'
+  || type === 'ice-needle';
 }
 
 function isDefenseCardType(type) {
@@ -2467,7 +2528,9 @@ function isDefenseCardType(type) {
   || type === 'scaling-defense'
   || type === 'rare-defense'
   || type === 'endure-next-attack'
-  || type === 'chance-defense';
+  || type === 'chance-defense'
+  || type === 'parry-guard'
+  || type === 'prepared-guard';
 }
 
 function getEffectiveCardValue(card) {
@@ -2862,6 +2925,7 @@ function getRandomEventDefinitions() {
   { id: 'quiet_rest', title: '静かな休息', description: '短い休息の中で、不要な札を手放せる。少しだけ体力の器は縮む。', effect: '山札からカードを1枚選んで削除する', downside: '最大HP-1', steps: [{ type: 'maxHp', amount: -1 }, { type: 'removeChoice' }] },
   { id: 'ominous_sign', title: '不吉な気配', description: '何も得られない。ただ、呪いだけが山札へ紛れ込む。', effect: 'なし', downside: '呪いカードを1枚追加する', steps: [{ type: 'addCurseCards', count: 1 }] },
   { id: 'epic_bargain', title: '星喰いの取引', description: '星の残滓がエピックカードを囁く。代償は深く、成功率も低い。', effect: '20%の確率でエピックカードをランダムで1枚追加する', downside: '受諾時：最大HP-3 / 失敗時：呪いカード2枚追加', steps: [{ type: 'maxHp', amount: -3 }, { type: 'chance', rate: 0.2, success: [{ type: 'addRandomCards', count: 1, pool: 'epic' }], fail: [{ type: 'addCurseCards', count: 2 }] }] },
+  { id: 'chaos_reconstruction', title: '混沌の再構築', description: '山札の輪郭が崩れ、同じ枚数の別の札として組み直される。呪いが混ざる可能性もある。', effect: '現在の山札をすべて削除し、同じ枚数だけランダムなカードを追加する', downside: 'レアリティ抽選により、呪いカードが混ざる可能性がある', steps: [{ type: 'rebuildDeckRandom' }] },
  ];
 }
 
@@ -2952,6 +3016,30 @@ function removeCardFromDeckByName(cardName, source = 'イベント') {
  return cardName;
 }
 
+function rebuildDeckWithRandomCards() {
+ const removedCount = Math.max(1, Object.values(deckCustomize || {}).reduce((sum, count) => sum + Math.max(0, Number(count || 0)), 0));
+ const addedCards = [];
+ deckCustomize = {};
+
+ for (let i = 0; i < removedCount; i += 1) {
+  const card = pickWeightedRandomCard({ includeCurse: true });
+  if (!card) continue;
+  deckCustomize[card.name] = Math.max(0, Number(deckCustomize[card.name] || 0)) + 1;
+  addedCards.push(card);
+ }
+
+ if (!addedCards.length) {
+  const fallback = CARD_POOL.find(card => !isCurseCard(card)) || CARD_POOL[0];
+  deckCustomize[fallback.name] = 1;
+  addedCards.push(fallback);
+ }
+
+ currentRunDeckSnapshot = structuredClone(deckCustomize);
+ recordCardDiscoveries(addedCards);
+ addLog(`イベント：山札を${addedCards.length}枚で再構築`);
+ return addedCards;
+}
+
 function adjustEventMaxHp(amount) {
  const delta = Number(amount || 0);
  if (!delta) return 0;
@@ -2975,6 +3063,10 @@ function addRandomPassiveFromEvent(poolType = 'all') {
  currentRunPassiveIds.push(passive.id);
  addLog(`イベント：パッシブ「${passive.name}」を獲得`);
  return passive;
+}
+
+function getPassiveRevealText(passive) {
+ return String(passive?.text || passive?.description || 'パッシブを獲得しました。');
 }
 
 function showRandomEventReveal(action, cards) {
@@ -3015,8 +3107,15 @@ function applyRandomEventOutcomeStep(step) {
   return;
  }
 
+ if (step.type === 'rebuildDeckRandom') {
+  const cards = rebuildDeckWithRandomCards();
+  pendingRandomEventReveals.push(...cards.map(card => ({ action: isCurseCard(card) ? 'curse' : 'add', card })));
+  return;
+ }
+
  if (step.type === 'passiveRandom') {
-  addRandomPassiveFromEvent(step.pool);
+  const passive = addRandomPassiveFromEvent(step.pool);
+  if (passive) pendingRandomEventReveals.push({ action: 'passive', card: passive });
  }
 }
 
@@ -3052,9 +3151,19 @@ function executeRandomEventStep(step) {
   return false;
  }
 
+ if (step.type === 'rebuildDeckRandom') {
+  const cards = rebuildDeckWithRandomCards();
+  pendingRandomEventReveals = cards.map(card => ({ action: isCurseCard(card) ? 'curse' : 'add', card }));
+  pendingRandomEventAwaitingConfirm = true;
+  render();
+  return false;
+ }
+
  if (step.type === 'passiveRandom') {
-  addRandomPassiveFromEvent(step.pool);
-  return true;
+  const passive = addRandomPassiveFromEvent(step.pool);
+  if (!passive) return true;
+  showRandomEventReveal('passive', [passive]);
+  return false;
  }
 
  if (step.type === 'chance') {
@@ -3280,7 +3389,7 @@ function renderRandomEventModal() {
     : '<strong class="random-event-roll-fail">失敗... 深淵は沈黙しました。</strong>';
   } else {
    result.textContent = pendingRandomEventAccepted
-    ? (awaitingConfirm ? (hasReveals ? (pendingRandomEventReveals[0]?.action === 'remove' ? 'このカードが削除されます。確認してください。' : 'このカードが追加されます。確認してください。') : '結果を確認してください。') : step?.type === 'cardChoice' ? '追加するカードを選んでください。' : step?.type === 'removeChoice' ? '削除するカードを選んでください。' : 'イベント処理中...')
+    ? (awaitingConfirm ? (hasReveals ? (pendingRandomEventReveals[0]?.action === 'remove' ? 'このカードが削除されます。確認してください。' : pendingRandomEventReveals[0]?.action === 'passive' ? 'このパッシブを獲得します。確認してください。' : 'このカードが追加されます。確認してください。') : '結果を確認してください。') : step?.type === 'cardChoice' ? '追加するカードを選んでください。' : step?.type === 'removeChoice' ? '削除するカードを選んでください。' : 'イベント処理中...')
     : '受け入れる前に効果を確認してください。';
   }
  }
@@ -3289,6 +3398,16 @@ function renderRandomEventModal() {
  if (hasReveals) {
   pendingRandomEventReveals.forEach(({ action, card }) => {
    const div = document.createElement('div');
+   if (action === 'passive') {
+    div.className = 'random-event-choice-card random-event-reveal-card passive-reveal-card';
+    div.innerHTML = `
+     <div class="random-event-choice-title"><span>✨</span><strong>${escapeHtml(card.name || card.id || 'パッシブ')}</strong></div>
+     <div class="random-event-choice-text">${escapeHtml(getPassiveRevealText(card))}</div>
+     <div class="random-event-choice-note">このパッシブを獲得しました</div>
+    `;
+    list.appendChild(div);
+    return;
+   }
    div.className = `random-event-choice-card random-event-reveal-card ${action === 'remove' ? 'remove-choice' : ''} ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}`;
    const note = action === 'remove' ? 'このカードが1枚削除されます' : action === 'curse' ? '呪いカードが追加されます' : 'このカードが追加されます';
    div.innerHTML = `
@@ -3462,6 +3581,40 @@ function getCanonicalCardByName(cardName) {
    if (rarity === 'epic') return 8;
    if (rarity === 'rare') return 24;
    return 60;
+  }
+
+  function getRandomCardWeight(card, options = {}) {
+   const rarity = getCardRarity(card);
+   if (rarity === 'legendary') return 2;
+   if (rarity === 'epic') return 8;
+   if (rarity === 'rare') return 24;
+   if (rarity === 'curse') return options.includeCurse ? 12 : 0;
+   return 60;
+  }
+
+  function pickWeightedRandomCard(options = {}) {
+   const includeCurse = options.includeCurse !== false;
+   const pool = CARD_POOL
+    .filter(card => includeCurse || !isCurseCard(card))
+    .map(card => ({ card, weight: getRandomCardWeight(card, { includeCurse }) }))
+    .filter(item => item.weight > 0);
+   const total = pool.reduce((sum, item) => sum + item.weight, 0);
+   if (total <= 0) return CARD_POOL.find(card => !isCurseCard(card)) || CARD_POOL[0];
+
+   let roll = Math.random() * total;
+   for (const item of pool) {
+    roll -= item.weight;
+    if (roll <= 0) return item.card;
+   }
+   return pool[pool.length - 1].card;
+  }
+
+  function createTemporaryBattleCard(card) {
+   return {
+    ...card,
+    id: `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    temporaryBattleCard: true,
+   };
   }
 
   function pickWeightedShopCard() {
@@ -4144,6 +4297,20 @@ function drawPlayerHandToSize(targetSize) {
  return drawCardsToPlayerHand(missing);
 }
 
+function addTemporaryRandomCardToHand() {
+ if (!player || !Array.isArray(player.hand)) return null;
+ const card = createTemporaryBattleCard(pickWeightedRandomCard({ includeCurse: false }));
+ player.hand.push(card);
+ recordCardDiscovery(card.name);
+ triggerCardResultReveal([card], '一時カード追加', '使用後破棄', { delay: 760, temporary: true });
+ return card;
+}
+
+function isEnemyPreparingAttack() {
+ if (!cpu || !cpu.nextAction) return false;
+ return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison'].includes(cpu.nextAction.type);
+}
+
 function discardRandomPlayerHandCard(options = {}) {
  if (!player || !Array.isArray(player.hand) || player.hand.length <= 0) return null;
 
@@ -4394,7 +4561,7 @@ function startEnemyTimer() {
    }, 1000);
   }
 
-  function startReload() {
+function startReload() {
    if (pendingPassiveChoice || pendingShopChoice || !player || player.reloading || player.cooldown || gameOver) return;
 
    if (playerDeck.length <= 0) {
@@ -4403,7 +4570,9 @@ function startEnemyTimer() {
    }
 
    player.reloading = true;
-   player.reloadTimer = Math.max(1, RELOAD_TIME - playerPassives.reloadTimeReduce + getEnemyReloadTimeBonus());
+   const nextReloadReduce = Math.max(0, Number(player.nextReloadTimeReduce || 0));
+   player.nextReloadTimeReduce = 0;
+   player.reloadTimer = roundToTenthSecond(Math.max(1, RELOAD_TIME - playerPassives.reloadTimeReduce - nextReloadReduce + getEnemyReloadTimeBonus()));
    recordAchievementStat('totalReloads');
 
    addLog('リロード開始');
@@ -4425,7 +4594,7 @@ function startEnemyTimer() {
      return;
     }
 
-    player.reloadTimer--;
+    player.reloadTimer = roundToTenthSecond(Math.max(0, Number(player.reloadTimer || 0) - 1));
 
     render();
 
@@ -4462,6 +4631,7 @@ function startEnemyTimer() {
      }
      player.reloading = false;
      player.reloadTimer = 0;
+     player.firstCardAfterReload = true;
 
      addLog(`リロード完了：${newCards.length}枚ドロー`);
      playSound('success');
@@ -5332,6 +5502,8 @@ function saveDeckCustomize() {
     pendingReloadDoublePlay: false,
     pendingReloadCurseDamage: 0,
     pendingReloadDrawPenalty: 0,
+    nextReloadTimeReduce: 0,
+    firstCardAfterReload: false,
     doublePlayNextCard: false,
     lastPlayedCardForEcho: null,
      bloodAwakenAttackBoostUses: 0,
@@ -5686,6 +5858,14 @@ function playSound(type) {
    }
 
    if (battleResultStats.endedAt) return;
+
+   if (player && Array.isArray(player.hand)) {
+    player.hand = player.hand.filter(card => !card.temporaryBattleCard);
+   }
+   if (Array.isArray(playerDeck)) {
+    playerDeck = playerDeck.filter(card => !card.temporaryBattleCard);
+    deckCount = playerDeck.length;
+   }
 
    battleResultStats.endedAt = Date.now();
    battleResultStats.result = result;
@@ -7028,6 +7208,83 @@ function playPlayerCard(id, options = {}) {
     triggerAttackStep('.player-img', 'player');
    }
 
+   if (card.type === 'reload-first-draw') {
+    const result = applyPlayerCardDamage(getEffectiveCardValue(card));
+    consumeAttackBoostsAfterAttack();
+    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+    triggerDamageShake('.cpu-img');
+    const canDraw = Boolean(player.firstCardAfterReload);
+    const drawn = canDraw ? drawCardsToPlayerHand(1) : [];
+    if (drawn.length > 0) triggerCardResultReveal(drawn, 'ドロー', `${drawn.length}枚引いた`, { delay: 760 });
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${canDraw ? ` / ${drawn.length}枚ドロー` : ''})`);
+    playSound(result.fullyBlocked ? 'guard' : 'attack');
+   }
+
+   if (card.type === 'pursuit-attack') {
+    const lowHand = Math.max(0, player.hand.length - 1) <= 2;
+    const attackValue = getEffectiveCardValue(card) + (lowHand ? Number(card.bonus || 3) : 0);
+    const result = applyPlayerCardDamage(attackValue);
+    consumeAttackBoostsAfterAttack();
+    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+    triggerDamageShake('.cpu-img');
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${lowHand ? ' / 手札少数+3' : ''})`);
+    playSound(result.fullyBlocked ? 'guard' : 'attack');
+   }
+
+   if (card.type === 'counter-blade') {
+    const preparing = isEnemyPreparingAttack();
+    const attackValue = getEffectiveCardValue(card) + (preparing ? Number(card.bonus || 4) : 0);
+    const result = applyPlayerCardDamage(attackValue);
+    consumeAttackBoostsAfterAttack();
+    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+    triggerDamageShake('.cpu-img');
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${preparing ? ' / 攻撃準備中+4' : ''})`);
+    playSound(result.fullyBlocked ? 'guard' : 'attack');
+   }
+
+   if (card.type === 'parry-guard') {
+    const blockValue = getEffectiveCardValue(card);
+    player.block += blockValue;
+    player.nextReloadTimeReduce = Math.max(Number(player.nextReloadTimeReduce || 0), Number(card.reloadReduce || 0.2));
+    recordAchievementMax('maxBlock', player.block || 0);
+    triggerCardVisualEffect('.player-img', 'enhance');
+    addLog(`あなた：${card.name} (防御+${blockValue} / 次のリロード-${card.reloadReduce || 0.2}秒)`);
+    playSound('defense');
+   }
+
+   if (card.type === 'prepared-guard') {
+    const blockValue = getEffectiveCardValue(card);
+    player.block += blockValue;
+    recordAchievementMax('maxBlock', player.block || 0);
+    const lowHand = Math.max(0, player.hand.length - 1) <= 2;
+    const drawn = lowHand ? drawCardsToPlayerHand(1) : [];
+    if (drawn.length > 0) triggerCardResultReveal(drawn, 'ドロー', `${drawn.length}枚引いた`, { delay: 760 });
+    triggerCardVisualEffect('.player-img', 'enhance');
+    addLog(`あなた：${card.name} (防御+${blockValue}${lowHand ? ` / ${drawn.length}枚ドロー` : ''})`);
+    playSound('defense');
+   }
+
+   if (card.type === 'ice-needle') {
+    const result = applyPlayerCardDamage(getEffectiveCardValue(card));
+    consumeAttackBoostsAfterAttack();
+    const frozen = Math.random() < Number(card.chance || 0.2);
+    if (frozen) {
+     cpu.freeze = Math.max(cpu.freeze || 0, card.turns || 1);
+     recordAchievementStat('freezeApplications');
+     triggerFreezeEffect('.cpu-img');
+    }
+    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+    triggerDamageShake('.cpu-img');
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${frozen ? ' / 凍結' : ''})`);
+    playSound(frozen ? 'freeze' : (result.fullyBlocked ? 'guard' : 'attack'));
+   }
+
+   if (card.type === 'improvised-tactics') {
+    const added = addTemporaryRandomCardToHand();
+    addLog(`あなた：${card.name} (${added ? `一時カード「${added.name}」を追加 / 使用後破棄` : '追加なし'})`);
+    playSound(added ? 'success' : 'miss');
+   }
+
    if (card.type === 'chaos-hand') {
     const chaosCardIndex = cardIndex;
     const queuedCards = player.hand
@@ -7038,6 +7295,7 @@ function playPlayerCard(id, options = {}) {
     addLog(`あなた：${card.name} (手札${queuedCards.length}枚をランダム順で硬直無視プレイ)`);
     triggerReloadDoublePlayEffect('手札をランダム順で全発動', 'カオスハンド');
     playSound('success');
+    player.firstCardAfterReload = false;
     countPetCardUse();
     checkWinner();
 
@@ -7371,7 +7629,8 @@ if (card.type === 'rare-double-attack') {
 
    if (card.type === 'draw-one') {
     const drawn = drawCardsToPlayerHand(1);
-    triggerReloadDoublePlayEffect(drawn.length > 0 ? `+${drawn.length}枚` : '山札なし', card.name);
+    if (drawn.length > 0) triggerCardResultReveal(drawn, 'ドロー', `${drawn.length}枚引いた`, { delay: 760 });
+    else triggerReloadDoublePlayEffect('山札なし', card.name);
     showDamagePopup('player-hp-change', drawn.length > 0 ? `ドロー+${drawn.length}` : 'ドロー0');
     addLog(`あなた：${card.name} (${drawn.length}枚ドロー${drawn.length <= 0 ? ' / 山札なし' : ''})`);
     playSound(drawn.length > 0 ? 'success' : 'miss');
@@ -7382,10 +7641,13 @@ if (card.type === 'rare-double-attack') {
     const drawn = drawCardsToPlayerHand(drawCount);
     const discarded = discardRandomPlayerHandCard({ excludeIds: [card.id] });
 
-    triggerReloadDoublePlayEffect(
-     discarded ? `${discarded.name}を捨てた` : '捨て札なし',
-     card.name
-    );
+    if (drawn.length > 0) triggerCardResultReveal(drawn, 'ドロー', `${drawn.length}枚引いた`, { delay: 760 });
+    setTimeout(() => {
+     triggerReloadDoublePlayEffect(
+      discarded ? `${discarded.name}を捨てた` : '捨て札なし',
+      card.name
+     );
+    }, drawn.length > 0 ? 1180 : 0);
     showDamagePopup('player-hp-change', `ドロー+${drawn.length}`);
     addLog(`あなた：${card.name} (${drawn.length}枚ドロー / ${discarded ? `${discarded.name}を捨てた` : '捨て札なし'})`);
     playSound(drawn.length > 0 || discarded ? 'success' : 'miss');
@@ -7397,7 +7659,8 @@ if (card.type === 'rare-double-attack') {
     const finalTargetSize = Math.max(0, Number(card.value || 5));
     const drawTargetSize = Math.max(finalTargetSize, Number(card.drawTargetSize || finalTargetSize + 1));
     const drawn = drawPlayerHandToSize(drawTargetSize);
-    triggerReloadDoublePlayEffect(drawn.length > 0 ? `+${drawn.length}枚` : '補充なし', card.name);
+    if (drawn.length > 0) triggerCardResultReveal(drawn, 'ドロー', `${drawn.length}枚引いた`, { delay: 760 });
+    else triggerReloadDoublePlayEffect('補充なし', card.name);
     showDamagePopup('player-hp-change', drawn.length > 0 ? `ドロー+${drawn.length}` : 'ドロー0');
     addLog(`あなた：${card.name} (${drawn.length}枚ドロー / 使用後手札${finalTargetSize}枚目標)`);
     playSound(drawn.length > 0 ? 'success' : 'miss');
@@ -8140,6 +8403,8 @@ if (card.type === 'rare-attack') {
     player.hand.splice(playedCardIndex, 1);
    }
 
+   player.firstCardAfterReload = false;
+
    if (shouldDoublePlayThisCard && !gameOver && player && cpu) {
     const replayCard = {
      ...card,
@@ -8567,6 +8832,44 @@ if (card.type === 'rare-attack') {
    setTimeout(() => effect.remove(), 1100);
   }
 
+  function triggerCardResultReveal(cards, title = 'カード取得', note = '', options = {}) {
+   const list = (Array.isArray(cards) ? cards : [cards]).filter(Boolean);
+   if (list.length <= 0) return;
+
+   const delay = Math.max(0, Number(options.delay || 0));
+   const maxVisible = 4;
+   const visibleCards = list.slice(0, maxVisible);
+   const hiddenCount = Math.max(0, list.length - visibleCards.length);
+   const noteText = String(note || '');
+   const temporary = Boolean(options.temporary);
+
+   setTimeout(() => {
+    let overlay = document.getElementById('battle-effect-overlay');
+    if (!overlay) {
+     overlay = document.createElement('div');
+     overlay.id = 'battle-effect-overlay';
+     document.body.appendChild(overlay);
+    }
+
+    const effect = document.createElement('div');
+    effect.className = `card-result-reveal-effect${temporary ? ' temporary-result' : ''}`;
+    const cardsHtml = visibleCards.map(card => `
+     <div class="card-result-reveal-card ${getCardRarityClass(card)}">
+      <div class="card-result-reveal-icon">${escapeHtml(getCardIcon(card.type))}</div>
+      <div class="card-result-reveal-name">${escapeHtml(String(card.name || 'カード'))}</div>
+      <div class="card-result-reveal-text">${escapeHtml(getDynamicCardDisplayText(card))}</div>
+     </div>
+    `).join('');
+    effect.innerHTML = `
+     <div class="card-result-reveal-title">${escapeHtml(String(title))}</div>
+     <div class="card-result-reveal-list">${cardsHtml}${hiddenCount > 0 ? `<div class="card-result-reveal-more">他${hiddenCount}枚</div>` : ''}</div>
+     ${noteText ? `<div class="card-result-reveal-note">${escapeHtml(noteText)}</div>` : ''}
+    `;
+    overlay.appendChild(effect);
+    setTimeout(() => effect.remove(), 1850);
+   }, delay);
+  }
+
   function triggerParalysisEffect(selector) {
    const target = document.querySelector(selector);
    if (!target) return;
@@ -8957,6 +9260,9 @@ function getCustomizeTabs() {
 
   function getCardCustomizeCategory(card) {
    if (isCurseCard(card)) return 'status';
+   if (['pursuit-attack', 'counter-blade', 'ice-needle'].includes(card.type)) return 'attack';
+   if (['parry-guard', 'prepared-guard'].includes(card.type)) return 'defense';
+   if (['reload-first-draw', 'improvised-tactics'].includes(card.type)) return 'support';
 
    if (card.type === 'attack'
     || card.type === 'gamble-attack'
@@ -9189,6 +9495,10 @@ function getCardVisualClass(card) {
     classes.push(`${card.type}-card`);
    }
 
+   if (card.temporaryBattleCard) {
+    classes.push('temporary-battle-card');
+   }
+
    if (card.name === 'ガードブレード') {
     classes.push('guard-blade-card');
    }
@@ -9206,6 +9516,13 @@ return classes.join(' ');
 
 function getCardIcon(type) {
  if (String(type || '').startsWith('curse-')) return '☠';
+   if (type === 'reload-first-draw') return '⚔';
+   if (type === 'pursuit-attack') return '↗';
+   if (type === 'counter-blade') return '↩';
+   if (type === 'parry-guard') return '⛨';
+   if (type === 'prepared-guard') return '▣';
+   if (type === 'ice-needle') return '❄';
+   if (type === 'improvised-tactics') return '🎲';
    if (type === 'attack') return '⚔️';
    if (type === 'defense') return '🛡️';
    if (type === 'heal') return '💚';
@@ -9289,6 +9606,10 @@ function getScalingCardCurrentValue(card) {
 
 function getDynamicCardDisplayText(card) {
  if (!card) return '';
+
+ if (card.temporaryBattleCard) {
+  return `${getBaseCardDisplayText({ ...card, temporaryBattleCard: false })} / 使用後破棄`;
+ }
 
  if (card.type === 'scaling-attack') {
   const value = getScalingCardCurrentValue(card);
@@ -10830,7 +11151,7 @@ function render() {
    const reloadCount = document.getElementById('reload-count');
 
    reloadStatus.style.display = player.reloading ? 'flex' : 'none';
-   reloadCount.textContent = player.reloading ? `${player.reloadTimer}秒` : '';
+   reloadCount.textContent = player.reloading ? `${Math.max(0, Number(player.reloadTimer || 0)).toFixed(1).replace('.0', '')}秒` : '';
 
    const cooldownStatus = document.getElementById('cooldown-status');
    const cooldownCount = document.getElementById('cooldown-count');
@@ -10937,7 +11258,7 @@ const cards = document.getElementById('cards');
    cards.innerHTML = '';
 
    if (player.reloading) {
-    cards.innerHTML = `<div class="reload-panel">リロード中... ${player.reloadTimer}</div>`;
+    cards.innerHTML = `<div class="reload-panel">リロード中... ${Math.max(0, Number(player.reloadTimer || 0)).toFixed(1).replace('.0', '')}</div>`;
    } else {
     player.hand.forEach(card => {
      const button = document.createElement('button');
