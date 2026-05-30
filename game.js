@@ -1190,6 +1190,7 @@ const PET_POOL = [
   let deckReloadInterval = null;
   let playerPassives = {
    maxHp: 0,
+   battleMaxHpPenalty: 0,
    attack: 0,
    defense: 0,
    reloadDrawBonus: 0,
@@ -2392,7 +2393,9 @@ function getEffectivePetLevel() {
 }
 
 function getPlayerMaxHp() {
- return MAX_HP + playerPassives.maxHp;
+ const passiveBonus = Number(playerPassives.maxHp || 0);
+ const battlePenalty = Math.max(0, Number(playerPassives.battleMaxHpPenalty || 0));
+ return Math.max(1, MAX_HP + passiveBonus - battlePenalty);
 }
 
 function roundToHalfSecond(value) {
@@ -3577,6 +3580,7 @@ function renderRandomEventModal() {
    div.innerHTML = `
     <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)}</strong></div>
     <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
+    <div class="random-event-choice-note">${escapeHtml(getCardCooldownText(card))}</div>
     <div class="random-event-choice-note">${escapeHtml(note)}</div>
    `;
    list.appendChild(div);
@@ -3593,7 +3597,7 @@ function renderRandomEventModal() {
    button.innerHTML = `
     <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)}</strong></div>
     <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
-    <div class="random-event-choice-note">${escapeHtml(getCardRarityDisplayName(card))}</div>
+    <div class="random-event-choice-note">${escapeHtml(getCardRarityDisplayName(card))} / ${escapeHtml(getCardCooldownText(card))}</div>
    `;
    list.appendChild(button);
   });
@@ -3609,6 +3613,7 @@ function renderRandomEventModal() {
     <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
     <div class="random-event-choice-note">このカードを1枚削除</div>
    `;
+   button.querySelector('.random-event-choice-text')?.insertAdjacentHTML('afterend', `<div class="random-event-choice-note">${escapeHtml(getCardCooldownText(card))}</div>`);
    list.appendChild(button);
   });
  }
@@ -5675,6 +5680,7 @@ function saveDeckCustomize() {
    currentRunRandomEvents = [];
    playerPassives = {
     maxHp: 0,
+    battleMaxHpPenalty: 0,
     attack: 0,
     defense: 0,
     reloadDrawBonus: 0,
@@ -5814,6 +5820,7 @@ function saveDeckCustomize() {
    });
    recordCardDiscoveries(playerDeck);
    deckCount = playerDeck.length;
+   playerPassives.battleMaxHpPenalty = 0;
 
    deckReloading = false;
    deckReloadTimer = 0;
@@ -8836,7 +8843,7 @@ if (card.type === 'rare-attack') {
     }
 
     if (card.type === 'bomb-abyssal') {
-     playerPassives.maxHp -= Math.max(0, Number(card.selfMaxHp || 3));
+     playerPassives.battleMaxHpPenalty = Math.max(0, Number(playerPassives.battleMaxHpPenalty || 0)) + Math.max(0, Number(card.selfMaxHp || 3));
      player.hp = Math.min(player.hp, getPlayerMaxHp());
      addBombToEnemy('large');
      addBombToEnemy('large');
@@ -10744,7 +10751,7 @@ function renderOwnedDeckModal() {
 
  if (!modal || !list) return;
 
- const canShow = ownedDeckModalOpen && (pendingShopChoice || pendingPassiveChoice);
+ const canShow = ownedDeckModalOpen && (pendingShopChoice || pendingPassiveChoice || Boolean(pendingRandomEvent));
  modal.style.display = canShow ? 'flex' : 'none';
  modal.classList.toggle('is-open', canShow);
  modal.setAttribute('aria-hidden', canShow ? 'false' : 'true');
@@ -10892,7 +10899,7 @@ function renderOwnedPassivesModal() {
  const list = document.getElementById('owned-passives-modal-list');
  if (!modal || !list) return;
 
- const canShow = ownedPassivesModalOpen && !ownedPassivesModalHardClosed && (pendingShopChoice || pendingPassiveChoice);
+ const canShow = ownedPassivesModalOpen && !ownedPassivesModalHardClosed && (pendingShopChoice || pendingPassiveChoice || Boolean(pendingRandomEvent));
  modal.style.display = canShow ? 'flex' : 'none';
  modal.classList.toggle('is-open', canShow);
  modal.setAttribute('aria-hidden', canShow ? 'false' : 'true');
@@ -11334,6 +11341,7 @@ function getPassiveEffectBadgesHtml() {
    if (!playerPassives) return '';
 
    if (playerPassives.maxHp > 0) badges.push(`<div class="passive-effect-badge">💚 最大HP +${playerPassives.maxHp}</div>`);
+   if (playerPassives.battleMaxHpPenalty > 0) badges.push(`<div class="passive-effect-badge">💔 この戦闘中 最大HP-${playerPassives.battleMaxHpPenalty}</div>`);
    if (playerPassives.attack > 0) badges.push(`<div class="passive-effect-badge">⚔ 攻撃 +${playerPassives.attack}</div>`);
    if (playerPassives.defense > 0) badges.push(`<div class="passive-effect-badge">🛡 防御 +${playerPassives.defense}</div>`);
    if (playerPassives.reloadDrawBonus > 0) badges.push(`<div class="passive-effect-badge">📚 ドロー +${playerPassives.reloadDrawBonus}</div>`);

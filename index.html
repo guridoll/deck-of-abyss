@@ -329,6 +329,10 @@
         </div>
         <div id="random-event-result" class="random-event-result"></div>
         <div id="random-event-choice-list" class="random-event-choice-list"></div>
+        <div class="owned-deck-button-row random-event-owned-buttons">
+          <button class="ui-button owned-deck-open-button" type="button" onclick="openOwnedDeckModal()" aria-label="自分の山札を開く"><span class="owned-deck-open-icon">📚</span><span>自分の山札</span></button>
+          <button class="ui-button owned-passives-open-button" type="button" onclick="openOwnedPassivesModal()" aria-label="取得済みパッシブを開く"><span class="owned-deck-open-icon">✨</span><span>取得済みパッシブ</span></button>
+        </div>
         <div id="random-event-actions-row" class="random-event-actions-row">
           <button class="ui-button ui-button-primary" onclick="acceptRandomEvent()">受け入れる</button>
           <button class="ui-button ui-button-secondary" onclick="declineRandomEvent()">拒否する</button>
