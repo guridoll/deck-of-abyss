@@ -4100,6 +4100,13 @@ button.passive-skip-button:hover {
   font-weight: 1000;
 }
 
+.bomb-badge {
+  background: linear-gradient(135deg, #7c2d12, #111827 55%, #451a03);
+  border-color: rgba(251, 146, 60, 0.86);
+  color: #ffedd5;
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.34), 0 6px 14px rgba(0,0,0,0.30);
+}
+
 .defense-badge {
   background: linear-gradient(135deg, #1d4ed8, #0f172a);
   border-color: rgba(147,197,253,0.75);
@@ -11941,6 +11948,109 @@ body.battle-defeat-slowmo .battle-area {
   background: linear-gradient(160deg, #312e81, #7c3aed 48%, #111827) !important;
   border-color: rgba(196, 181, 253, 0.86) !important;
   box-shadow: inset 0 0 0 999px rgba(2, 6, 23, 0.20), 0 0 20px rgba(124, 58, 237, 0.34) !important;
+}
+
+/* Bomb build */
+.bomb-card,
+.card[class*="bomb-"],
+.shop-card[class*="bomb-"],
+.customize-card[class*="bomb-"],
+.library-card[class*="bomb-"],
+.card-library-card[class*="bomb-"],
+.random-event-choice-card[class*="bomb-"] {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(251, 146, 60, 0.30), transparent 34%),
+    linear-gradient(160deg, #431407 0%, #7c2d12 44%, #111827 100%) !important;
+  border-color: rgba(251, 146, 60, 0.84) !important;
+  color: #fff7ed !important;
+  box-shadow:
+    inset 0 0 0 999px rgba(2, 6, 23, 0.16),
+    0 0 18px rgba(249, 115, 22, 0.28) !important;
+}
+
+.bomb-card .card-title,
+.bomb-card .card-text,
+.card[class*="bomb-"] .card-title,
+.card[class*="bomb-"] .card-text,
+.shop-card[class*="bomb-"] .card-title,
+.shop-card[class*="bomb-"] .card-text,
+.customize-card[class*="bomb-"] .card-title,
+.customize-card[class*="bomb-"] .card-text,
+.library-card[class*="bomb-"] .card-title,
+.library-card[class*="bomb-"] .card-text,
+.card-library-card[class*="bomb-"] .card-title,
+.card-library-card[class*="bomb-"] .card-text {
+  color: #fff7ed !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.86);
+}
+
+.bomb-choice-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 12, 18, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.bomb-choice-dialog {
+  width: min(660px, 100%);
+  max-height: min(86vh, 680px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(251, 146, 60, 0.48);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(43, 24, 15, 0.98), rgba(16, 20, 28, 0.98));
+  color: #f8fafc;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.52);
+}
+
+.bomb-choice-dialog h2 {
+  margin: 0 0 10px;
+  font-size: 24px;
+}
+
+.bomb-choice-dialog p {
+  margin: 0 0 16px;
+  color: #fed7aa;
+  line-height: 1.6;
+}
+
+.bomb-choice-list {
+  display: grid;
+  gap: 10px;
+}
+
+.bomb-choice-button {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid rgba(251, 146, 60, 0.42);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(124, 45, 18, 0.86), rgba(15, 23, 42, 0.92));
+  color: #fff7ed;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bomb-choice-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(253, 186, 116, 0.92);
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.30);
+}
+
+.bomb-choice-button strong {
+  font-size: 16px;
+}
+
+.bomb-choice-button span {
+  color: #ffedd5;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 /* Random events */

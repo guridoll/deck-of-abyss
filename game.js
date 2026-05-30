@@ -324,6 +324,12 @@ const PET_POOL = [
    { name: 'どくばり', type: 'poison', value: 1, turns: 5, text: '1ダメージ / 毒5T付与' },
    { name: 'ポイズンスラッシュ', type: 'poison', value: 3, turns: 3, text: '3ダメージ / 毒3T付与', shopOnly: true },
    { name: '火花斬り', type: 'burn', value: 2, chance: 0.3, turns: 3, burnText: '火傷+3T', text: '2ダメージ / 30%で火傷3T付与', shopOnly: true },
+   { name: '小爆弾設置', type: 'bomb-place-small', value: 0, bombKind: 'small', text: '小爆弾を付与する' },
+   { name: '爆弾設置', type: 'bomb-place-normal', value: 0, bombKind: 'normal', text: '爆弾を付与する' },
+   { name: '導火線', type: 'bomb-advance-one', value: 1, text: '設置中の爆弾を1進める' },
+   { name: '起爆装置', type: 'bomb-advance-two', value: 2, text: '設置中の爆弾を2進める' },
+   { name: '火薬補充', type: 'bomb-powder-damage', value: 2, text: '設置中の爆弾1つにつき2ダメージ' },
+   { name: '緊急起爆', type: 'bomb-emergency-detonate', value: 0, damageMultiplier: 0.7, text: '設置中の爆弾を即爆発させる / 爆発ダメージ30%減少' },
    { name: 'エグゼキューション', type: 'timer-execute-attack', value: 5, bonus: 10, threshold: 2, text: '5ダメージ / 敵行動タイマー残り2秒以下なら+10', rare: true, shopOnly: true },
    { name: '瞑想', type: 'rare-heal', value: 20, text: 'HP+20', rare: true },
       {
@@ -335,6 +341,17 @@ const PET_POOL = [
    },
 { name: 'フルスイング', type: 'rare-attack', value: 20, text: '20ダメージ', rare: true },
    { name: 'フルシールド', type: 'rare-defense', value: 20, text: '防御+20', rare: true },
+   { name: '大爆弾設置', type: 'bomb-place-large', value: 0, bombKind: 'large', text: '大爆弾を付与する', rare: true },
+   { name: '連鎖導火線', type: 'bomb-advance-all-one', value: 1, text: '設置中の全ての爆弾を1進める', rare: true },
+   { name: '火薬圧縮', type: 'bomb-compress', value: 0, text: '設置中の爆弾を1つ選び、爆発ダメージ+50%', rare: true },
+   { name: '爆破準備', type: 'bomb-prepare', value: 1, text: '1ドロー / 設置中の爆弾を1進める', rare: true },
+   { name: '焼夷爆弾', type: 'bomb-place-incendiary', value: 0, bombKind: 'incendiary', text: '敵4回行動後に爆発 / 10ダメージ / 火傷3T付与', rare: true },
+   { name: '爆弾投下', type: 'bomb-drop', value: 0, text: '小爆弾、爆弾、大爆弾を1個ずつ付与する', rare: true, epic: true },
+   { name: '暴発', type: 'bomb-detonate-all', value: 0, text: '設置中の全ての爆弾を即爆発させる', rare: true, epic: true },
+   { name: '爆薬庫', type: 'bomb-random-two', value: 0, text: 'ランダムな爆弾を2個付与する', rare: true, epic: true },
+   { name: '時限地獄', type: 'bomb-advance-all-two', value: 2, text: '設置中の全ての爆弾を2進める', rare: true, epic: true },
+   { name: '終焉爆撃', type: 'bomb-doomsday', value: 0, damageMultiplier: 2, text: '設置中の全ての爆弾を即爆発させる / 爆発ダメージ2倍', rare: true, legendary: true },
+   { name: '奈落の爆薬', type: 'bomb-abyssal', value: 0, selfMaxHp: 3, text: '大爆弾を2個付与する / 最大HP-3', rare: true, legendary: true },
    {
     name: 'ガードブレード',
     type: 'rare-attack-defense',
@@ -1198,9 +1215,15 @@ const PET_POOL = [
    rareReviveOnce: false,
    rareReviveUsed: false,
    frozenVulnerabilityDamageBonus: 0,
-   petLevelGrowthOnVictory: 0,
-   bloodPrice: false,
-  };
+    petLevelGrowthOnVictory: 0,
+    bloodPrice: false,
+    bombDamageBonusMultiplier: 0,
+    bombStartSmall: 0,
+    bombFuseShorten: 0,
+    bombChainChance: 0,
+    bombDrawOnExplosion: 0,
+    bombTimingReduce: 0,
+   };
   let pendingPassiveChoice = false;
   let pendingNextLevel = null;
   let pendingShopChoice = false;
@@ -2460,10 +2483,27 @@ function getCardCooldownSeconds(card) {
   '返し刃': 1,
   '受け流し': 0.5,
   '備え': 1,
-  '氷針': 0.5,
-  '即興戦術': 2,
+   '氷針': 0.5,
+   '即興戦術': 2,
+   '小爆弾設置': 0.7,
+   '爆弾設置': 1,
+   '導火線': 0.5,
+   '起爆装置': 1,
+   '火薬補充': 0.8,
+   '緊急起爆': 1.2,
+   '大爆弾設置': 1.8,
+   '連鎖導火線': 1.2,
+   '火薬圧縮': 1.4,
+   '爆破準備': 1,
+   '焼夷爆弾': 1.5,
+   '爆弾投下': 2.5,
+   '暴発': 2.2,
+   '爆薬庫': 2.3,
+   '時限地獄': 2,
+   '終焉爆撃': 3.5,
+   '奈落の爆薬': 3,
 
- };
+  };
 
  const rawCooldown = card.cooldown ?? cooldownByName[card.name] ?? (card.rare ? 2 : 1);
  const rounded = roundToHalfSecond(rawCooldown);
@@ -2499,12 +2539,16 @@ function getCardCooldownText(card) {
 }
 
 function getEffectiveCardCooldownText(card) {
- return `硬直 ${getEffectiveCardCooldownSeconds(card).toFixed(1).replace('.0', '')}秒`;
+  return `硬直 ${getEffectiveCardCooldownSeconds(card).toFixed(1).replace('.0', '')}秒`;
 }
 
 
+function isBombCardType(type) {
+ return String(type || '').startsWith('bomb-');
+}
+
 function isAttackCardType(type) {
- return type === 'attack'
+  return type === 'attack'
   || type === 'reload-first-draw'
   || type === 'scaling-attack'
   || type === 'dein'
@@ -2713,6 +2757,26 @@ function getNormalPassiveOptions() {
    },
   },
   {
+   id: 'bombCraftsman',
+   icon: '💣',
+   rarity: 'normal',
+   name: '火薬職人',
+   text: '爆弾ダメージ+50%。',
+   apply() {
+    playerPassives.bombDamageBonusMultiplier += 0.5;
+   },
+  },
+  {
+   id: 'bombManiac',
+   icon: '💣',
+   rarity: 'normal',
+   name: '爆弾魔',
+   text: '戦闘開始時に小爆弾を1個付与する。',
+   apply() {
+    playerPassives.bombStartSmall += 1;
+   },
+  },
+  {
    id: 'shopCardChoiceBonus',
    icon: '🛒',
    rarity: 'normal',
@@ -2810,6 +2874,46 @@ function getRarePassiveOptions() {
    text: '敵を火傷状態にしたとき、敵行動時間+3秒。',
    apply() {
     playerPassives.burnActionDelay += 3;
+   },
+  },
+  {
+   id: 'bombFuseShorten',
+   icon: '💣⏱',
+   rarity: 'rare',
+   name: '導火線短縮',
+   text: '爆弾を設置した時、カウントをさらに1進める。',
+   apply() {
+    playerPassives.bombFuseShorten += 1;
+   },
+  },
+  {
+   id: 'bombChain',
+   icon: '💣🔗',
+   rarity: 'rare',
+   name: '爆破連鎖',
+   text: '爆弾が爆発した時、20%で小爆弾を付与する。',
+   apply() {
+    playerPassives.bombChainChance += 0.2;
+   },
+  },
+  {
+   id: 'bombDraw',
+   icon: '💣📚',
+   rarity: 'rare',
+   name: '爆発狂',
+   text: '爆弾が爆発した時、1ドロー。',
+   apply() {
+    playerPassives.bombDrawOnExplosion += 1;
+   },
+  },
+  {
+   id: 'bombTimingMastery',
+   icon: '💣⏳',
+   rarity: 'rare',
+   name: '時限支配',
+   text: '爆弾の爆発タイミング-2。',
+   apply() {
+    playerPassives.bombTimingReduce += 2;
    },
   },
   {
@@ -2932,7 +3036,7 @@ function getRandomPassiveChoices(count = 3, options = getNormalPassiveOptions())
  return choices;
 }
 
-const RANDOM_EVENT_CHANCE = 0.3;
+const RANDOM_EVENT_CHANCE = 1;
 
 function getRandomEventDefinitions() {
  return [
@@ -3933,12 +4037,186 @@ function getEnemyReloadTimeBonus() {
 }
 
 function clearEnemyStatusEffects() {
- if (!cpu) return;
- cpu.paralysis = 0;
- cpu.freeze = 1;
- cpu.poisonTurns = 0;
- cpu.burn = false;
- cpu.burnTurns = 0;
+  if (!cpu) return;
+  cpu.paralysis = 0;
+  cpu.freeze = 1;
+  cpu.poisonTurns = 0;
+  cpu.burn = false;
+  cpu.burnTurns = 0;
+  cpu.bombs = [];
+ }
+
+const BOMB_DEFINITIONS = {
+ small: { id: 'small', name: '小爆弾', count: 3, damage: 8, icon: '💣' },
+ normal: { id: 'normal', name: '爆弾', count: 5, damage: 15, icon: '💣' },
+ large: { id: 'large', name: '大爆弾', count: 8, damage: 30, icon: '💣' },
+ incendiary: { id: 'incendiary', name: '焼夷爆弾', count: 4, damage: 10, burnTurns: 3, icon: '🔥💣' },
+};
+
+function getEnemyBombs() {
+ if (!cpu) return [];
+ if (!Array.isArray(cpu.bombs)) cpu.bombs = [];
+ return cpu.bombs;
+}
+
+function getBombDefinition(kind) {
+ return BOMB_DEFINITIONS[kind] || BOMB_DEFINITIONS.normal;
+}
+
+function getBombDisplayText(bomb) {
+ if (!bomb) return '';
+ return `${bomb.name || '爆弾'}:${Math.max(0, Number(bomb.count || 0))} / ${Math.round(Number(bomb.damage || 0) * Number(bomb.damageMultiplier || 1))}ダメ`;
+}
+
+function addBombToEnemy(kind = 'normal', options = {}) {
+ if (!cpu || gameOver) return null;
+ const def = getBombDefinition(kind);
+ const extraAdvance = Math.max(0, Number(playerPassives.bombFuseShorten || 0)) + Math.max(0, Number(playerPassives.bombTimingReduce || 0));
+ const bomb = {
+  id: `bomb-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  kind: def.id,
+  name: def.name,
+  icon: def.icon,
+  count: Math.max(0, Number(def.count || 1) - extraAdvance),
+  damage: Math.max(0, Number(def.damage || 0)),
+  burnTurns: Math.max(0, Number(def.burnTurns || 0)),
+  damageMultiplier: Math.max(0.1, Number(options.damageMultiplier || 1)),
+ };
+ getEnemyBombs().push(bomb);
+ addLog(`爆弾：${bomb.name}を設置 (${bomb.count}カウント / ${bomb.damage}ダメージ)${options.source ? ` / ${options.source}` : ''}`);
+ showDamagePopup('cpu-hp-change', `${bomb.name}+`);
+ triggerCardVisualEffect('.cpu-img', 'burn-flame');
+ processDueBombs();
+ return bomb;
+}
+
+function advanceEnemyBombs(amount = 1, options = {}) {
+ const bombs = getEnemyBombs();
+ if (!bombs.length) {
+  addLog(`爆弾：進める爆弾がありません`);
+  return 0;
+ }
+ const targets = options.all ? bombs : [bombs[0]];
+ const step = Math.max(0, Number(amount || 0));
+ targets.forEach(bomb => {
+  bomb.count = Math.max(-99, Number(bomb.count || 0) - step);
+ });
+ addLog(`爆弾：${targets.length}個のカウントを${step}進めた`);
+ processDueBombs();
+ return targets.length;
+}
+
+function detonateBombs(bombs, options = {}) {
+ if (!cpu || gameOver) return 0;
+ const source = Array.isArray(bombs) ? bombs.filter(Boolean) : [];
+ if (!source.length) {
+  addLog('爆弾：起爆できる爆弾がありません');
+  return 0;
+ }
+ const allBombs = getEnemyBombs();
+ const ids = new Set(source.map(bomb => bomb.id));
+ cpu.bombs = allBombs.filter(bomb => !ids.has(bomb.id));
+
+ let exploded = 0;
+ source.forEach(bomb => {
+  const multiplier = Number(bomb.damageMultiplier || 1)
+   * Math.max(0, Number(options.damageMultiplier || 1))
+   * (1 + Math.max(0, Number(playerPassives.bombDamageBonusMultiplier || 0)));
+  const damage = Math.max(0, Math.round(Number(bomb.damage || 0) * multiplier));
+  const result = applyDamage(cpu, damage, { ignoreBlock: true, preserveBlock: true });
+  exploded += 1;
+  showDamagePopup('cpu-hp-change', `💣-${result.damage}`);
+  triggerDamageShake('.cpu-img');
+  triggerCardVisualEffect('.cpu-img', 'burn-flame');
+  addLog(`爆弾：${bomb.name}が爆発 (${result.damage}ダメージ)`);
+
+  if (bomb.burnTurns && bomb.burnTurns > 0) {
+   cpu.burn = true;
+   cpu.burnTurns = (cpu.burnTurns || 0) + Math.max(1, Number(bomb.burnTurns || 0));
+   recordAchievementStat('burnApplications');
+   addEnemyActionDelayFromBurnPassive();
+   addLog(`爆弾：${bomb.name}で火傷+${bomb.burnTurns}T`);
+  }
+
+  if (playerPassives.bombDrawOnExplosion > 0) {
+   const drawn = drawCardsToPlayerHand(playerPassives.bombDrawOnExplosion);
+   if (drawn.length > 0) triggerCardResultReveal(drawn, '爆発狂', `${drawn.length}枚引いた`, { delay: 180 });
+  }
+
+  if (playerPassives.bombChainChance > 0 && Math.random() < playerPassives.bombChainChance && !gameOver) {
+   addBombToEnemy('small', { source: '爆破連鎖' });
+  }
+
+  checkWinner();
+ });
+ playSound(exploded > 0 ? 'critical' : 'miss');
+ return exploded;
+}
+
+function processDueBombs() {
+ const due = getEnemyBombs().filter(bomb => Number(bomb.count || 0) <= 0);
+ if (due.length > 0) detonateBombs(due);
+}
+
+function processBombCountdownAfterEnemyAction() {
+ const bombs = getEnemyBombs();
+ if (!bombs.length || gameOver) return;
+ bombs.forEach(bomb => {
+  bomb.count = Number(bomb.count || 0) - 1;
+ });
+ addLog(`爆弾：敵行動でカウント進行 (${bombs.map(getBombDisplayText).join(' / ')})`);
+ processDueBombs();
+}
+
+function getRandomBombKind() {
+ const entries = [
+  { kind: 'small', weight: 45 },
+  { kind: 'normal', weight: 35 },
+  { kind: 'large', weight: 15 },
+  { kind: 'incendiary', weight: 5 },
+ ];
+ const total = entries.reduce((sum, item) => sum + item.weight, 0);
+ let roll = Math.random() * total;
+ for (const item of entries) {
+  roll -= item.weight;
+  if (roll <= 0) return item.kind;
+ }
+ return 'small';
+}
+
+function showBombCompressDialog() {
+ const bombs = getEnemyBombs();
+ if (!bombs.length) {
+  addLog('火薬圧縮：対象の爆弾がありません');
+  return false;
+ }
+ document.getElementById('bomb-choice-modal')?.remove();
+ const modal = document.createElement('div');
+ modal.id = 'bomb-choice-modal';
+ modal.className = 'bomb-choice-modal';
+ modal.innerHTML = `
+  <div class="bomb-choice-dialog">
+   <h3>火薬圧縮</h3>
+   <p>爆発ダメージを+50%する爆弾を選択してください。</p>
+   <div class="bomb-choice-list">
+    ${bombs.map(bomb => `<button class="bomb-choice-button" type="button" onclick="chooseBombToCompress('${bomb.id}')"><strong>${escapeHtml(bomb.name)}</strong><span>${escapeHtml(getBombDisplayText(bomb))}</span></button>`).join('')}
+   </div>
+  </div>
+ `;
+ document.body.appendChild(modal);
+ return true;
+}
+
+function chooseBombToCompress(bombId) {
+ const bomb = getEnemyBombs().find(item => item.id === bombId);
+ if (bomb) {
+  bomb.damageMultiplier = Number(bomb.damageMultiplier || 1) * 1.5;
+  addLog(`火薬圧縮：${bomb.name}の爆発ダメージ+50%`);
+  showDamagePopup('cpu-hp-change', '圧縮+50%');
+  triggerCardVisualEffect('.cpu-img', 'enhance');
+ }
+ document.getElementById('bomb-choice-modal')?.remove();
+ render();
 }
 
 function isPlayerStatusGuardActive() {
@@ -4648,13 +4926,13 @@ function startReload() {
 
    stopReload();
 
-   reloadInterval = setInterval(() => {
-    if (!player || gameOver || currentScreen !== 'battle') {
-     stopReload();
-     return;
-    }
+    reloadInterval = setInterval(() => {
+     if (!player || gameOver || currentScreen !== 'battle') {
+      stopReload();
+      return;
+     }
 
-    player.reloadTimer = roundToTenthSecond(Math.max(0, Number(player.reloadTimer || 0) - 1));
+     player.reloadTimer = roundToTenthSecond(Math.max(0, Number(player.reloadTimer || 0) - 0.1));
 
     render();
 
@@ -4698,7 +4976,7 @@ function startReload() {
 
      render();
     }
-   }, 1000);
+    }, 100);
   }
 
   function manualReload() {
@@ -5412,8 +5690,14 @@ function saveDeckCustomize() {
     rareReviveOnce: false,
     rareReviveUsed: false,
     frozenVulnerabilityDamageBonus: 0,
-    petLevelGrowthOnVictory: 0,
-   };
+     petLevelGrowthOnVictory: 0,
+     bombDamageBonusMultiplier: 0,
+     bombStartSmall: 0,
+     bombFuseShorten: 0,
+     bombChainChance: 0,
+     bombDrawOnExplosion: 0,
+     bombTimingReduce: 0,
+    };
 
    enemyLevel = 1;
    currentScreen = 'battle';
@@ -5593,12 +5877,17 @@ function saveDeckCustomize() {
     secondPhaseUsed: false,
     invincible: false,
     enemyActionDelayTurns: 0,
-    enemyActionDelayAmount: 0,
-    pendingEnemyActionDelayTurns: 0,
-    pendingEnemyActionDelayAmount: 0,
-   };
+     enemyActionDelayAmount: 0,
+     pendingEnemyActionDelayTurns: 0,
+     pendingEnemyActionDelayAmount: 0,
+     bombs: [],
+    };
 
-   pendingVoidEntranceAnimation = enemyLevel >= 20 && cpu.phase === 1;
+    for (let i = 0; i < Math.max(0, Number(playerPassives.bombStartSmall || 0)); i++) {
+     addBombToEnemy('small', { source: '爆弾魔' });
+    }
+
+    pendingVoidEntranceAnimation = enemyLevel >= 20 && cpu.phase === 1;
 
    // 図鑑の遭遇回数は「実際に戦闘へ入ったタイミング」でだけ加算する。
    // 戦闘開始前のパッシブ選択など、準備用の初期化でも resetGame() が呼ばれるため、
@@ -8449,16 +8738,108 @@ if (card.type === 'rare-attack') {
    }
 
    if (card.type === 'rare-defense') {
-    player.block += getEffectiveCardValue(card);
-    recordAchievementMax('maxBlock', player.block || 0);
+     player.block += getEffectiveCardValue(card);
+     recordAchievementMax('maxBlock', player.block || 0);
 
     triggerCardVisualEffect('.player-img', 'enhance');
 
-    addLog(`あなた：${card.name} (防御+${getEffectiveCardValue(card)})`);
-    playSound('defense');
-   }
+     addLog(`あなた：${card.name} (防御+${getEffectiveCardValue(card)})`);
+     playSound('defense');
+    }
 
-   const playedCardIndex = player.hand.findIndex(c => c.id === card.id);
+    if (card.type === 'bomb-place-small' || card.type === 'bomb-place-normal' || card.type === 'bomb-place-large' || card.type === 'bomb-place-incendiary') {
+     const bomb = addBombToEnemy(card.bombKind || 'normal');
+     addLog(`あなた：${card.name} (${bomb ? `${bomb.name}設置` : '設置失敗'})`);
+     playSound(bomb ? 'success' : 'miss');
+    }
+
+    if (card.type === 'bomb-advance-one') {
+     const count = advanceEnemyBombs(1, { all: false });
+     addLog(`あなた：${card.name} (${count > 0 ? '爆弾+1進行' : '対象なし'})`);
+     playSound(count > 0 ? 'success' : 'miss');
+    }
+
+    if (card.type === 'bomb-advance-two') {
+     const count = advanceEnemyBombs(2, { all: false });
+     addLog(`あなた：${card.name} (${count > 0 ? '爆弾+2進行' : '対象なし'})`);
+     playSound(count > 0 ? 'success' : 'miss');
+    }
+
+    if (card.type === 'bomb-advance-all-one') {
+     const count = advanceEnemyBombs(1, { all: true });
+     addLog(`あなた：${card.name} (${count}個の爆弾+1進行)`);
+     playSound(count > 0 ? 'success' : 'miss');
+    }
+
+    if (card.type === 'bomb-advance-all-two') {
+     const count = advanceEnemyBombs(2, { all: true });
+     addLog(`あなた：${card.name} (${count}個の爆弾+2進行)`);
+     playSound(count > 0 ? 'success' : 'miss');
+    }
+
+    if (card.type === 'bomb-powder-damage') {
+     const bombCount = getEnemyBombs().length;
+     const damage = bombCount * Math.max(0, Number(card.value || 2));
+     const result = applyDamage(cpu, damage);
+     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+     triggerDamageShake('.cpu-img');
+     addLog(`あなた：${card.name} (${bombCount}個 × ${card.value || 2} = ${result.damage}ダメージ)`);
+     playSound(result.damage > 0 ? 'attack' : 'miss');
+    }
+
+    if (card.type === 'bomb-emergency-detonate') {
+     const count = detonateBombs([...getEnemyBombs()], { damageMultiplier: card.damageMultiplier || 0.7 });
+     addLog(`あなた：${card.name} (${count}個を緊急起爆)`);
+    }
+
+    if (card.type === 'bomb-compress') {
+     const shown = showBombCompressDialog();
+     addLog(`あなた：${card.name} (${shown ? '圧縮対象を選択' : '対象なし'})`);
+     playSound(shown ? 'success' : 'miss');
+    }
+
+    if (card.type === 'bomb-prepare') {
+     const drawn = drawCardsToPlayerHand(1);
+     if (drawn.length > 0) triggerCardResultReveal(drawn, 'ドロー', `${drawn.length}枚引いた`, { delay: 180 });
+     const count = advanceEnemyBombs(1, { all: false });
+     addLog(`あなた：${card.name} (${drawn.length}枚ドロー / ${count > 0 ? '爆弾+1進行' : '爆弾なし'})`);
+     playSound(drawn.length > 0 || count > 0 ? 'success' : 'miss');
+    }
+
+    if (card.type === 'bomb-drop') {
+     ['small', 'normal', 'large'].forEach(kind => addBombToEnemy(kind));
+     addLog(`あなた：${card.name} (小爆弾・爆弾・大爆弾を設置)`);
+     playSound('success');
+    }
+
+    if (card.type === 'bomb-detonate-all') {
+     const count = detonateBombs([...getEnemyBombs()]);
+     addLog(`あなた：${card.name} (${count}個を起爆)`);
+    }
+
+    if (card.type === 'bomb-random-two') {
+     const first = addBombToEnemy(getRandomBombKind());
+     const second = addBombToEnemy(getRandomBombKind());
+     addLog(`あなた：${card.name} (${[first?.name, second?.name].filter(Boolean).join(' / ')}を設置)`);
+     playSound('success');
+    }
+
+    if (card.type === 'bomb-doomsday') {
+     const count = detonateBombs([...getEnemyBombs()], { damageMultiplier: card.damageMultiplier || 2 });
+     addLog(`あなた：${card.name} (${count}個を2倍起爆)`);
+    }
+
+    if (card.type === 'bomb-abyssal') {
+     playerPassives.maxHp -= Math.max(0, Number(card.selfMaxHp || 3));
+     player.hp = Math.min(player.hp, getPlayerMaxHp());
+     addBombToEnemy('large');
+     addBombToEnemy('large');
+     showDamagePopup('player-hp-change', `最大HP-${card.selfMaxHp || 3}`);
+     addLog(`あなた：${card.name} (大爆弾2個 / 最大HP-${card.selfMaxHp || 3})`);
+     playSound('success');
+    }
+
+    const playedCardIndex = player.hand.findIndex(c => c.id === card.id);
    if (playedCardIndex !== -1) {
     player.hand.splice(playedCardIndex, 1);
    }
@@ -8730,6 +9111,7 @@ if (card.type === 'rare-attack') {
 
    try {
     cpuAction();
+    if (!gameOver) processBombCountdownAfterEnemyAction();
     if (!gameOver) tickEnemyDebuffsAfterAction();
    } catch (error) {
     console.error('enemyTurn error:', error);
@@ -9320,7 +9702,8 @@ function getCustomizeTabs() {
 
   function getCardCustomizeCategory(card) {
    if (isCurseCard(card)) return 'status';
-   if (['pursuit-attack', 'counter-blade', 'ice-needle'].includes(card.type)) return 'attack';
+  if (isBombCardType(card.type)) return 'status';
+  if (['pursuit-attack', 'counter-blade', 'ice-needle'].includes(card.type)) return 'attack';
    if (['parry-guard', 'prepared-guard'].includes(card.type)) return 'defense';
    if (['reload-first-draw', 'improvised-tactics'].includes(card.type)) return 'support';
 
@@ -9570,13 +9953,17 @@ function getCardVisualClass(card) {
    if (card.name === '血の奮起') {
     classes.push('blood-attack-buff-card');
    }
+   if (isBombCardType(card.type)) {
+    classes.push('bomb-card');
+   }
 
 return classes.join(' ');
   }
 
 function getCardIcon(type) {
- if (String(type || '').startsWith('curse-')) return '☠';
-   if (type === 'reload-first-draw') return '⚔';
+  if (String(type || '').startsWith('curse-')) return '☠';
+    if (isBombCardType(type)) return '💣';
+    if (type === 'reload-first-draw') return '⚔';
    if (type === 'pursuit-attack') return '↗';
    if (type === 'counter-blade') return '↩';
    if (type === 'parry-guard') return '⛨';
@@ -9672,12 +10059,12 @@ function getDynamicCardDisplayText(card) {
  }
 
  if (card.type === 'scaling-attack') {
-  const value = getScalingCardCurrentValue(card);
+  const value = getBattleCardDisplayValue(card);
   return `${value}ダメージ / 使うたび、この戦闘中の威力+2`;
  }
 
  if (card.type === 'scaling-defense') {
-  const value = getScalingCardCurrentValue(card);
+  const value = getBattleCardDisplayValue(card);
   return `防御+${value} / 使うたび、この戦闘中の防御+2`;
  }
 
@@ -9712,14 +10099,18 @@ function getDynamicCardDisplayText(card) {
 }
 
 function getBaseCardDisplayText(card) {
-   if (card.type === 'self-damage-attack') {
-    return '10ダメージ / 与えたダメージの1/2を受ける';
-   }
+    if (card.type === 'self-damage-attack') {
+     return '10ダメージ / 与えたダメージの1/2を受ける';
+    }
 
 
- if (!card) return '';
+  if (!card) return '';
 
- if (card.type === 'chance-attack') {
+  if (isBombCardType(card.type)) {
+   return card.text || '爆弾を操作する';
+  }
+
+  if (card.type === 'chance-attack') {
   return '50%の確率で10ダメージ';
  }
 
@@ -9979,7 +10370,21 @@ function updateDeckHoverDetail() {
 
 
 function getBattleCardDisplayValue(card) {
- if (!card) return getEffectiveCardValue(card);
+  if (!card) return getEffectiveCardValue(card);
+
+ if (isBombCardType(card.type)) {
+  if (card.type === 'bomb-powder-damage') return getEnemyBombs().length * Math.max(0, Number(card.value || 2));
+  if (['bomb-advance-one', 'bomb-advance-two', 'bomb-advance-all-one', 'bomb-advance-all-two'].includes(card.type)) return Number(card.value || 0);
+  return '';
+ }
+
+ if (card.type === 'scaling-attack') {
+  return getPlayerDamagePreviewValue(getEffectiveCardValue({ ...card, value: getScalingCardCurrentValue(card) }));
+ }
+
+ if (card.type === 'scaling-defense') {
+  return getEffectiveCardValue({ ...card, value: getScalingCardCurrentValue(card) });
+ }
 
  if (card.type === 'blood-slash') {
   return getPlayerDamagePreviewValue(getEffectiveCardValue({ ...card, type: 'attack', value: Number(card.value || 10) }));
@@ -9997,9 +10402,9 @@ function getBattleCardDisplayValue(card) {
 }
 
 function getDisplayCardText(card) {
-   if (card.type === 'self-damage-attack') {
-    return '10ダメージ / 与えたダメージの1/2を受ける';
-   }
+    if (card.type === 'self-damage-attack') {
+     return '10ダメージ / 与えたダメージの1/2を受ける';
+    }
 
 
  if (card.type === 'paralyze-bonus-attack') {
@@ -10007,9 +10412,14 @@ function getDisplayCardText(card) {
  }
 
 
- const value = getBattleCardDisplayValue(card);
+  const value = getBattleCardDisplayValue(card);
 
- if (card.type === 'blood-slash') {
+  if (isBombCardType(card.type)) {
+   if (card.type === 'bomb-powder-damage') return `設置中の爆弾${getEnemyBombs().length}個 × ${card.value || 2}ダメージ`;
+   return getBaseCardDisplayText(card);
+  }
+
+  if (card.type === 'blood-slash') {
   const selfDamage = Math.max(0, Number(card.selfDamage || 2));
   return `HPを${selfDamage}失う / ${value}ダメージ`;
  }
@@ -10227,9 +10637,10 @@ function getOwnedDeckEffectiveCardValue(card) {
 
 function getOwnedDeckCardDisplayText(card) {
  if (!card) return '';
- const value = getOwnedDeckEffectiveCardValue(card);
+  const value = getOwnedDeckEffectiveCardValue(card);
 
- if (card.type === 'attack' || card.type === 'rare-attack') return `${value}ダメージ`;
+  if (isBombCardType(card.type)) return getBaseCardDisplayText(card);
+  if (card.type === 'attack' || card.type === 'rare-attack') return `${value}ダメージ`;
  if (card.type === 'defense' || card.type === 'rare-defense') return `防御+${value}`;
  if (card.type === 'heal' || card.type === 'rare-heal') return `${value}回復`;
  if (card.type === 'dein') return `${value}ダメージ / 30%で麻痺${card.turns || 3}T付与`;
@@ -10857,11 +11268,18 @@ function getStatusBadgesHtml(target) {
     badges.push(`<div class="status-badge poison-badge">☠ 毒 <strong>${target.poisonTurns}T</strong></div>`);
    }
 
-   if (target.burn) {
-    badges.push(`<div class="status-badge burn-badge">🔥 火傷 <strong>${target.burnTurns || 0}T</strong></div>`);
-   }
+    if (target.burn) {
+     badges.push(`<div class="status-badge burn-badge">🔥 火傷 <strong>${target.burnTurns || 0}T</strong></div>`);
+    }
 
-   if (target.attackDownTurns && target.attackDownTurns > 0) {
+  if (Array.isArray(target.bombs) && target.bombs.length > 0) {
+    target.bombs.forEach(bomb => {
+      const bombPreviewMultiplier = Number(bomb.damageMultiplier || 1) * (1 + Math.max(0, Number(playerPassives.bombDamageBonusMultiplier || 0)));
+      badges.push(`<div class="status-badge bomb-badge">${escapeHtml(bomb.icon || '💣')} ${escapeHtml(bomb.name || '爆弾')} <strong>残り${Math.max(0, Number(bomb.count || 0))} / ${Math.round(Number(bomb.damage || 0) * bombPreviewMultiplier)}ダメ</strong></div>`);
+    });
+  }
+
+    if (target.attackDownTurns && target.attackDownTurns > 0) {
     badges.push(`<div class="status-badge attackdown-badge">🌫 攻撃力-${target.attackDownValue || 2} <strong>${target.attackDownTurns}T</strong></div>`);
    }
 
@@ -10930,6 +11348,12 @@ if (playerPassives.poisonDamageBonus > 0) {
 
    if (playerPassives.poisonThresholdDamageBonus > 0) badges.push(`<div class="passive-effect-badge">☠ 毒10T毎 ダメ+${playerPassives.poisonThresholdDamageBonus}</div>`);
    if (playerPassives.burnActionDelay > 0) badges.push(`<div class="passive-effect-badge">🔥 火傷付与時 敵行動+${playerPassives.burnActionDelay}秒</div>`);
+   if (playerPassives.bombDamageBonusMultiplier > 0) badges.push(`<div class="passive-effect-badge">💣 爆弾ダメ+${Math.round(playerPassives.bombDamageBonusMultiplier * 100)}%</div>`);
+   if (playerPassives.bombStartSmall > 0) badges.push(`<div class="passive-effect-badge">💣 戦闘開始 小爆弾+${playerPassives.bombStartSmall}</div>`);
+   if (playerPassives.bombFuseShorten > 0) badges.push(`<div class="passive-effect-badge">💣 設置時カウント-${playerPassives.bombFuseShorten}</div>`);
+   if (playerPassives.bombTimingReduce > 0) badges.push(`<div class="passive-effect-badge">💣 爆発タイミング-${playerPassives.bombTimingReduce}</div>`);
+   if (playerPassives.bombChainChance > 0) badges.push(`<div class="passive-effect-badge">💣 爆破連鎖${Math.round(playerPassives.bombChainChance * 100)}%</div>`);
+   if (playerPassives.bombDrawOnExplosion > 0) badges.push(`<div class="passive-effect-badge">💣 爆発時ドロー+${playerPassives.bombDrawOnExplosion}</div>`);
    if (playerPassives.criticalChanceBonus > 0) badges.push(`<div class="passive-effect-badge">💥 クリ率+${Math.round(playerPassives.criticalChanceBonus * 100)}%</div>`);
    if (playerPassives.shopCardChoiceBonus > 0) badges.push(`<div class="passive-effect-badge">🛒 ショップ選択上限+${playerPassives.shopCardChoiceBonus}</div>`);
    if (playerPassives.shopRerollBonus > 0) badges.push(`<div class="passive-effect-badge">🔁 リロール+${playerPassives.shopRerollBonus}</div>`);
@@ -11194,9 +11618,10 @@ function render() {
     + `${isEnemyParalysisImmune() ? ' / 麻痺無効' : ''}`
     + `${isEnemyFreezeImmune() ? ' / 凍結無効' : ''}`
     + `${cpu.paralysis && cpu.paralysis > 0 ? ` / 麻痺:${cpu.paralysis}` : ''}`
-    + `${cpu.freeze && cpu.freeze > 0 ? ` / 凍結` : ''}`
-    + `${cpu.poisonTurns && cpu.poisonTurns > 0 ? ` / 毒:${cpu.poisonTurns}T` : ''}`
-    + `${cpu.burn && cpu.burnTurns && cpu.burnTurns > 0 ? ` / 火傷:${cpu.burnTurns}T` : (cpu.burn ? ' / 火傷' : '')}`;
+     + `${cpu.freeze && cpu.freeze > 0 ? ` / 凍結` : ''}`
+     + `${cpu.poisonTurns && cpu.poisonTurns > 0 ? ` / 毒:${cpu.poisonTurns}T` : ''}`
+     + `${cpu.burn && cpu.burnTurns && cpu.burnTurns > 0 ? ` / 火傷:${cpu.burnTurns}T` : (cpu.burn ? ' / 火傷' : '')}`
+     + `${cpu.bombs && cpu.bombs.length > 0 ? ` / 爆弾:${cpu.bombs.length}個` : ''}`;
 
    const playerHpFill = document.getElementById('player-hp-fill');
    const cpuHpFill = document.getElementById('cpu-hp-fill');
@@ -11211,7 +11636,7 @@ function render() {
    const reloadCount = document.getElementById('reload-count');
 
    reloadStatus.style.display = player.reloading ? 'flex' : 'none';
-   reloadCount.textContent = player.reloading ? `${Math.max(0, Number(player.reloadTimer || 0)).toFixed(1).replace('.0', '')}秒` : '';
+   reloadCount.textContent = player.reloading ? `${Math.max(0, Number(player.reloadTimer || 0)).toFixed(1)}秒` : '';
 
    const cooldownStatus = document.getElementById('cooldown-status');
    const cooldownCount = document.getElementById('cooldown-count');
@@ -11318,7 +11743,7 @@ const cards = document.getElementById('cards');
    cards.innerHTML = '';
 
    if (player.reloading) {
-    cards.innerHTML = `<div class="reload-panel">リロード中... ${Math.max(0, Number(player.reloadTimer || 0)).toFixed(1).replace('.0', '')}</div>`;
+    cards.innerHTML = `<div class="reload-panel">リロード中... ${Math.max(0, Number(player.reloadTimer || 0)).toFixed(1)}秒</div>`;
    } else {
     player.hand.forEach(card => {
      const button = document.createElement('button');
@@ -11532,7 +11957,7 @@ const cards = document.getElementById('cards');
     }
 
     if (resultMenuButton) {
-     resultMenuButton.style.display = '';
+     resultMenuButton.style.display = playerWon ? 'none' : '';
     }
 
     if (victoryActions) {
@@ -11568,6 +11993,7 @@ window.confirmRandomEventResult = confirmRandomEventResult;
 window.declineRandomEvent = declineRandomEvent;
 window.chooseRandomEventCard = chooseRandomEventCard;
 window.chooseRandomEventRemoveCard = chooseRandomEventRemoveCard;
+window.chooseBombToCompress = chooseBombToCompress;
 window.saveFromTitleMenu = saveFromTitleMenu;
 window.startBattle = startBattle;
 window.applyDeckPreset = applyDeckPreset;
