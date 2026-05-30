@@ -4219,6 +4219,15 @@ function chooseBombToCompress(bombId) {
  render();
 }
 
+function applyBattleStartPassives() {
+ if (!cpu || pendingPassiveChoice || pendingShopChoice) return;
+
+ const startSmallBombCount = Math.max(0, Number(playerPassives.bombStartSmall || 0));
+ for (let i = 0; i < startSmallBombCount; i++) {
+  addBombToEnemy('small', { source: '爆弾魔' });
+ }
+}
+
 function isPlayerStatusGuardActive() {
  return Boolean(player && Number(player.statusGuardTurns || 0) > 0);
 }
@@ -5883,10 +5892,6 @@ function saveDeckCustomize() {
      bombs: [],
     };
 
-    for (let i = 0; i < Math.max(0, Number(playerPassives.bombStartSmall || 0)); i++) {
-     addBombToEnemy('small', { source: '爆弾魔' });
-    }
-
     pendingVoidEntranceAnimation = enemyLevel >= 20 && cpu.phase === 1;
 
    // 図鑑の遭遇回数は「実際に戦闘へ入ったタイミング」でだけ加算する。
@@ -5909,6 +5914,7 @@ function saveDeckCustomize() {
    enemyTimer = getEnemyActionInterval();
 
    setCpuNextAction();
+   applyBattleStartPassives();
 
    if (keepTimer) 
 
