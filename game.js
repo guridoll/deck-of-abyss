@@ -7683,6 +7683,14 @@ function consumeAttackBoostsAfterAttack() {
  }
 }
 
+function consumeDefenseBoostsAfterDefense() {
+ if (!player) return;
+
+ if (player.enhanceNextDefense) {
+  player.enhanceNextDefense = false;
+ }
+}
+
 function isChanceOutcomeCard(card) {
  if (!card) return false;
  return [
@@ -7850,19 +7858,21 @@ function playPlayerCard(id, options = {}) {
    }
 
    if (card.type === 'parry-guard') {
-    const blockValue = getEffectiveCardValue(card);
-    player.block += blockValue;
-    player.nextReloadTimeReduce = Math.max(Number(player.nextReloadTimeReduce || 0), Number(card.reloadReduce || 0.2));
-    recordAchievementMax('maxBlock', player.block || 0);
+   const blockValue = getEffectiveCardValue(card);
+   player.block += blockValue;
+   consumeDefenseBoostsAfterDefense();
+   player.nextReloadTimeReduce = Math.max(Number(player.nextReloadTimeReduce || 0), Number(card.reloadReduce || 0.2));
+   recordAchievementMax('maxBlock', player.block || 0);
     triggerCardVisualEffect('.player-img', 'enhance');
     addLog(`あなた：${card.name} (防御+${blockValue} / 次のリロード-${card.reloadReduce || 0.2}秒)`);
     playSound('defense');
    }
 
    if (card.type === 'prepared-guard') {
-    const blockValue = getEffectiveCardValue(card);
-    player.block += blockValue;
-    recordAchievementMax('maxBlock', player.block || 0);
+   const blockValue = getEffectiveCardValue(card);
+   player.block += blockValue;
+   consumeDefenseBoostsAfterDefense();
+   recordAchievementMax('maxBlock', player.block || 0);
     const lowHand = Math.max(0, player.hand.length - 1) <= 2;
     const drawn = lowHand ? drawCardsToPlayerHand(1) : [];
     if (drawn.length > 0) triggerCardResultReveal(drawn, 'ドロー', `${drawn.length}枚引いた`, { delay: 760 });
