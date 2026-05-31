@@ -2933,8 +2933,11 @@ body > #shop-modal .shop-options,
 
 /* 毒：紫緑 */
 .card.poison,
+.card.poison-card,
 .shop-card.poison,
-.customize-card.poison-card {
+.shop-card.poison-card,
+.customize-card.poison-card,
+.library-card.poison-card {
   background:
     radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 34%),
     linear-gradient(160deg, rgba(63,98,18,0.98), rgba(101,163,13,0.86) 48%, rgba(49,46,129,0.98)) !important;

@@ -329,6 +329,15 @@ const PET_POOL = [
    { name: 'ヒョード', type: 'freeze', value: 3, text: '3ダメージ / 凍結付与' },
    { name: 'どくばり', type: 'poison', value: 1, turns: 5, text: '1ダメージ / 毒5T付与' },
    { name: 'ポイズンスラッシュ', type: 'poison', value: 3, turns: 3, text: '3ダメージ / 毒3T付与', shopOnly: true },
+   { name: '毒刃', type: 'poison', value: 5, turns: 3, text: '5ダメージ / 毒3付与' },
+   { name: '毒霧', type: 'poison-cloud', value: 0, turns: 5, text: '毒5付与' },
+   { name: '蛇牙', type: 'poison-fang', value: 3, text: '3ダメージ / 敵の毒の数だけ追加ダメージ' },
+   { name: '猛毒注入', type: 'poison-inject', value: 0, turns: 10, text: '毒10付与', rare: true },
+   { name: '毒爆発', type: 'poison-burst', value: 2, text: '敵の毒を半分消費 / 消費毒×2ダメージ', rare: true },
+   { name: '侵食', type: 'poison-vulnerability', value: 0, turns: 3, text: '毒状態の敵が受けるダメージ+50% / 3T', rare: true },
+   { name: '毒吸収', type: 'poison-drain', value: 0, text: '敵の毒を全消費 / 消費毒の半分だけ回復', rare: true },
+   { name: '毒の宴', type: 'poison-banquet', value: 0, text: '敵の現在毒量と同じダメージ', rare: true, epic: true },
+   { name: '疫病', type: 'poison-plague', value: 2, text: '敵の毒が毎ターン+2 / 使用後破棄', rare: true, epic: true },
    { name: '火花斬り', type: 'burn', value: 2, chance: 0.3, turns: 3, burnText: '火傷+3T', text: '2ダメージ / 30%で火傷3T付与', shopOnly: true },
    { name: '小爆弾設置', type: 'bomb-place-small', value: 0, bombKind: 'small', text: '小爆弾を付与する' },
    { name: '爆弾設置', type: 'bomb-place-normal', value: 0, bombKind: 'normal', text: '爆弾を付与する' },
@@ -1215,6 +1224,11 @@ const PET_POOL = [
    healBonus: 0,
    petActionCostReduce: 0,
    poisonDamageBonus: 0,
+   poisonApplyBonus: 0,
+   poisonDrawChance: 0,
+   poisonHealOnDamage: 0,
+   poisonOverdriveThreshold: 0,
+   poisonOverdriveMultiplier: 1,
    petLevelBonus: 0,
    petAttackPowerBonus: 0,
    poisonThresholdDamageBonus: 0,
@@ -2645,6 +2659,15 @@ function getCardCooldownSeconds(card) {
   'ヒョード': 1.5,
   'どくばり': 0.5,
   'ポイズンスラッシュ': 1,
+  '毒刃': 1,
+  '毒霧': 1,
+  '蛇牙': 1.2,
+  '猛毒注入': 1.7,
+  '毒爆発': 1.5,
+  '侵食': 1.4,
+  '毒吸収': 1.6,
+  '毒の宴': 2.2,
+  '疫病': 2,
   '火花斬り': 1,
   'エグゼキューション': 2,
   '瞑想': 3,
@@ -2756,6 +2779,7 @@ function isAttackCardType(type) {
   || type === 'dein'
   || type === 'freeze'
   || type === 'poison'
+  || type === 'poison-fang'
   || type === 'burn'
   || type === 'gamble-attack'
   || type === 'double-slash'
@@ -2952,6 +2976,26 @@ function getNormalPassiveOptions() {
    },
   },
   {
+   id: 'poisonScholar',
+   icon: '☠',
+   rarity: 'normal',
+   name: '毒学者',
+   text: '毒付与量+1。',
+   apply() {
+    playerPassives.poisonApplyBonus += 1;
+   },
+  },
+  {
+   id: 'poisonCycle',
+   icon: '☠📚',
+   rarity: 'normal',
+   name: '毒循環',
+   text: '毒を付与した時、10%で1ドロー。',
+   apply() {
+    playerPassives.poisonDrawChance += 0.1;
+   },
+  },
+  {
    id: 'criticalChanceBonus',
    icon: '💥',
    rarity: 'normal',
@@ -3119,6 +3163,27 @@ function getRarePassiveOptions() {
    text: '敵の毒10T毎に毒ダメージ+5。',
    apply() {
     playerPassives.poisonThresholdDamageBonus += 5;
+   },
+  },
+  {
+   id: 'poisonBlood',
+   icon: '☠💚',
+   rarity: 'rare',
+   name: '毒血',
+   text: '敵が毒ダメージを受ける度、HP1回復。',
+   apply() {
+    playerPassives.poisonHealOnDamage += 1;
+   },
+  },
+  {
+   id: 'poisonOverdrive',
+   icon: '☠🔥',
+   rarity: 'rare',
+   name: '毒暴走',
+   text: '敵の毒が20以上の時、毒ダメージ2倍。',
+   apply() {
+    playerPassives.poisonOverdriveThreshold = 20;
+    playerPassives.poisonOverdriveMultiplier = Math.max(Number(playerPassives.poisonOverdriveMultiplier || 1), 2);
    },
   },
   {
@@ -4312,6 +4377,8 @@ function clearEnemyStatusEffects() {
   cpu.paralysis = 0;
   cpu.freeze = 1;
   cpu.poisonTurns = 0;
+  cpu.poisonVulnerabilityTurns = 0;
+  cpu.poisonGrowthPerTurn = 0;
   cpu.burn = false;
   cpu.burnTurns = 0;
   cpu.bombs = [];
@@ -6136,6 +6203,11 @@ function saveDeckCustomize() {
     healBonus: 0,
     petActionCostReduce: 0,
     poisonDamageBonus: 0,
+    poisonApplyBonus: 0,
+    poisonDrawChance: 0,
+    poisonHealOnDamage: 0,
+    poisonOverdriveThreshold: 0,
+    poisonOverdriveMultiplier: 1,
     petLevelBonus: 0,
     petAttackPowerBonus: 0,
     poisonThresholdDamageBonus: 0,
@@ -6330,6 +6402,8 @@ function saveDeckCustomize() {
     paralysis: 0,
     freeze: 0,
     poisonTurns: 0,
+    poisonVulnerabilityTurns: 0,
+    poisonGrowthPerTurn: 0,
     burn: false,
     burnTurns: 0,
     attackDownTurns: 0,
@@ -6861,6 +6935,16 @@ function playSound(type) {
    if (frozenVulnerabilityApplied) {
     incomingDamage = Math.ceil(incomingDamage * (1 + frozenVulnerabilityBonus));
    }
+   const poisonVulnerabilityBonus = target === cpu
+    && target
+    && Number(target.poisonTurns || 0) > 0
+    && Number(target.poisonVulnerabilityTurns || 0) > 0
+    ? 0.5
+    : 0;
+   const poisonVulnerabilityApplied = poisonVulnerabilityBonus > 0 && incomingDamage > 0;
+   if (poisonVulnerabilityApplied) {
+    incomingDamage = Math.ceil(incomingDamage * (1 + poisonVulnerabilityBonus));
+   }
    const vulnerableCurseCards = target === player && incomingDamage > 0 ? getHandCurseCards('curse-vulnerable') : [];
    if (vulnerableCurseCards.length > 0) {
     const curseBonus = vulnerableCurseCards.reduce((total, card) => total + getCurseCardValue(card, 2), 0);
@@ -6931,6 +7015,7 @@ function playSound(type) {
     fullyBlocked: actualDamage <= 0,
     endured,
     frozenVulnerabilityApplied,
+    poisonVulnerabilityApplied,
     lowHpReductionApplied,
    };
   }
@@ -8014,6 +8099,33 @@ function recordRunCardPlay(card) {
    }
 }
 
+function getEnemyPoisonAmount() {
+ return Math.max(0, Math.floor(Number(cpu?.poisonTurns || 0)));
+}
+
+function applyPoisonToEnemy(amount, options = {}) {
+ if (!cpu || gameOver) return { applied: 0, drawn: [] };
+
+ const baseAmount = Math.max(0, Math.floor(Number(amount || 0)));
+ const bonus = options.ignorePassiveBonus ? 0 : Math.max(0, Math.floor(Number(playerPassives.poisonApplyBonus || 0)));
+ const applied = baseAmount + bonus;
+ if (applied <= 0) return { applied: 0, drawn: [] };
+
+ cpu.poisonTurns = getEnemyPoisonAmount() + applied;
+ triggerPoisonEffect('.cpu-img');
+
+ let drawn = [];
+ const drawChance = Math.max(0, Number(playerPassives.poisonDrawChance || 0));
+ if (!options.skipDrawChance && drawChance > 0 && Math.random() < drawChance) {
+  drawn = drawCardsToPlayerHand(1);
+  if (drawn.length > 0) {
+   triggerCardResultReveal(drawn, '毒循環', '1ドロー', { delay: 540 });
+  }
+ }
+
+ return { applied, drawn };
+}
+
 function playPlayerCard(id, options = {}) {
    if (player && player.cooldown && Number(player.cooldownTimer || 0) <= 0) {
     player.cooldown = false;
@@ -8867,13 +8979,11 @@ if (card.type === 'dein') {
     consumeAttackBoostsAfterAttack();
 
     const poisonTurns = Math.max(1, Number(card.turns || 5));
-    cpu.poisonTurns = (cpu.poisonTurns || 0) + poisonTurns;
+    const poison = applyPoisonToEnemy(poisonTurns);
 
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
 
     triggerDamageShake('.cpu-img');
-    triggerPoisonEffect('.cpu-img');
-
     addLog(`あなた：${card.name} (${result.damage}ダメージ / 毒+${poisonTurns}T)`);
 
     if (result.fullyBlocked) {
@@ -8885,8 +8995,77 @@ if (card.type === 'dein') {
     playSound('poison');
    }
 
-   
-   
+   if (card.type === 'poison-cloud' || card.type === 'poison-inject') {
+    const poison = applyPoisonToEnemy(Math.max(1, Number(card.turns || 5)));
+    showDamagePopup('cpu-hp-change', `毒+${poison.applied}`);
+    addLog(`あなた：${card.name} (毒+${poison.applied})`);
+    playSound('poison');
+   }
+
+   if (card.type === 'poison-fang') {
+    const poisonAmount = getEnemyPoisonAmount();
+    const attackValue = getEffectiveCardValue(card) + poisonAmount;
+    const result = applyPlayerCardDamage(attackValue);
+    consumeAttackBoostsAfterAttack();
+    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+    triggerDamageShake('.cpu-img');
+    triggerPoisonEffect('.cpu-img');
+    addLog(`あなた：${card.name} (${result.damage}ダメージ / 毒量+${poisonAmount})`);
+    playSound(result.fullyBlocked ? 'guard' : 'attack');
+   }
+
+   if (card.type === 'poison-burst') {
+    const beforePoison = getEnemyPoisonAmount();
+    const consumed = Math.floor(beforePoison / 2);
+    cpu.poisonTurns = Math.max(0, beforePoison - consumed);
+    const damage = consumed * Math.max(1, Number(card.value || 2));
+    const result = applyDamage(cpu, damage);
+    showDamagePopup('cpu-hp-change', damage > 0 ? getDamagePopupText(result) : '毒不足');
+    triggerPoisonEffect('.cpu-img');
+    addLog(`あなた：${card.name} (毒${consumed}消費 / ${result.damage}ダメージ / 残り毒${getEnemyPoisonAmount()})`);
+    playSound(damage > 0 ? 'poison' : 'miss');
+   }
+
+   if (card.type === 'poison-vulnerability') {
+    const turns = Math.max(1, Number(card.turns || 3));
+    cpu.poisonVulnerabilityTurns = Math.max(Number(cpu.poisonVulnerabilityTurns || 0), turns);
+    triggerPoisonEffect('.cpu-img');
+    showDamagePopup('cpu-hp-change', `侵食${turns}T`);
+    addLog(`あなた：${card.name} (毒状態の敵が受けるダメージ+50% / ${turns}T)`);
+    playSound('poison');
+   }
+
+   if (card.type === 'poison-drain') {
+    const consumed = getEnemyPoisonAmount();
+    cpu.poisonTurns = 0;
+    const heal = Math.floor(consumed / 2);
+    const beforeHp = player.hp;
+    player.hp = Math.min(getPlayerMaxHp(), Number(player.hp || 0) + heal);
+    const healed = player.hp - beforeHp;
+    showDamagePopup('player-hp-change', healed > 0 ? `+${healed}` : '0');
+    triggerCardVisualEffect('.player-img', 'heal');
+    addLog(`あなた：${card.name} (毒${consumed}消費 / HP+${healed})`);
+    playSound(healed > 0 ? 'success' : 'miss');
+   }
+
+   if (card.type === 'poison-banquet') {
+    const poisonAmount = getEnemyPoisonAmount();
+    const result = applyDamage(cpu, poisonAmount);
+    showDamagePopup('cpu-hp-change', poisonAmount > 0 ? getDamagePopupText(result) : '毒不足');
+    triggerPoisonEffect('.cpu-img');
+    addLog(`あなた：${card.name} (${result.damage}ダメージ / 毒量${poisonAmount})`);
+    playSound(poisonAmount > 0 ? 'poison' : 'miss');
+   }
+
+   if (card.type === 'poison-plague') {
+    cpu.poisonGrowthPerTurn = Math.max(Number(cpu.poisonGrowthPerTurn || 0), Math.max(1, Number(card.value || 2)));
+    excludeCardTypeForCurrentBattle(card.type, card.id);
+    triggerPoisonEffect('.cpu-img');
+    showDamagePopup('cpu-hp-change', `毒成長+${cpu.poisonGrowthPerTurn}`);
+    addLog(`あなた：${card.name} (敵の毒が毎ターン+${cpu.poisonGrowthPerTurn} / 使用後破棄)`);
+    playSound('poison');
+   }
+
    if (card.type === 'double-slash') {
     let attackValue = getEffectiveCardValue(card);
 
@@ -9388,15 +9567,33 @@ if (card.type === 'rare-attack') {
 
 
   function applyPoisonAfterEnemyAction() {
-   if (!cpu || !cpu.poisonTurns || cpu.poisonTurns <= 0) return;
+   if (!cpu) return;
+
+   const growth = Math.max(0, Math.floor(Number(cpu.poisonGrowthPerTurn || 0)));
+   if (growth > 0) {
+    cpu.poisonTurns = getEnemyPoisonAmount() + growth;
+    showDamagePopup('cpu-hp-change', `毒+${growth}`);
+   }
+
+   if (!cpu.poisonTurns || cpu.poisonTurns <= 0) return;
 
    const poisonStacks = Number(cpu.poisonTurns || 0);
    const poisonThresholdMultiplier = Math.floor(poisonStacks / 10);
    const thresholdBonus = poisonThresholdMultiplier * Math.max(0, Number(playerPassives.poisonThresholdDamageBonus || 0));
-   const poisonDamage = 1 + (playerPassives.poisonDamageBonus || 0) + thresholdBonus;
+   const overdriveActive = Number(playerPassives.poisonOverdriveThreshold || 0) > 0
+    && poisonStacks >= Number(playerPassives.poisonOverdriveThreshold || 0);
+   const overdriveMultiplier = overdriveActive ? Math.max(1, Number(playerPassives.poisonOverdriveMultiplier || 1)) : 1;
+   const poisonDamage = (1 + (playerPassives.poisonDamageBonus || 0) + thresholdBonus) * overdriveMultiplier;
    const result = applyDamage(cpu, poisonDamage, { ignoreBlock: true, preserveBlock: true });
 
    cpu.poisonTurns--;
+
+   if (result.damage > 0 && playerPassives.poisonHealOnDamage > 0 && player) {
+    const beforeHp = player.hp;
+    player.hp = Math.min(getPlayerMaxHp(), Number(player.hp || 0) + Number(playerPassives.poisonHealOnDamage || 0));
+    const healed = player.hp - beforeHp;
+    if (healed > 0) showDamagePopup('player-hp-change', `+${healed}`);
+   }
 
    showDamagePopup('cpu-hp-change', `-${result.damage}`);
    triggerPoisonEffect('.cpu-img');
@@ -9593,6 +9790,14 @@ if (card.type === 'rare-attack') {
      cpu.defenseDownTurns = 0;
      cpu.defenseDownValue = 0;
      addLog(`${getEnemyName()}：防御力低下が解除`);
+    }
+   }
+
+   if (cpu.poisonVulnerabilityTurns && cpu.poisonVulnerabilityTurns > 0) {
+    cpu.poisonVulnerabilityTurns = Math.max(0, Number(cpu.poisonVulnerabilityTurns || 0) - 1);
+    if (cpu.poisonVulnerabilityTurns <= 0) {
+     cpu.poisonVulnerabilityTurns = 0;
+     addLog(`${getEnemyName()}：侵食が解除`);
     }
    }
 
@@ -10458,6 +10663,9 @@ function getCardVisualClass(card) {
    if (card.name === '血の奮起') {
     classes.push('blood-attack-buff-card');
    }
+   if (card.type === 'poison' || String(card.type || '').startsWith('poison-')) {
+    classes.push('poison-card');
+   }
    if (isBombCardType(card.type)) {
     classes.push('bomb-card');
    }
@@ -10496,6 +10704,7 @@ if (type === 'drain-sword') return '🩸';
    if (type === 'dein') return '🌩️';
    if (type === 'freeze') return '❄️';
    if (type === 'poison') return '☠️';
+   if (String(type || '').startsWith('poison-')) return '☠️';
    if (type === 'burn') return '🔥';
    if (type === 'pure-burn') return '🔥';
    if (type === 'gamble-attack') return '🎲';
@@ -10598,6 +10807,25 @@ function getDynamicCardDisplayText(card) {
 
  if (card.type === 'blood-attack-buff') {
   return `HPを${card.selfDamage || 10}失う / ${card.turns || 3}T 攻撃+${card.value || 5}`;
+ }
+
+ if (card.type === 'poison-fang') {
+  return `${getBattleCardDisplayValue(card)}ダメージ / 敵の毒量ぶん追加`;
+ }
+
+ if (card.type === 'poison-burst') {
+  const poisonAmount = getEnemyPoisonAmount();
+  const consumed = Math.floor(poisonAmount / 2);
+  return `毒${consumed}消費 / ${consumed * Math.max(1, Number(card.value || 2))}ダメージ`;
+ }
+
+ if (card.type === 'poison-drain') {
+  const poisonAmount = getEnemyPoisonAmount();
+  return `毒${poisonAmount}全消費 / HP+${Math.floor(poisonAmount / 2)}`;
+ }
+
+ if (card.type === 'poison-banquet') {
+  return `${getEnemyPoisonAmount()}ダメージ / 毒量参照`;
  }
 
  return getBaseCardDisplayText(card);
@@ -11063,6 +11291,34 @@ if (card.type === 'pet-attack-up') {
   return `${value}ダメージ / 毒${card.turns || 3}T付与`;
  }
 
+ if (card.type === 'poison-cloud' || card.type === 'poison-inject') {
+  return `毒${card.turns || 5}付与`;
+ }
+
+ if (card.type === 'poison-fang') {
+  return `${value}ダメージ / 敵の毒量ぶん追加ダメージ`;
+ }
+
+ if (card.type === 'poison-burst') {
+  return '敵の毒を半分消費 / 消費毒×2ダメージ';
+ }
+
+ if (card.type === 'poison-vulnerability') {
+  return `毒状態の敵が受けるダメージ+50% / ${card.turns || 3}T`;
+ }
+
+ if (card.type === 'poison-drain') {
+  return '敵の毒を全消費 / 消費毒の半分だけ回復';
+ }
+
+ if (card.type === 'poison-banquet') {
+  return '敵の現在毒量と同じダメージ';
+ }
+
+ if (card.type === 'poison-plague') {
+  return '敵の毒が毎ターン+2 / 使用後破棄';
+ }
+
  if (card.type === 'burn') {
   const chanceText = card.chance != null ? `${Math.round(card.chance * 100)}%で` : '50%で';
   return `${value}ダメージ / ${chanceText}火傷${card.turns || 3}T付与`;
@@ -11151,6 +11407,7 @@ function getOwnedDeckCardDisplayText(card) {
  if (card.type === 'dein') return `${value}ダメージ / 30%で麻痺${card.turns || 3}T付与`;
  if (card.type === 'freeze') return `${value}ダメージ / 凍結付与`;
  if (card.type === 'poison') return `${value}ダメージ / 毒${card.turns || 3}T付与`;
+ if (String(card.type || '').startsWith('poison-')) return getBaseCardDisplayText(card);
  if (card.type === 'burn') {
   const chanceText = card.chance != null ? `${Math.round(card.chance * 100)}%で` : '50%で';
   return `${value}ダメージ / ${chanceText}火傷${card.turns || 3}T付与`;
@@ -11774,7 +12031,13 @@ function getStatusBadgesHtml(target) {
    }
 
    if (target.poisonTurns && target.poisonTurns > 0) {
-    badges.push(`<div class="status-badge poison-badge">☠ 毒 <strong>${target.poisonTurns}T</strong></div>`);
+    badges.push(`<div class="status-badge poison-badge">☠ 毒量 <strong>${target.poisonTurns}</strong></div>`);
+   }
+   if (target.poisonVulnerabilityTurns && target.poisonVulnerabilityTurns > 0) {
+    badges.push(`<div class="status-badge poison-badge">☠ 侵食 <strong>${target.poisonVulnerabilityTurns}T</strong></div>`);
+   }
+   if (target.poisonGrowthPerTurn && target.poisonGrowthPerTurn > 0) {
+    badges.push(`<div class="status-badge poison-badge">☠ 疫病 <strong>+${target.poisonGrowthPerTurn}</strong></div>`);
    }
 
     if (target.burn) {
@@ -11862,6 +12125,10 @@ if (playerPassives.poisonDamageBonus > 0) {
    }
 
    if (playerPassives.poisonThresholdDamageBonus > 0) badges.push(`<div class="passive-effect-badge">☠ 毒10T毎 ダメ+${playerPassives.poisonThresholdDamageBonus}</div>`);
+   if (playerPassives.poisonApplyBonus > 0) badges.push(`<div class="passive-effect-badge">☠ 毒付与+${playerPassives.poisonApplyBonus}</div>`);
+   if (playerPassives.poisonDrawChance > 0) badges.push(`<div class="passive-effect-badge">☠ 毒付与時ドロー${Math.round(playerPassives.poisonDrawChance * 100)}%</div>`);
+   if (playerPassives.poisonHealOnDamage > 0) badges.push(`<div class="passive-effect-badge">☠ 毒ダメ時HP+${playerPassives.poisonHealOnDamage}</div>`);
+   if (playerPassives.poisonOverdriveThreshold > 0) badges.push(`<div class="passive-effect-badge">☠ 毒${playerPassives.poisonOverdriveThreshold}+で毒ダメ2倍</div>`);
    if (playerPassives.burnActionDelay > 0) badges.push(`<div class="passive-effect-badge">🔥 火傷付与時 敵行動+${playerPassives.burnActionDelay}秒</div>`);
    if (playerPassives.bombDamageBonusMultiplier > 0) badges.push(`<div class="passive-effect-badge">💣 爆弾ダメ+${Math.round(playerPassives.bombDamageBonusMultiplier * 100)}%</div>`);
    if (playerPassives.bombStartSmall > 0) badges.push(`<div class="passive-effect-badge">💣 戦闘開始 小爆弾+${playerPassives.bombStartSmall}</div>`);
@@ -12177,7 +12444,7 @@ function render() {
     + `${isEnemyFreezeImmune() ? ' / 凍結無効' : ''}`
     + `${cpu.paralysis && cpu.paralysis > 0 ? ` / 麻痺:${cpu.paralysis}` : ''}`
      + `${cpu.freeze && cpu.freeze > 0 ? ` / 凍結` : ''}`
-     + `${cpu.poisonTurns && cpu.poisonTurns > 0 ? ` / 毒:${cpu.poisonTurns}T` : ''}`
+     + `${cpu.poisonTurns && cpu.poisonTurns > 0 ? ` / 毒量:${cpu.poisonTurns}` : ''}`
      + `${cpu.burn && cpu.burnTurns && cpu.burnTurns > 0 ? ` / 火傷:${cpu.burnTurns}T` : (cpu.burn ? ' / 火傷' : '')}`
      + `${cpu.bombs && cpu.bombs.length > 0 ? ` / 爆弾:${cpu.bombs.length}個` : ''}`;
 

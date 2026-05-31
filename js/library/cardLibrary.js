@@ -75,6 +75,10 @@
     return 'defense';
    }
 
+   if (String(card.type || '').startsWith('poison-')) {
+    return 'status';
+   }
+
    if (card.type === 'dein'
     || card.type === 'pure-paralysis'
     || card.type === 'freeze'
