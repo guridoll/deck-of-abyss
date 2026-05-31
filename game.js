@@ -2814,7 +2814,7 @@ function getNormalPassiveOptions() {
    icon: '⚠️',
    rarity: 'normal',
    name: '危険察知',
-   text: '敵の強攻撃予兆時、自動で防御+3。',
+   text: '敵が次に攻撃しようとしている時、自動で防御+3。',
    apply() {
     playerPassives.dangerSenseBlock += 3;
    },
@@ -4325,22 +4325,17 @@ function isEnemyDamageAction(action) {
  return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison'].includes(action?.type);
 }
 
-function getDangerSenseThreshold() {
- return 20;
-}
-
 function applyDangerSenseForNextAction() {
  if (!player || !cpu || !cpu.nextAction || gameOver) return;
 
  const blockGain = Math.max(0, Number(playerPassives.dangerSenseBlock || 0));
- const actionDamage = Math.max(0, Number(cpu.nextAction.value || 0));
- if (blockGain <= 0 || !isEnemyDamageAction(cpu.nextAction) || actionDamage < getDangerSenseThreshold()) return;
+ if (blockGain <= 0 || !isEnemyDamageAction(cpu.nextAction)) return;
  if (cpu.nextAction.dangerSenseApplied) return;
 
  cpu.nextAction.dangerSenseApplied = true;
  player.block += blockGain;
  recordAchievementMax('maxBlock', player.block || 0);
- addLog(`危険察知：強攻撃を察知して防御+${blockGain}`);
+ addLog(`危険察知：敵の攻撃を察知して防御+${blockGain}`);
  showDamagePopup('player-hp-change', `防御+${blockGain}`);
  triggerCardVisualEffect('.player-img', 'guard');
  playSound('guard');
@@ -11600,7 +11595,7 @@ function getPassiveEffectBadgesHtml() {
    if (playerPassives.lowHandAttackBonus > 0) badges.push(`<div class="passive-effect-badge">🎯 手札2枚以下 攻撃+${playerPassives.lowHandAttackBonus}</div>`);
    if (playerPassives.maxHpOnBattleWin > 0) badges.push(`<div class="passive-effect-badge">🩹 勝利時 最大HP+${playerPassives.maxHpOnBattleWin}</div>`);
    if (playerPassives.lowHpDamageReduction > 0) badges.push(`<div class="passive-effect-badge">🛡 HP30%以下 被ダメ-${Math.round(playerPassives.lowHpDamageReduction * 100)}%</div>`);
-   if (playerPassives.dangerSenseBlock > 0) badges.push(`<div class="passive-effect-badge">⚠️ 強攻撃予兆 防御+${playerPassives.dangerSenseBlock}</div>`);
+   if (playerPassives.dangerSenseBlock > 0) badges.push(`<div class="passive-effect-badge">⚠️ 敵攻撃予兆 防御+${playerPassives.dangerSenseBlock}</div>`);
    if (playerPassives.enemyDelay > 0) badges.push(`<div class="passive-effect-badge">⏳ 敵行動 +${playerPassives.enemyDelay}秒</div>`);
    if (playerPassives.cooldownReduce > 0) badges.push(`<div class="passive-effect-badge">⏩ 硬直 -${playerPassives.cooldownReduce.toFixed(1)}秒</div>`);
    if (playerPassives.reloadTimeReduce > 0) badges.push(`<div class="passive-effect-badge">🔄 リロード -${playerPassives.reloadTimeReduce}秒</div>`);
