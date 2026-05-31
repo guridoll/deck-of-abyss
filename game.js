@@ -58,9 +58,9 @@ if (document.readyState === 'loading') {
 const MAX_HP = 40;
 const DEPTH_PROGRESS_STORAGE_KEY = 'deckOfAbyssDepthProgressV1';
 const DEPTH_CONFIG = {
- 1: { id: 1, name: '深度1', label: '深度1：浅層', description: '敵パッシブなし / 敵HP・攻撃70% / 初期最大HP60', enemyHpMultiplier: 0.7, enemyAttackMultiplier: 0.7, playerMaxHp: 60, enemyPassives: false },
- 2: { id: 2, name: '深度2', label: '深度2：中層', description: '敵パッシブあり / 敵HP・攻撃80% / 初期最大HP50', enemyHpMultiplier: 0.8, enemyAttackMultiplier: 0.8, playerMaxHp: 50, enemyPassives: true },
- 3: { id: 3, name: '深度3', label: '深度3：深淵', description: '敵パッシブあり / 敵HP・攻撃100% / 初期最大HP40', enemyHpMultiplier: 1, enemyAttackMultiplier: 1, playerMaxHp: 40, enemyPassives: true },
+ 1: { id: 1, name: '深度1', label: '深度1：浅層', description: '特になし', enemyHpMultiplier: 0.65, enemyAttackMultiplier: 0.65, playerMaxHp: 60, enemyPassives: false },
+ 2: { id: 2, name: '深度2', label: '深度2：中層', description: '深度1比：敵HP・攻撃+10% / プレイヤーHP-10 / 敵パッシブあり', enemyHpMultiplier: 0.75, enemyAttackMultiplier: 0.75, playerMaxHp: 50, enemyPassives: true },
+ 3: { id: 3, name: '深度3', label: '深度3：深淵', description: '深度1比：敵HP・攻撃+35% / プレイヤーHP-20 / 敵パッシブあり', enemyHpMultiplier: 1, enemyAttackMultiplier: 1, playerMaxHp: 40, enemyPassives: true },
 };
   const INITIAL_HAND_COUNT = 5;
   const ENEMY_ACTION_INTERVAL = 5;
