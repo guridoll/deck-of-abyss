@@ -5218,20 +5218,54 @@ function isPetInitiallyUnlocked(petId) {
  return ['none', 'dog', 'cat'].includes(petId);
 }
 
+function getHighestReachedLevelForPetUnlock() {
+ const stats = loadAchievementStats();
+ const history = loadBattleHistory();
+ const encounters = loadEncounteredEnemies();
+ const encounterLevelMap = {
+  wolf: 5,
+  orc: 5,
+  shaman: 5,
+  mage: 9,
+  rune_guardian: 9,
+  storm_adept: 9,
+  ice_golem: 13,
+  crystal_serpent: 13,
+  stone_titan: 13,
+  shadow_knight: 17,
+  abyss_reaper: 17,
+  obsidian_warden: 17,
+  void_knight: 20,
+ };
+ const highestEncounterLevel = Object.keys(encounters || {}).reduce((highest, enemyId) => {
+  return Math.max(highest, Number(encounterLevelMap[enemyId] || 0));
+ }, 0);
+ const highestHistoryLevel = (Array.isArray(history) ? history : []).reduce((highest, entry) => {
+  return Math.max(highest, Number(entry?.reachedLevel || entry?.level || 0));
+ }, 0);
+
+ return Math.max(
+  Number(stats?.highestLevel || 0),
+  highestHistoryLevel,
+  highestEncounterLevel,
+  Number(enemyLevel || 0),
+ );
+}
+
 function isPetUnlocked(petId) {
  if (isPetInitiallyUnlocked(petId)) return true;
 
- const encounters = loadEncounteredEnemies();
+ const highestLevel = getHighestReachedLevelForPetUnlock();
 
  switch (petId) {
   case 'lizard':
-   return Boolean(encounters.wolf);
+   return highestLevel >= 5;
   case 'parrot':
-   return Boolean(encounters.mage);
+   return highestLevel >= 9;
   case 'snow-rabbit':
-   return Boolean(encounters.ice_golem);
+   return highestLevel >= 13;
   case 'fairy':
-   return Boolean(encounters.shadow_knight);
+   return highestLevel >= 17;
   default:
    return false;
  }
@@ -5809,6 +5843,7 @@ function saveDeckCustomize() {
 
    playUiSelectSound();
    const next = enemyLevel + 1;
+   recordAchievementMax('highestLevel', next);
 
    // パッシブ選択とショップが重なる場合は、パッシブ選択を優先する
    if (shouldShowPassiveChoice(next)) {
