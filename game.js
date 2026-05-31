@@ -5185,6 +5185,18 @@ function handleFrozenHandClick() {
    }
   }
 
+  function clearPlayerActionLocksForVoidRevival() {
+   if (!player) return;
+
+   player.cooldown = false;
+   player.cooldownTimer = 0;
+   player.reloading = false;
+   player.reloadTimer = 0;
+   deckReloading = false;
+   deckReloadTimer = 0;
+   clearPlayerParalysis();
+  }
+
   
 function getEnemyActionInterval() {
  const temporaryDelay = cpu && cpu.enemyActionDelayTurns > 0 ? (cpu.enemyActionDelayAmount || 0) : 0;
@@ -10003,6 +10015,7 @@ function triggerBurnEffect(selector) {
    stopCooldown();
    stopDeckReload();
    stopBossRevivalTimers();
+   clearPlayerActionLocksForVoidRevival();
 
    clearEnemyStatusEffects();
    addLog('深淵騎士ヴォイド：……まだ終わらない。');
@@ -10045,6 +10058,10 @@ function triggerBurnEffect(selector) {
     setCpuNextAction();
     prepareEnemyTimerForFirstCard();
     render();
+
+    if (player && currentScreen === 'battle' && !gameOver && player.hand.length === 0 && !player.reloading) {
+     startReload();
+    }
    }, 5000);
 
    render();
@@ -12203,14 +12220,18 @@ const nextAction = getCpuNextAction();
 
     const kind = nextAction.type === 'defense'
      ? '防御'
-     : isStatusAttack
-      ? '特殊攻撃'
-      : '攻撃';
+     : nextAction.type === 'enemy-cleanse'
+      ? '補助'
+      : isStatusAttack
+       ? '特殊攻撃'
+       : '攻撃';
 
     let valueText = '';
 
     if (nextAction.type === 'defense') {
      valueText = `防御 ${nextAction.value}`;
+    } else if (nextAction.type === 'enemy-cleanse') {
+     valueText = '自身の状態異常を全解除 + 自身に凍結';
     } else if (nextAction.type === 'enemy-paralyze') {
      valueText = `${nextAction.value}ダメージ + 麻痺`;
     } else if (nextAction.type === 'enemy-freeze') {
