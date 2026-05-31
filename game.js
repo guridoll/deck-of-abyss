@@ -1191,6 +1191,13 @@ const PET_POOL = [
   let playerPassives = {
    maxHp: 0,
    battleMaxHpPenalty: 0,
+   startDrawBonus: 0,
+   lowHandAttackBonus: 0,
+   maxHpOnBattleWin: 0,
+   lowHpDamageReduction: 0,
+   dangerSenseBlock: 0,
+   tenacityOnce: false,
+   tenacityUsed: false,
    attack: 0,
    defense: 0,
    reloadDrawBonus: 0,
@@ -2602,11 +2609,14 @@ function getEffectiveCardValue(card) {
 
  
 
- if (isAttackCardType(card.type)) {
-  value += playerPassives.attack;
-  if (player && Number(player.tempAttackBuffTurns || 0) > 0) {
-   value += Math.max(0, Number(player.tempAttackBuffValue || 0));
-  }
+  if (isAttackCardType(card.type)) {
+   value += playerPassives.attack;
+   if (player && Array.isArray(player.hand) && player.hand.length <= 2) {
+    value += Math.max(0, Number(playerPassives.lowHandAttackBonus || 0));
+   }
+   if (player && Number(player.tempAttackBuffTurns || 0) > 0) {
+    value += Math.max(0, Number(player.tempAttackBuffValue || 0));
+   }
 
   if (player && player.petAttackBoost) {
    value += player.petAttackBoost;
@@ -2757,6 +2767,56 @@ function getNormalPassiveOptions() {
    text: 'クリティカル率+5%。',
    apply() {
     playerPassives.criticalChanceBonus += 0.05;
+   },
+  },
+  {
+   id: 'intuition',
+   icon: '💡',
+   rarity: 'normal',
+   name: '直感',
+   text: '戦闘開始時に1ドロー。',
+   apply() {
+    playerPassives.startDrawBonus += 1;
+   },
+  },
+  {
+   id: 'focusLowHandAttack',
+   icon: '🎯',
+   rarity: 'normal',
+   name: '集中力',
+   text: '手札が2枚以下の時、攻撃カードの威力+3。',
+   apply() {
+    playerPassives.lowHandAttackBonus += 3;
+   },
+  },
+  {
+   id: 'fieldTreatment',
+   icon: '🩹',
+   rarity: 'normal',
+   name: '応急処置',
+   text: '戦闘勝利時、最大HP+1。',
+   apply() {
+    playerPassives.maxHpOnBattleWin += 1;
+   },
+  },
+  {
+   id: 'lastStandGuard',
+   icon: '🛡️',
+   rarity: 'normal',
+   name: '不退転',
+   text: 'HP30%以下の時、被ダメージ-30%。',
+   apply() {
+    playerPassives.lowHpDamageReduction = Math.max(Number(playerPassives.lowHpDamageReduction || 0), 0.3);
+   },
+  },
+  {
+   id: 'dangerSense',
+   icon: '⚠️',
+   rarity: 'normal',
+   name: '危険察知',
+   text: '敵の強攻撃予兆時、自動で防御+3。',
+   apply() {
+    playerPassives.dangerSenseBlock += 3;
    },
   },
   {
@@ -2969,6 +3029,17 @@ function getRarePassiveOptions() {
    apply() {
     playerPassives.rareReviveOnce = true;
     playerPassives.rareReviveUsed = false;
+   },
+  },
+  {
+   id: 'tenacityOnce',
+   icon: '🔥',
+   rarity: 'rare',
+   name: '執念',
+   text: '致死ダメージを受けた時、HP1で耐える。1戦闘につき1回。不死鳥より先に発動。',
+   apply() {
+    playerPassives.tenacityOnce = true;
+    playerPassives.tenacityUsed = false;
    },
   },
   {
@@ -4227,6 +4298,14 @@ function chooseBombToCompress(bombId) {
 function applyBattleStartPassives() {
  if (!cpu || pendingPassiveChoice || pendingShopChoice) return;
 
+ const startDrawBonus = Math.max(0, Number(playerPassives.startDrawBonus || 0));
+ if (startDrawBonus > 0) {
+  const drawn = drawCardsToPlayerHand(startDrawBonus);
+  if (drawn.length > 0) {
+   addLog(`直感：戦闘開始時に${drawn.length}ドロー`);
+  }
+ }
+
  const startSmallBombCount = Math.max(0, Number(playerPassives.bombStartSmall || 0));
  for (let i = 0; i < startSmallBombCount; i++) {
   addBombToEnemy('small', { source: '爆弾魔' });
@@ -4240,6 +4319,31 @@ function createEnemyDefenseAction(name, value) {
   value,
   text: `防御+${value}`,
  };
+}
+
+function isEnemyDamageAction(action) {
+ return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison'].includes(action?.type);
+}
+
+function getDangerSenseThreshold() {
+ return 20;
+}
+
+function applyDangerSenseForNextAction() {
+ if (!player || !cpu || !cpu.nextAction || gameOver) return;
+
+ const blockGain = Math.max(0, Number(playerPassives.dangerSenseBlock || 0));
+ const actionDamage = Math.max(0, Number(cpu.nextAction.value || 0));
+ if (blockGain <= 0 || !isEnemyDamageAction(cpu.nextAction) || actionDamage < getDangerSenseThreshold()) return;
+ if (cpu.nextAction.dangerSenseApplied) return;
+
+ cpu.nextAction.dangerSenseApplied = true;
+ player.block += blockGain;
+ recordAchievementMax('maxBlock', player.block || 0);
+ addLog(`危険察知：強攻撃を察知して防御+${blockGain}`);
+ showDamagePopup('player-hp-change', `防御+${blockGain}`);
+ triggerCardVisualEffect('.player-img', 'guard');
+ playSound('guard');
 }
 
 function rebalanceLateEnemyActionPool(cpuPool) {
@@ -5780,6 +5884,13 @@ function saveDeckCustomize() {
    playerPassives = {
     maxHp: 0,
     battleMaxHpPenalty: 0,
+    startDrawBonus: 0,
+    lowHandAttackBonus: 0,
+    maxHpOnBattleWin: 0,
+    lowHpDamageReduction: 0,
+    dangerSenseBlock: 0,
+    tenacityOnce: false,
+    tenacityUsed: false,
     attack: 0,
     defense: 0,
     reloadDrawBonus: 0,
@@ -5921,6 +6032,7 @@ function saveDeckCustomize() {
    recordCardDiscoveries(playerDeck);
    deckCount = playerDeck.length;
    playerPassives.battleMaxHpPenalty = 0;
+   playerPassives.tenacityUsed = false;
 
    deckReloading = false;
    deckReloadTimer = 0;
@@ -6329,6 +6441,13 @@ function playSound(type) {
     deckCount = playerDeck.length;
    }
 
+   if (result === 'win' && playerPassives.maxHpOnBattleWin > 0) {
+    const gain = Math.max(0, Number(playerPassives.maxHpOnBattleWin || 0));
+    playerPassives.maxHp += gain;
+    if (player) player.hp = Math.min(getPlayerMaxHp(), Number(player.hp || 0) + gain);
+    addLog(`応急処置：最大HP+${gain}`);
+   }
+
    battleResultStats.endedAt = Date.now();
    battleResultStats.result = result;
    battleResultStats.remainingHp = player ? Math.max(0, player.hp) : 0;
@@ -6485,6 +6604,13 @@ function playSound(type) {
    const beforeHp = target.hp;
    let incomingDamage = Math.max(0, Number(damage || 0));
    if (!Number.isFinite(incomingDamage)) incomingDamage = 0;
+   const lowHpReduction = target === player && player && incomingDamage > 0 && player.hp <= Math.floor(getPlayerMaxHp() * 0.3)
+    ? Math.max(0, Number(playerPassives.lowHpDamageReduction || 0))
+    : 0;
+   const lowHpReductionApplied = lowHpReduction > 0;
+   if (lowHpReductionApplied) {
+    incomingDamage = Math.max(0, Math.ceil(incomingDamage * (1 - Math.min(0.9, lowHpReduction))));
+   }
    const frozenVulnerabilityBonus = target === cpu && target && Number(target.freeze || 0) > 0
     ? Math.max(0, Number(playerPassives.frozenVulnerabilityDamageBonus || 0))
     : 0;
@@ -6515,6 +6641,11 @@ function playSound(type) {
     } else {
      target.hp -= actualDamage;
     }
+   } else if (target === player && player && playerPassives.tenacityOnce && !playerPassives.tenacityUsed && actualDamage > 0 && target.hp - actualDamage <= 0) {
+    playerPassives.tenacityUsed = true;
+    target.hp = 1;
+    endured = true;
+    addLog('執念：致死ダメージをHP1で耐えた');
    } else {
     target.hp -= actualDamage;
    }
@@ -6557,6 +6688,7 @@ function playSound(type) {
     fullyBlocked: actualDamage <= 0,
     endured,
     frozenVulnerabilityApplied,
+    lowHpReductionApplied,
    };
   }
 
@@ -6647,6 +6779,7 @@ function playSound(type) {
   function setCpuNextAction() {
    if (!cpu) return;
    cpu.nextAction = decideCpuNextAction();
+   applyDangerSenseForNextAction();
   }
 
   function getCpuNextAction() {
@@ -11445,6 +11578,11 @@ function getPassiveEffectBadgesHtml() {
    if (playerPassives.attack > 0) badges.push(`<div class="passive-effect-badge">⚔ 攻撃 +${playerPassives.attack}</div>`);
    if (playerPassives.defense > 0) badges.push(`<div class="passive-effect-badge">🛡 防御 +${playerPassives.defense}</div>`);
    if (playerPassives.reloadDrawBonus > 0) badges.push(`<div class="passive-effect-badge">📚 ドロー +${playerPassives.reloadDrawBonus}</div>`);
+   if (playerPassives.startDrawBonus > 0) badges.push(`<div class="passive-effect-badge">💡 戦闘開始ドロー+${playerPassives.startDrawBonus}</div>`);
+   if (playerPassives.lowHandAttackBonus > 0) badges.push(`<div class="passive-effect-badge">🎯 手札2枚以下 攻撃+${playerPassives.lowHandAttackBonus}</div>`);
+   if (playerPassives.maxHpOnBattleWin > 0) badges.push(`<div class="passive-effect-badge">🩹 勝利時 最大HP+${playerPassives.maxHpOnBattleWin}</div>`);
+   if (playerPassives.lowHpDamageReduction > 0) badges.push(`<div class="passive-effect-badge">🛡 HP30%以下 被ダメ-${Math.round(playerPassives.lowHpDamageReduction * 100)}%</div>`);
+   if (playerPassives.dangerSenseBlock > 0) badges.push(`<div class="passive-effect-badge">⚠️ 強攻撃予兆 防御+${playerPassives.dangerSenseBlock}</div>`);
    if (playerPassives.enemyDelay > 0) badges.push(`<div class="passive-effect-badge">⏳ 敵行動 +${playerPassives.enemyDelay}秒</div>`);
    if (playerPassives.cooldownReduce > 0) badges.push(`<div class="passive-effect-badge">⏩ 硬直 -${playerPassives.cooldownReduce.toFixed(1)}秒</div>`);
    if (playerPassives.reloadTimeReduce > 0) badges.push(`<div class="passive-effect-badge">🔄 リロード -${playerPassives.reloadTimeReduce}秒</div>`);
@@ -11477,6 +11615,7 @@ if (playerPassives.poisonDamageBonus > 0) {
    if (playerPassives.rarePetEvolution) badges.push(`<div class="passive-effect-badge">🐾 進化因子${getEffectivePetLevel() >= 10 ? ' 発動中' : ''}</div>`);
    if (playerPassives.rareCriticalDouble) badges.push(`<div class="passive-effect-badge">💥 クリダメ2倍</div>`);
    if (playerPassives.rareReviveOnce) badges.push(`<div class="passive-effect-badge">🔥 不死鳥${playerPassives.rareReviveUsed ? ' 使用済み' : ''}</div>`);
+   if (playerPassives.tenacityOnce) badges.push(`<div class="passive-effect-badge">🔥 執念${playerPassives.tenacityUsed ? ' 使用済み' : ''}</div>`);
    if (playerPassives.frozenVulnerabilityDamageBonus > 0) badges.push(`<div class="passive-effect-badge">❄ 凍結中ダメ+${Math.round(playerPassives.frozenVulnerabilityDamageBonus * 100)}%</div>`);
 
 if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-effect-badge">🐾 ペット必要枚数 -${playerPassives.petActionCostReduce}</div>`);
