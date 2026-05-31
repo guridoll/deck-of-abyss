@@ -465,7 +465,7 @@ const PET_POOL = [
     name: 'ペットトレーニング',
     type: 'pet-attack-up',
     value: 1,
-    text: 'ペットの攻撃力+1',
+    text: 'ペットの攻撃力+1 / 使用後破棄（この戦闘中）',
     rare: true,
    },
    {
@@ -4199,7 +4199,7 @@ function detonateBombs(bombs, options = {}) {
    * Math.max(0, Number(options.damageMultiplier || 1))
    * (1 + Math.max(0, Number(playerPassives.bombDamageBonusMultiplier || 0)));
   const damage = Math.max(0, Math.round(Number(bomb.damage || 0) * multiplier));
-  const result = applyDamage(cpu, damage, { ignoreBlock: true, preserveBlock: true });
+  const result = applyDamage(cpu, damage);
   exploded += 1;
   showDamagePopup('cpu-hp-change', `💣-${result.damage}`);
   triggerDamageShake('.cpu-img');
@@ -4811,6 +4811,21 @@ function drawCardsToPlayerHand(count) {
  return drawn;
 }
 
+function filterCurrentBattleExcludedCards(cards, excludeCardId = null) {
+ const excludedTypes = new Set(player?.excludedBattleCardTypes || []);
+ if (!excludedTypes.size || !Array.isArray(cards)) return cards;
+ return cards.filter(card => card.id === excludeCardId || !excludedTypes.has(card.type));
+}
+
+function excludeCardTypeForCurrentBattle(type, excludeCardId = null) {
+ if (!player || !type) return;
+ if (!Array.isArray(player.excludedBattleCardTypes)) player.excludedBattleCardTypes = [];
+ if (!player.excludedBattleCardTypes.includes(type)) player.excludedBattleCardTypes.push(type);
+ playerDeck = filterCurrentBattleExcludedCards(playerDeck, excludeCardId);
+ player.hand = filterCurrentBattleExcludedCards(player.hand, excludeCardId);
+ deckCount = playerDeck.length;
+}
+
 function drawPlayerHandToSize(targetSize) {
  if (!player || !Array.isArray(player.hand)) return [];
  const target = Math.max(0, Math.floor(Number(targetSize || 0)));
@@ -5064,6 +5079,7 @@ function startEnemyTimer() {
       allowOverMaxTotal: getDeckTotal() > MAX_DECK_TOTAL,
       enforceMaxCardCount: false,
      });
+     playerDeck = filterCurrentBattleExcludedCards(playerDeck);
      deckCount = playerDeck.length;
 
      deckReloading = false;
@@ -6078,6 +6094,7 @@ function saveDeckCustomize() {
     firstCardAfterReload: false,
     doublePlayNextCard: false,
     lastPlayedCardForEcho: null,
+    excludedBattleCardTypes: [],
      bloodAwakenAttackBoostUses: 0,
      scalingAttackUses: 0,
      scalingDefenseUses: 0,
@@ -8208,6 +8225,7 @@ if (card.type === 'rare-double-attack') {
    if (card.type === 'pet-attack-up') {
     const value = Math.max(1, Number(card.value || 1));
     playerPassives.petAttackPowerBonus = (playerPassives.petAttackPowerBonus || 0) + value;
+    excludeCardTypeForCurrentBattle(card.type, card.id);
     triggerPetMotion();
     addLog(`あなた：${card.name} (ペット攻撃力+${value})`);
     playSound('success');
@@ -10404,9 +10422,9 @@ function getBaseCardDisplayText(card) {
   return `次の敵行動後から${card.turns || 2}T 敵の行動時間+${card.value || 2}秒`;
  }
 
- if (card.type === 'pet-attack-up') {
-  return `ペットの攻撃力+${card.value || 1}`;
- }
+if (card.type === 'pet-attack-up') {
+  return `ペットの攻撃力+${card.value || 1} / 使用後破棄（この戦闘中）`;
+}
 
  if (card.type === 'reload-double-next') {
   return '次のリロード後、最初に使用するカードを1回だけ2回プレイ';
@@ -10732,9 +10750,9 @@ function getDisplayCardText(card) {
   return `次の敵行動後から${card.turns || 2}T 敵の行動時間+${card.value || 2}秒`;
  }
 
- if (card.type === 'pet-attack-up') {
-  return `ペットの攻撃力+${card.value || 1}`;
- }
+if (card.type === 'pet-attack-up') {
+  return `ペットの攻撃力+${card.value || 1} / 使用後破棄（この戦闘中）`;
+}
 
  if (card.type === 'reload-double-next') {
   return '次のリロード後、最初に使用するカードを1回だけ2回プレイ';

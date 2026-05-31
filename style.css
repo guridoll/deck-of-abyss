@@ -10085,6 +10085,8 @@ body.battle-defeat-slowmo .battle-area {
 .guide-enemy-time { border-left-color: #fdba74; --guide-glow: rgba(253, 186, 116, 0.22); }
 .guide-reload { border-left-color: #a7f3d0; --guide-glow: rgba(167, 243, 208, 0.2); }
 .guide-deck { border-left-color: #d8b4fe; --guide-glow: rgba(216, 180, 254, 0.2); }
+.guide-bomb { border-left-color: #f97316; --guide-glow: rgba(249, 115, 22, 0.22); }
+.guide-discard { border-left-color: #94a3b8; --guide-glow: rgba(148, 163, 184, 0.2); }
 
 @media (max-width: 640px) {
   .battle-guide-modal {
