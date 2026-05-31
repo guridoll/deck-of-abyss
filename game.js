@@ -4233,6 +4233,69 @@ function applyBattleStartPassives() {
  }
 }
 
+function createEnemyDefenseAction(name, value) {
+ return {
+  name,
+  type: 'defense',
+  value,
+  text: `防御+${value}`,
+ };
+}
+
+function rebalanceLateEnemyActionPool(cpuPool) {
+ if (!Array.isArray(cpuPool)) return cpuPool;
+
+ const enemyId = getCurrentEnemyCatalogEntry()?.id || currentEnemyId || '';
+ const balancedPool = cpuPool.map(card => ({ ...card }));
+
+ const adjustByValue = (type, from, to) => {
+  const target = balancedPool.find(card => card.type === type && Number(card.value || 0) === from);
+  if (!target) return;
+  target.value = to;
+  if (type === 'attack') target.text = `${to}ダメージ`;
+  if (type === 'enemy-paralyze') target.text = `${to}ダメージ / 麻痺`;
+  if (type === 'enemy-freeze') target.text = `${to}ダメージ / 凍結`;
+ };
+
+ if (enemyLevel >= 17 && enemyLevel <= 19) {
+  if (enemyId === 'abyss_reaper') {
+   adjustByValue('attack', 19, 16);
+   adjustByValue('attack', 22, 19);
+   adjustByValue('attack', 25, 22);
+   adjustByValue('attack', 29, 25);
+   adjustByValue('enemy-paralyze', 12, 10);
+   adjustByValue('enemy-paralyze', 15, 12);
+   if (enemyLevel >= 18) balancedPool.push(createEnemyDefenseAction('深淵の間合い', 16));
+   if (enemyLevel >= 19) balancedPool.push(createEnemyDefenseAction('刈り取りの構え', 18));
+  } else if (enemyId === 'shadow_knight') {
+   adjustByValue('attack', 18, 15);
+   adjustByValue('attack', 21, 18);
+   adjustByValue('attack', 24, 21);
+   adjustByValue('attack', 28, 24);
+   if (enemyLevel >= 18) balancedPool.push(createEnemyDefenseAction('影の受け流し', 17));
+  } else if (enemyId === 'obsidian_warden') {
+   adjustByValue('attack', 18, 16);
+   adjustByValue('attack', 20, 18);
+   adjustByValue('attack', 22, 20);
+   adjustByValue('attack', 25, 22);
+  }
+ }
+
+ if (enemyLevel >= 20 && enemyId === 'void_knight') {
+  const isSecondPhase = Boolean(cpu && cpu.phase === 2);
+  if (isSecondPhase) {
+   adjustByValue('attack', 26, 24);
+   adjustByValue('enemy-paralyze', 18, 16);
+   adjustByValue('attack', 40, 34);
+   balancedPool.push(createEnemyDefenseAction('虚無の防壁', 22));
+  } else {
+   adjustByValue('attack', 24, 22);
+  }
+ }
+
+ return balancedPool;
+}
+
 function isPlayerStatusGuardActive() {
  return Boolean(player && Number(player.statusGuardTurns || 0) > 0);
 }
@@ -4584,6 +4647,8 @@ function tryApplyEnemyParalysis(turns = 3) {
     ];
  }
 
+
+ cpuPool = rebalanceLateEnemyActionPool(cpuPool);
 
  const result = [];
 
