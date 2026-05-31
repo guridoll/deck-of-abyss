@@ -19,6 +19,7 @@
   let rankingTooltipElement = null;
   let rankingTooltipTarget = null;
   let rankingTooltipListenersReady = false;
+  let rankingDepthFilter = 1;
 
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -207,6 +208,15 @@
     }));
   }
 
+  function normalizeDepth(value) {
+    const depth = Math.floor(Number(value || 1));
+    return [1, 2, 3].includes(depth) ? depth : 1;
+  }
+
+  function getDepthLabel(depth) {
+    return `深度${normalizeDepth(depth)}`;
+  }
+
   async function submitBattleResult(entry) {
     const firestore = initFirebase();
     if (!firestore || !entry) return { ok: false, reason: initError ? initError.message : 'not_initialized' };
@@ -217,6 +227,7 @@
 
     const payload = {
       playerName,
+      depth: normalizeDepth(entry.depth || entry.currentDepth),
       reachedLevel,
       result: ['win', 'lose', 'progress'].includes(entry.result) ? entry.result : 'progress',
       runStartedAt: Number(entry.runStartedAt || recordedAt),
@@ -672,6 +683,7 @@
     const bestByName = new Map();
     docs.forEach((doc) => {
       const data = doc.data ? doc.data() : doc;
+      if (normalizeDepth(data.depth) !== rankingDepthFilter) return;
       const name = normalizePlayerName(data.playerName);
       const current = bestByName.get(name);
       if (
@@ -679,7 +691,7 @@
         Number(data.reachedLevel || 0) > Number(current.reachedLevel || 0) ||
         (Number(data.reachedLevel || 0) === Number(current.reachedLevel || 0) && Number(data.recordedAt || 0) > Number(current.recordedAt || 0))
       ) {
-        bestByName.set(name, { id: doc.id || name, ...data, playerName: name });
+        bestByName.set(name, { id: doc.id || name, ...data, playerName: name, depth: normalizeDepth(data.depth) });
       }
     });
 
@@ -703,7 +715,9 @@
       .limit(200)
       .get();
 
-    const allItems = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const allItems = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data(), depth: normalizeDepth(doc.data().depth) }))
+      .filter((item) => normalizeDepth(item.depth) === rankingDepthFilter);
     return {
       rankingItems: dedupeBestRuns(snapshot.docs),
       allItems,
@@ -738,6 +752,7 @@
           <div class="ranking-main">
             <div class="ranking-topline">
               <span class="ranking-player">${escapeHtml(item.playerName)}</span>
+              <span class="ranking-level">${escapeHtml(getDepthLabel(item.depth))}</span>
               <span class="ranking-level">Lv${Number(item.reachedLevel || 1)}</span>
               <span class="ranking-result">${escapeHtml(resultLabel)}</span>
             </div>
@@ -757,7 +772,30 @@
     }).join('');
   }
 
+  function renderRankingDepthFilter() {
+    const actions = document.querySelector('#ranking-screen .ranking-actions');
+    if (!actions || document.getElementById('ranking-depth-filter')) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'ranking-depth-filter';
+    wrapper.className = 'ranking-depth-filter';
+    wrapper.innerHTML = [1, 2, 3].map((depth) => `
+      <button type="button" class="ui-button ui-button-secondary ranking-depth-button${rankingDepthFilter === depth ? ' active' : ''}" data-depth="${depth}">
+        深度${depth}
+      </button>
+    `).join('');
+    wrapper.addEventListener('click', (event) => {
+      const button = event.target?.closest?.('[data-depth]');
+      if (!button) return;
+      rankingDepthFilter = normalizeDepth(button.getAttribute('data-depth'));
+      wrapper.querySelectorAll('.ranking-depth-button').forEach((item) => item.classList.toggle('active', Number(item.getAttribute('data-depth')) === rankingDepthFilter));
+      refreshRankingScreen();
+    });
+    actions.appendChild(wrapper);
+  }
+
   async function refreshRankingScreen() {
+    renderRankingDepthFilter();
     const list = document.getElementById('ranking-list');
     const status = document.getElementById('ranking-player-status');
     const popularCards = document.getElementById('ranking-popular-cards');

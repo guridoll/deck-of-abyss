@@ -53,6 +53,7 @@
      const details = document.createElement('div');
      details.className = 'save-slot-details';
      details.innerHTML = `
+      <span>深度：${summary.currentDepthLabel || `深度${summary.currentDepth || 1}`}</span>
       <span>敵：${summary.enemyCount}/${summary.enemyTotal}</span>
       <span>カード：${summary.cardCount}/${summary.cardTotal}</span>
       <span>パッシブ：${summary.passiveCount}/${summary.passiveTotal}</span>

@@ -66,9 +66,34 @@
         <div id="new-player-name-error" class="player-name-error"></div>
       </div>
 
+      <div class="player-name-form depth-select-form">
+        <label>深度</label>
+        <div id="new-depth-options" class="depth-options"></div>
+      </div>
+
       <div class="controls player-name-actions">
-        <button class="ui-button ui-button-primary title-battle-button" onclick="confirmNewPlayerName()">この名前で開始</button>
+        <button class="ui-button ui-button-primary title-battle-button" onclick="confirmNewPlayerName()">この名前で潜行準備へ</button>
         <button class="ui-button ui-button-secondary" onclick="backToStartScreen()">戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="depth-select-screen" class="container title-screen player-name-screen" style="display:none;">
+    <div class="title-card player-name-card">
+      <div class="title-logo" aria-label="Deck of Abyss">
+        <div class="title-kicker">DEPTH SELECT</div>
+        <h1>Deck of Abyss</h1>
+        <p class="title-subtitle">挑戦する深度を選択してください</p>
+      </div>
+
+      <div class="player-name-form depth-select-form">
+        <label>深度</label>
+        <div id="battle-depth-options" class="depth-options"></div>
+      </div>
+
+      <div class="controls player-name-actions">
+        <button class="ui-button ui-button-primary title-battle-button" onclick="confirmDepthSelection()">この深度にする</button>
+        <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">戻る</button>
       </div>
     </div>
   </div>
@@ -84,12 +109,11 @@
       </div>
 
       <div class="menu-section menu-section-main">
-        <button class="ui-button ui-button-primary title-battle-button menu-primary-button" onclick="startBattle()">戦闘開始</button>
+        <button class="ui-button ui-button-primary title-battle-button menu-primary-button" onclick="startBattle()">深淵へ潜る</button>
       </div>
 
       <div class="menu-section menu-section-play">
-        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showCustomizeScreen()">山札カスタマイズ</button>
-        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showPetSelectScreen()">ペット選択</button>
+        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showPrepareScreen()">準備</button>
       </div>
 
       <div class="menu-section-label">コレクション</div>
@@ -110,6 +134,28 @@
         <button class="ui-button ui-button-secondary title-sub-button menu-system-button" onclick="backToStartScreen()">最初の画面へ戻る</button>
       </div>
 
+    </div>
+  </div>
+
+  <div id="prepare-screen" class="container title-screen prepare-screen" style="display:none;">
+    <div class="title-card menu-card prepare-card">
+      <div class="title-logo" aria-label="Deck of Abyss">
+        <div class="title-kicker">PREPARATION</div>
+        <h1>準備</h1>
+        <p class="title-subtitle">山札、ペット、深度を整えてから深淵へ潜ります</p>
+      </div>
+
+      <div id="prepare-status-summary" class="menu-status-summary"></div>
+
+      <div class="menu-section menu-section-play prepare-actions">
+        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showCustomizeScreen()">山札カスタマイズ</button>
+        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showPetSelectScreen()">ペット選択</button>
+        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showDepthSelectScreen()">深度選択</button>
+      </div>
+
+      <div class="controls player-name-actions">
+        <button class="ui-button ui-button-secondary" onclick="backToTitle()">戻る</button>
+      </div>
     </div>
   </div>
 
@@ -171,7 +217,7 @@
     <div id="pet-select-list" class="pet-select-list"></div>
 
     <div class="controls">
-      <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
+      <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">準備画面に戻る</button>
     </div>
   </div>
 
@@ -198,7 +244,7 @@
     <div class="controls">
       <button id="custom-deck-save-button" class="ui-button ui-button-secondary" onclick="saveDeckCustomize()">保存</button>
       <button class="ui-button ui-button-secondary deck-clear-button" onclick="clearDeckCustomize()">山札を0枚にする</button>
-      <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
+      <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">準備画面に戻る</button>
       <button class="ui-button ui-button-secondary" onclick="resetDeckCustomize()">初期枚数に戻す</button>
     </div>
   </div>

@@ -108,7 +108,7 @@
      <button class="battle-history-modal-close" type="button" aria-label="閉じる">×</button>
      <div class="battle-history-modal-header">
       <div>
-       <div class="battle-history-modal-title">#${displayIndex} ${resultLabel} / 最高Lv.${Number(item.reachedLevel || 1)}</div>
+       <div class="battle-history-modal-title">#${displayIndex} ${resultLabel} / 深度${Number(item.depth || 3)} / 最高Lv.${Number(item.reachedLevel || 1)}</div>
        <div class="battle-history-date">${escapeHtml(recordedAt)}</div>
       </div>
       <span class="battle-history-result ${resultClass}">${resultLabel}</span>
@@ -218,7 +218,7 @@
     card.innerHTML = `
      <div class="battle-history-card-header">
       <div>
-       <div class="battle-history-title">#${displayIndex} ${resultLabel} / 最高Lv.${item.reachedLevel}</div>
+       <div class="battle-history-title">#${displayIndex} ${resultLabel} / 深度${Number(item.depth || 3)} / 最高Lv.${item.reachedLevel}</div>
        <div class="battle-history-date">${escapeHtml(recordedAt)}</div>
       </div>
       <span class="battle-history-result ${resultClass}">${resultLabel}</span>

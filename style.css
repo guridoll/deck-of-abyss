@@ -5775,7 +5775,8 @@ button.passive-skip-button:hover {
   gap: 0 !important;
 }
 
-#title-screen .menu-section {
+#title-screen .menu-section,
+#prepare-screen .menu-section {
   width: 100% !important;
   display: grid !important;
   gap: 12px !important;
@@ -5790,8 +5791,14 @@ button.passive-skip-button:hover {
 }
 
 #title-screen .menu-section-play {
-  grid-template-columns: repeat(2, minmax(190px, 1fr)) !important;
+  grid-template-columns: minmax(220px, 360px) !important;
+  justify-content: center !important;
   margin-bottom: 18px !important;
+}
+
+#prepare-screen .menu-section-play {
+  grid-template-columns: repeat(3, minmax(160px, 1fr)) !important;
+  margin: 18px 0 !important;
 }
 
 #title-screen .menu-section-label {
@@ -5829,6 +5836,7 @@ button.passive-skip-button:hover {
 }
 
 #title-screen .menu-large-button,
+#prepare-screen .menu-large-button,
 #title-screen .menu-small-button,
 #title-screen .menu-system-button {
   width: 100% !important;
@@ -5838,7 +5846,8 @@ button.passive-skip-button:hover {
   align-items: center !important;
 }
 
-#title-screen .menu-large-button {
+#title-screen .menu-large-button,
+#prepare-screen .menu-large-button {
   min-height: 58px !important;
   padding: 13px 16px !important;
   font-size: 18px !important;
@@ -5866,15 +5875,59 @@ button.passive-skip-button:hover {
   color: #f8fafc !important;
 }
 
+.prepare-card {
+  width: min(760px, 94vw) !important;
+  padding: 34px 38px !important;
+}
+
+.menu-status-summary {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+.menu-status-item {
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.62);
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.menu-status-item span {
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.menu-status-item strong {
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 900;
+  word-break: break-word;
+}
+
 @media (max-width: 680px) {
   #title-screen .menu-card {
     padding: 28px 22px !important;
   }
 
   #title-screen .menu-section-play,
+  #prepare-screen .menu-section-play,
   #title-screen .menu-section-library,
   #title-screen .menu-section-system {
     grid-template-columns: 1fr !important;
+  }
+
+  .menu-status-summary {
+    grid-template-columns: 1fr 1fr;
   }
 
   #title-screen .menu-primary-button {
@@ -11367,9 +11420,78 @@ body.battle-defeat-slowmo .battle-area {
   font-weight: 700;
 }
 
+.depth-select-form {
+  max-width: 680px;
+}
+
+#player-name-screen .depth-select-form {
+  display: none;
+}
+
+.depth-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.depth-option {
+  min-height: 118px;
+  padding: 12px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #e5e7eb;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.depth-option:hover:not(:disabled),
+.depth-option.selected {
+  transform: translateY(-1px);
+  border-color: rgba(34, 211, 238, 0.78);
+  background: rgba(8, 47, 73, 0.86);
+}
+
+.depth-option:disabled,
+.depth-option.locked {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.depth-option-title,
+.depth-option-desc {
+  display: block;
+}
+
+.depth-option-title {
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 900;
+  color: #f8fafc;
+}
+
+.depth-option-desc {
+  font-size: 12px;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+
 .player-name-actions {
   position: relative;
   z-index: 1;
+}
+
+@media (max-width: 720px) {
+  .depth-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .menu-status-summary {
+    grid-template-columns: 1fr;
+  }
 }
 
 
@@ -11487,8 +11609,25 @@ body.battle-defeat-slowmo .battle-area {
 
 .ranking-actions {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
   margin: 10px 0 14px;
+}
+
+.ranking-depth-filter {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ranking-depth-button.active {
+  border-color: rgba(34, 211, 238, 0.78);
+  background: rgba(14, 116, 144, 0.72);
+  color: #f8fafc;
 }
 
 .ranking-list {

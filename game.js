@@ -56,6 +56,12 @@ if (document.readyState === 'loading') {
 }
 
 const MAX_HP = 40;
+const DEPTH_PROGRESS_STORAGE_KEY = 'deckOfAbyssDepthProgressV1';
+const DEPTH_CONFIG = {
+ 1: { id: 1, name: '深度1', label: '深度1：浅層', description: '敵パッシブなし / 敵HP・攻撃70% / 初期最大HP60', enemyHpMultiplier: 0.7, enemyAttackMultiplier: 0.7, playerMaxHp: 60, enemyPassives: false },
+ 2: { id: 2, name: '深度2', label: '深度2：中層', description: '敵パッシブあり / 敵HP・攻撃80% / 初期最大HP50', enemyHpMultiplier: 0.8, enemyAttackMultiplier: 0.8, playerMaxHp: 50, enemyPassives: true },
+ 3: { id: 3, name: '深度3', label: '深度3：深淵', description: '敵パッシブあり / 敵HP・攻撃100% / 初期最大HP40', enemyHpMultiplier: 1, enemyAttackMultiplier: 1, playerMaxHp: 40, enemyPassives: true },
+};
   const INITIAL_HAND_COUNT = 5;
   const ENEMY_ACTION_INTERVAL = 5;
   const RELOAD_TIME = 3;
@@ -907,6 +913,8 @@ const PET_POOL = [
   let playerDeck = [];
   let deckCount = 0;
   let currentScreen = 'start';
+  let currentDepth = 1;
+  let selectedNewGameDepth = 1;
 
   const DEFAULT_MENU_BGM_VOLUME = 0.10;
   const DEFAULT_BATTLE_BGM_VOLUME = 0.065;
@@ -1300,6 +1308,8 @@ const PET_POOL = [
     deckCustomize: getInitialDeckCustomize(),
     selectedPetId: 'none',
     petLevel: 1,
+    currentDepth: 1,
+    depthProgress: normalizeDepthProgress(),
    };
   }
 
@@ -1327,6 +1337,172 @@ const PET_POOL = [
    }
   }
 
+  function normalizeDepth(value) {
+   const depth = Math.floor(Number(value || 1));
+   return DEPTH_CONFIG[depth] ? depth : 1;
+  }
+
+  function getDepthConfig(depth = currentDepth) {
+   return DEPTH_CONFIG[normalizeDepth(depth)] || DEPTH_CONFIG[1];
+  }
+
+  function getDepthLabel(depth = currentDepth) {
+   return getDepthConfig(depth).name;
+  }
+
+  function normalizeDepthProgress(progress) {
+   const source = progress && typeof progress === 'object' ? progress : {};
+   const cleared = source.clearedDepths && typeof source.clearedDepths === 'object'
+    ? source.clearedDepths
+    : source;
+
+   return {
+    clearedDepths: {
+     1: Boolean(cleared[1] || cleared['1']),
+     2: Boolean(cleared[2] || cleared['2']),
+     3: Boolean(cleared[3] || cleared['3']),
+    },
+   };
+  }
+
+  function loadDepthProgress() {
+   return normalizeDepthProgress(safeReadJson(DEPTH_PROGRESS_STORAGE_KEY, {}));
+  }
+
+  function saveDepthProgress(progress) {
+   safeWriteJson(DEPTH_PROGRESS_STORAGE_KEY, normalizeDepthProgress(progress));
+  }
+
+  function mergeDepthProgress(a, b) {
+   const left = normalizeDepthProgress(a);
+   const right = normalizeDepthProgress(b);
+   return normalizeDepthProgress({
+    clearedDepths: {
+     1: left.clearedDepths[1] || right.clearedDepths[1],
+     2: left.clearedDepths[2] || right.clearedDepths[2],
+     3: left.clearedDepths[3] || right.clearedDepths[3],
+    },
+   });
+  }
+
+  function isDepthUnlocked(depth, progress = loadDepthProgress()) {
+   const normalized = normalizeDepth(depth);
+   const cleared = normalizeDepthProgress(progress).clearedDepths;
+   if (normalized <= 1) return true;
+   if (normalized === 2) return Boolean(cleared[1]);
+   if (normalized === 3) return Boolean(cleared[2]);
+   return false;
+  }
+
+  function getHighestUnlockedDepth(progress = loadDepthProgress()) {
+   return [3, 2, 1].find(depth => isDepthUnlocked(depth, progress)) || 1;
+  }
+
+  function getHighestClearedDepth(progress = loadDepthProgress()) {
+   const cleared = normalizeDepthProgress(progress).clearedDepths;
+   return [3, 2, 1].find(depth => cleared[depth]) || 0;
+  }
+
+  function markDepthCleared(depth = currentDepth) {
+   const normalized = normalizeDepth(depth);
+   const progress = loadDepthProgress();
+   progress.clearedDepths[normalized] = true;
+   saveDepthProgress(progress);
+
+   if (isValidSaveSlot(currentSaveSlot)) {
+    const save = readSaveSlot(currentSaveSlot) || getDefaultSaveData();
+    save.depthProgress = mergeDepthProgress(save.depthProgress, progress);
+    writeSaveData(save, currentSaveSlot);
+   }
+  }
+
+  function getPlayerBaseMaxHp() {
+   return Math.max(1, Number(getDepthConfig().playerMaxHp || MAX_HP));
+  }
+
+  function areEnemyPassivesEnabled() {
+   return Boolean(getDepthConfig().enemyPassives);
+  }
+
+  function scaleEnemyNumberByDepth(value, multiplierKey) {
+   const base = Math.max(0, Number(value || 0));
+   const multiplier = Math.max(0, Number(getDepthConfig()[multiplierKey] || 1));
+   return Math.max(1, Math.round(base * multiplier));
+  }
+
+  function isEnemyAttackActionType(type) {
+   return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison'].includes(type);
+  }
+
+  function updateEnemyActionText(card) {
+   if (!card) return card;
+   const value = Math.max(0, Number(card.value || 0));
+   if (card.type === 'attack') card.text = `${value}ダメージ`;
+   if (card.type === 'enemy-paralyze') card.text = `${value}ダメージ / 麻痺`;
+   if (card.type === 'enemy-freeze') card.text = `${value}ダメージ / 凍結`;
+   if (card.type === 'enemy-burn') card.text = `${value}ダメージ / 火傷`;
+   if (card.type === 'enemy-poison') card.text = `${value}ダメージ / 毒`;
+   return card;
+  }
+
+  function applyDepthScalingToEnemyCard(card) {
+   const next = { ...card };
+   if (isEnemyAttackActionType(next.type)) {
+    next.value = scaleEnemyNumberByDepth(next.value, 'enemyAttackMultiplier');
+    updateEnemyActionText(next);
+   }
+   return next;
+  }
+
+  function renderDepthSelector() {
+   const container = document.getElementById(currentScreen === 'depth-select' ? 'battle-depth-options' : 'new-depth-options');
+   if (!container) return;
+
+   const progress = loadDepthProgress();
+   selectedNewGameDepth = isDepthUnlocked(selectedNewGameDepth, progress)
+    ? normalizeDepth(selectedNewGameDepth)
+    : getHighestUnlockedDepth(progress);
+
+   container.innerHTML = Object.values(DEPTH_CONFIG).map(config => {
+    const unlocked = isDepthUnlocked(config.id, progress);
+    const selected = unlocked && selectedNewGameDepth === config.id;
+    return `
+     <button type="button" class="depth-option${selected ? ' selected' : ''}${unlocked ? '' : ' locked'}" ${unlocked ? `onclick="selectNewGameDepth(${config.id})"` : 'disabled'}>
+      <span class="depth-option-title">${escapeHtml(config.label)}</span>
+      <span class="depth-option-desc">${escapeHtml(unlocked ? config.description : '未解放：前の深度をLv20までクリアすると解放')}</span>
+     </button>
+    `;
+   }).join('');
+  }
+
+  function selectNewGameDepth(depth) {
+   const normalized = normalizeDepth(depth);
+   if (!isDepthUnlocked(normalized)) return;
+   selectedNewGameDepth = normalized;
+   renderDepthSelector();
+  }
+
+  function showDepthSelectScreen() {
+   playUiSelectSound();
+   selectedNewGameDepth = isDepthUnlocked(currentDepth) ? normalizeDepth(currentDepth) : getHighestUnlockedDepth();
+   currentScreen = 'depth-select';
+   render();
+   renderDepthSelector();
+  }
+
+  function confirmDepthSelection() {
+   const depth = normalizeDepth(selectedNewGameDepth);
+   if (!isDepthUnlocked(depth)) return;
+   currentDepth = depth;
+   saveCurrentGameData(false);
+   showPrepareScreen();
+  }
+
+  function confirmDepthAndStartBattle() {
+   confirmDepthSelection();
+   startBattle();
+  }
+
   function getSaveSlotStorageKey(slot) {
    return `cardBattleSaveSlot${slot}`;
   }
@@ -1336,6 +1512,7 @@ const PET_POOL = [
   }
 
   function normalizeSaveData(saveData) {
+   const hasDepthField = saveData && Object.prototype.hasOwnProperty.call(saveData, 'currentDepth');
    const save = { ...getDefaultSaveData(), ...(saveData || {}) };
 
    save.discoveredEnemies = save.discoveredEnemies && typeof save.discoveredEnemies === 'object' ? save.discoveredEnemies : {};
@@ -1350,6 +1527,8 @@ const PET_POOL = [
    save.deckCustomize = save.deckCustomize && typeof save.deckCustomize === 'object' ? normalizeDeckCustomizeForSave(save.deckCustomize) : getInitialDeckCustomize();
    save.selectedPetId = save.selectedPetId || 'none';
    save.petLevel = Math.min(MAX_PET_LEVEL, Math.max(1, Number(save.petLevel || 1)));
+   save.currentDepth = normalizeDepth(hasDepthField ? save.currentDepth : 3);
+   save.depthProgress = normalizeDepthProgress(save.depthProgress);
    save.savedAt = save.savedAt || null;
    save.playerName = String(save.playerName || '').trim().replace(/\s+/g, ' ').slice(0, 16);
 
@@ -1446,6 +1625,8 @@ const PET_POOL = [
     eventCount: Object.keys(save.randomEvents || {}).filter(eventId => getRandomEventById(eventId)).length,
     eventTotal: getRandomEventDefinitions().length,
     highestClearLevel: highestClearLevel || Number(save.achievementStats?.highestLevel || 0),
+    currentDepth: save.currentDepth,
+    currentDepthLabel: getDepthLabel(save.currentDepth),
     petName: getPetById(save.selectedPetId || 'none')?.name || 'なし',
    };
   }
@@ -1593,6 +1774,9 @@ const PET_POOL = [
    deckCustomize = structuredClone(savedDeckCustomize);
    selectedPetId = normalized.selectedPetId || 'none';
    petLevel = Math.min(MAX_PET_LEVEL, Math.max(1, Number(normalized.petLevel || 1)));
+   currentDepth = normalizeDepth(normalized.currentDepth || currentDepth);
+   selectedNewGameDepth = currentDepth;
+   saveDepthProgress(mergeDepthProgress(loadDepthProgress(), normalized.depthProgress));
 
    safeWriteJson(ENCOUNTERED_ENEMIES_STORAGE_KEY, normalized.discoveredEnemies || {});
    safeWriteJson(DISCOVERED_CARDS_STORAGE_KEY, normalized.discoveredCards || {});
@@ -1621,7 +1805,9 @@ const PET_POOL = [
    playUiSelectSound();
 
    currentScreen = 'player-name';
+   selectedNewGameDepth = getHighestUnlockedDepth();
    render();
+   renderDepthSelector();
 
    const input = document.getElementById('new-player-name-input');
    if (input) {
@@ -1659,6 +1845,8 @@ const PET_POOL = [
 
    currentSaveSlot = null;
    clearRuntimeDiscoveryStorage();
+   currentDepth = 1;
+   selectedNewGameDepth = getHighestUnlockedDepth();
 
    deckCustomize = getInitialDeckCustomize();
    savedDeckCustomize = structuredClone(deckCustomize);
@@ -1744,6 +1932,8 @@ const PET_POOL = [
     deckCustomize: sanitizeDeckCustomize(savedDeckCustomize),
     selectedPetId,
     petLevel,
+    currentDepth,
+    depthProgress: loadDepthProgress(),
    });
   }
 
@@ -1842,6 +2032,7 @@ const PET_POOL = [
      id: String(item.id || `history-${Date.now()}-${Math.random().toString(16).slice(2)}`),
      recordedAt: Number(item.recordedAt || Date.now()),
      result: ['win', 'lose', 'progress'].includes(item.result) ? item.result : 'lose',
+     depth: normalizeDepth(item.depth || item.currentDepth || 3),
      runStartedAt: Number(item.runStartedAt || item.recordedAt || Date.now()),
      reachedLevel: Math.max(1, Number(item.reachedLevel || 1)),
      playTimeMs: Math.max(0, Number(item.playTimeMs || 0)),
@@ -1924,6 +2115,7 @@ const PET_POOL = [
     runStartedAt: runKey,
     recordedAt: Date.now(),
     result: runResult,
+    depth: currentDepth,
     reachedLevel,
     playTimeMs: Math.max(0, Date.now() - runKey),
     cardsUsed: Math.max(Number(previous?.cardsUsed || 0), Number(battleResultStats.cardsUsed || 0)),
@@ -2400,9 +2592,9 @@ function getEffectivePetLevel() {
 }
 
 function getPlayerMaxHp() {
- const passiveBonus = Number(playerPassives.maxHp || 0);
- const battlePenalty = Math.max(0, Number(playerPassives.battleMaxHpPenalty || 0));
- return Math.max(1, MAX_HP + passiveBonus - battlePenalty);
+const passiveBonus = Number(playerPassives.maxHp || 0);
+const battlePenalty = Math.max(0, Number(playerPassives.battleMaxHpPenalty || 0));
+return Math.max(1, getPlayerBaseMaxHp() + passiveBonus - battlePenalty);
 }
 
 function roundToHalfSecond(value) {
@@ -3279,7 +3471,7 @@ function rebuildDeckWithRandomCards() {
 function adjustEventMaxHp(amount) {
  const delta = Number(amount || 0);
  if (!delta) return 0;
- const minBonus = 1 - MAX_HP;
+ const minBonus = 1 - getPlayerBaseMaxHp();
  const before = Number(playerPassives.maxHp || 0);
  playerPassives.maxHp = Math.max(minBonus, before + delta);
  if (player) player.hp = Math.min(getPlayerMaxHp(), Math.max(1, Number(player.hp || 1)));
@@ -4101,14 +4293,17 @@ function getDeckTotal() {
   }
 
 function isEnemyParalysisImmune() {
+ if (!areEnemyPassivesEnabled()) return false;
  return getEnemyName() === 'シャドウナイト';
 }
 
 function isEnemyFreezeImmune() {
+ if (!areEnemyPassivesEnabled()) return false;
  return getDisplayEnemyLevel() >= 20;
 }
 
 function getEnemyReloadTimeBonus() {
+ if (!areEnemyPassivesEnabled()) return 0;
  return getCurrentEnemyCatalogEntry()?.id === 'obsidian_warden' ? 2 : 0;
 }
 
@@ -4747,7 +4942,7 @@ function tryApplyEnemyParalysis(turns = 3) {
  }
 
 
- cpuPool = rebalanceLateEnemyActionPool(cpuPool);
+ cpuPool = rebalanceLateEnemyActionPool(cpuPool).map(applyDepthScalingToEnemyCard);
 
  const result = [];
 
@@ -5734,6 +5929,20 @@ function showCustomizeScreen() {
    render();
   }
 
+function showPrepareScreen() {
+ playUiSelectSound();
+ if (currentScreen === 'customize') {
+  deckCustomize = structuredClone(savedDeckCustomize);
+ }
+ stopEnemyTimer();
+ stopReload();
+ stopCooldown();
+ stopDeckReload();
+ stopPlayerStatusTimer();
+ currentScreen = 'prepare';
+ render();
+}
+
   function cancelPendingBattleChoices() {
    pendingPassiveChoice = false;
    pendingShopChoice = false;
@@ -5878,11 +6087,15 @@ function saveDeckCustomize() {
 
    addLog('山札設定を保存しました');
 
-   goTitleWithoutDeckReset();
+   showPrepareScreen();
   }
 
   function startBattle() {
    playUiSelectSound();
+   if (!isDepthUnlocked(currentDepth)) {
+    currentDepth = getHighestUnlockedDepth();
+   }
+   saveCurrentGameData(false);
 
    deckCustomize = structuredClone(savedDeckCustomize);
    runStartedAt = Date.now();
@@ -6140,7 +6353,7 @@ function saveDeckCustomize() {
    }
 
    gameOver = false;
-   logs = ['ゲーム開始'];
+   logs = ['潜行開始'];
    logVisible = false;
    enemyTimer = getEnemyActionInterval();
 
@@ -6154,7 +6367,7 @@ function saveDeckCustomize() {
 
   function getEnemyMaxHp() {
  if (enemyLevel >= 20) {
-  return cpu && cpu.phase === 2 ? 260 : 430;
+  return scaleEnemyNumberByDepth(cpu && cpu.phase === 2 ? 260 : 430, 'enemyHpMultiplier');
  }
 
  const hpCurve = [
@@ -6171,11 +6384,11 @@ function saveDeckCustomize() {
 
   if (enemyLevel >= from.level && enemyLevel <= to.level) {
    const progress = (enemyLevel - from.level) / (to.level - from.level);
-   return Math.round(from.hp + (to.hp - from.hp) * progress);
+   return scaleEnemyNumberByDepth(Math.round(from.hp + (to.hp - from.hp) * progress), 'enemyHpMultiplier');
   }
  }
 
- return hpCurve[hpCurve.length - 1].hp;
+ return scaleEnemyNumberByDepth(hpCurve[hpCurve.length - 1].hp, 'enemyHpMultiplier');
 }
 
   
@@ -6427,6 +6640,7 @@ function playSound(type) {
    battleResultStats = {
     level: enemyLevel,
     enemyName: getEnemyName(),
+    depth: currentDepth,
     startedAt: Date.now(),
     endedAt: null,
     result: null,
@@ -6465,6 +6679,10 @@ function playSound(type) {
    battleResultStats.remainingHp = player ? Math.max(0, player.hp) : 0;
    battleResultStats.level = enemyLevel;
    battleResultStats.enemyName = getEnemyName();
+   battleResultStats.depth = currentDepth;
+   if (result === 'win' && enemyLevel >= 20) {
+    markDepthCleared(currentDepth);
+   }
    recordBattleEndAchievement(result);
    recordEnemyBattleResult(result);
    recordBattleHistoryEntry(result);
@@ -6482,6 +6700,7 @@ function playSound(type) {
      <div class="battle-result-title">戦闘リザルト</div>
      <div class="battle-result-enemy">${battleResultStats.enemyName} Lv.${battleResultStats.level}：${resultLabel}</div>
      <div class="battle-result-grid">
+      <div><span>深度</span><strong>${getDepthLabel(battleResultStats.depth || currentDepth)}</strong></div>
       <div><span>経過時間</span><strong>${elapsedSeconds}秒</strong></div>
       <div><span>使用カード</span><strong>${battleResultStats.cardsUsed}枚</strong></div>
       <div><span>与えたダメージ</span><strong>${battleResultStats.damageDealt}</strong></div>
@@ -11418,6 +11637,10 @@ function showCardLibraryScreen() {
   window.switchEnemyLibraryPhase = switchEnemyLibraryPhase;
   window.showRankingScreen = showRankingScreen;
   window.confirmNewPlayerName = confirmNewPlayerName;
+  window.selectNewGameDepth = selectNewGameDepth;
+  window.confirmDepthSelection = confirmDepthSelection;
+  window.confirmDepthAndStartBattle = confirmDepthAndStartBattle;
+  window.showPrepareScreen = showPrepareScreen;
 
   
   const passiveLibrary = window.GamePassiveLibrary.createPassiveLibrary({
@@ -11715,6 +11938,36 @@ function updateEnemyTimerText() {
    return battleHistoryView.renderBattleHistoryScreen();
   }
 
+  function getDeckTotalFromCustomizeSnapshot(snapshot = savedDeckCustomize) {
+   return Object.values(snapshot || {}).reduce((sum, count) => sum + Math.max(0, Number(count || 0)), 0);
+  }
+
+  function getHighestReachedLevelForMenu() {
+   const statsLevel = Number(loadAchievementStats()?.highestLevel || 0);
+   const historyLevel = loadBattleHistory().reduce((max, item) => Math.max(max, Number(item.reachedLevel || 0)), 0);
+   return Math.max(statsLevel, historyLevel, 0);
+  }
+
+  function getMenuStatusSummaryHtml() {
+   const pet = getPetById(selectedPetId || 'none');
+   const highestClearedDepth = getHighestClearedDepth();
+   return `
+    <div class="menu-status-item"><span>プレイヤー名</span><strong>${escapeHtml(getCurrentPlayerName() || 'player')}</strong></div>
+    <div class="menu-status-item"><span>現在の深度</span><strong>${escapeHtml(getDepthLabel(currentDepth))}</strong></div>
+    <div class="menu-status-item"><span>選択中のペット</span><strong>${escapeHtml(pet?.name || 'なし')}</strong></div>
+    <div class="menu-status-item"><span>山札枚数</span><strong>${getDeckTotalFromCustomizeSnapshot()}枚</strong></div>
+    <div class="menu-status-item"><span>最高到達Lv</span><strong>Lv.${getHighestReachedLevelForMenu()}</strong></div>
+    <div class="menu-status-item"><span>最高クリア深度</span><strong>${highestClearedDepth > 0 ? `深度${highestClearedDepth}` : '未クリア'}</strong></div>
+   `;
+  }
+
+  function renderMenuStatusSummary() {
+   ['prepare-status-summary'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.innerHTML = getMenuStatusSummaryHtml();
+   });
+  }
+
   const saveSlotsView = window.GameSaveSlotsView.createSaveSlotsView({
    saveSlotCount: SAVE_SLOT_COUNT,
    getCurrentSaveSlot: () => currentSaveSlot,
@@ -11768,6 +12021,17 @@ function render() {
     playerNameScreen.style.display = currentScreen === 'player-name' ? 'flex' : 'none';
    }
 
+   const depthSelectScreen = document.getElementById('depth-select-screen');
+   if (depthSelectScreen) {
+    depthSelectScreen.style.display = currentScreen === 'depth-select' ? 'flex' : 'none';
+    if (currentScreen === 'depth-select') renderDepthSelector();
+   }
+
+   const prepareScreen = document.getElementById('prepare-screen');
+   if (prepareScreen) {
+    prepareScreen.style.display = currentScreen === 'prepare' ? 'flex' : 'none';
+   }
+
    const loadSlotScreen = document.getElementById('load-slot-screen');
    if (loadSlotScreen) {
     loadSlotScreen.style.display = currentScreen === 'load-slot' ? 'flex' : 'none';
@@ -11781,6 +12045,7 @@ function render() {
    }
 
    document.getElementById('title-screen').style.display = currentScreen === 'title' ? 'flex' : 'none';
+   renderMenuStatusSummary();
    document.getElementById('card-library-screen').style.display = currentScreen === 'card-library' ? 'flex' : 'none';
    document.getElementById('enemy-library-screen').style.display = currentScreen === 'enemy-library' ? 'flex' : 'none';
    document.getElementById('passive-library-screen').style.display = currentScreen === 'passive-library' ? 'flex' : 'none';
@@ -12298,6 +12563,10 @@ window.showSaveSlotScreen = showSaveSlotScreen;
 window.saveCurrentGameDataToSlot = saveCurrentGameDataToSlot;
 window.saveFromTitleMenu = saveFromTitleMenu;
 window.startBattle = startBattle;
+window.selectNewGameDepth = selectNewGameDepth;
+window.confirmDepthSelection = confirmDepthSelection;
+window.confirmDepthAndStartBattle = confirmDepthAndStartBattle;
+window.showPrepareScreen = showPrepareScreen;
 function openBattleGuide() {
   const modal = document.getElementById('battle-guide-modal');
   if (modal) {
