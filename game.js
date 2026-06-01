@@ -1460,7 +1460,7 @@ const PET_POOL = [
    if (card.type === 'enemy-freeze') card.text = `${value}ダメージ / 凍結`;
    if (card.type === 'enemy-burn') card.text = `${value}ダメージ / 火傷`;
    if (card.type === 'enemy-poison') card.text = `${value}ダメージ / 毒`;
-   if (card.type === 'enemy-bomb') card.text = `${value}ダメージ / 爆弾`;
+   if (card.type === 'enemy-bomb') card.text = `${value}ダメージ / 爆弾${card.bombDamage ? `${card.bombDamage}ダメージ` : ''}`;
    return card;
   }
 
@@ -4327,7 +4327,7 @@ function getDeckTotal() {
    base17: ['shadow_knight', 'abyss_reaper', 'obsidian_warden'],
    passive9: ['undead_knight', 'powder_raider', 'frozen_wraith', 'abyss_poisoner'],
    passive13: ['frost_worm', 'bomb_eater', 'blood_hound', 'lich_skull'],
-   passive17: ['death_reaper', 'frost_dragon', 'abyss_beast'],
+   passive17: ['shadow_knight', 'obsidian_warden', 'frost_worm', 'bomb_eater', 'blood_hound', 'lich_skull'],
    multi17: ['death_reaper', 'frost_dragon', 'abyss_beast'],
   };
 
@@ -4816,7 +4816,7 @@ function getPassiveEnemyActionPool(enemyId, level) {
   ],
   bomb_eater: [
    { name: '爆食い', type: 'attack', value: late ? 17 : 12, text: `${late ? 17 : 12}ダメージ` },
-   { name: '爆弾吐き', type: 'enemy-bomb', value: late ? 12 : 8, bombKind: 'normal', text: `${late ? 12 : 8}ダメージ / 爆弾` },
+   { name: '爆弾吐き', type: 'enemy-bomb', value: late ? 12 : 8, bombKind: 'normal', bombDamage: 12, text: `${late ? 12 : 8}ダメージ / 爆弾12ダメージ` },
    { name: '装甲腹', type: 'defense', value: late ? 18 : 14, text: `防御+${late ? 18 : 14}` },
   ],
   blood_hound: [
@@ -12457,6 +12457,15 @@ function getStatusBadgesHtml(target) {
   }
 
 
+function getPlainTextFromHtml(html) {
+ return String(html || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function addPassiveBadgeTooltip(html, detail = '') {
+ const tooltip = escapeHtml(detail || getPlainTextFromHtml(html));
+ return String(html || '').replace(/<div class="([^"]*passive-effect-badge[^"]*)"/, `<div class="$1" tabindex="0" data-tooltip="${tooltip}"`);
+}
+
 function getPassiveEffectBadgesHtml() {
    const badges = [];
 
@@ -12513,7 +12522,7 @@ if (playerPassives.poisonDamageBonus > 0) {
 
 if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-effect-badge">🐾 ペット必要枚数 -${playerPassives.petActionCostReduce}</div>`);
 
-   return badges.join('');
+   return badges.map(badge => addPassiveBadgeTooltip(badge)).join('');
   }
 
   function getEnemyPassiveEffectBadgesHtml() {
@@ -12530,7 +12539,7 @@ if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-eff
    getCurrentEnemyPassiveIds().forEach(id => {
     const passive = ENEMY_PASSIVE_DEFINITIONS[id];
     if (!passive) return;
-    badges.push(`<div class="passive-effect-badge enemy-passive-effect-badge">${escapeHtml(passive.name)}</div>`);
+    badges.push(addPassiveBadgeTooltip(`<div class="passive-effect-badge enemy-passive-effect-badge">${escapeHtml(passive.name)}</div>`, passive.text || passive.name));
    });
 
    const reloadTimeBonus = getEnemyReloadTimeBonus();
@@ -12538,7 +12547,7 @@ if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-eff
     badges.push(`<div class="passive-effect-badge enemy-passive-effect-badge">🔄 リロード +${reloadTimeBonus}秒</div>`);
    }
 
-   return badges.join('');
+   return badges.map(badge => badge.includes('data-tooltip=') ? badge : addPassiveBadgeTooltip(badge)).join('');
   }
 
   function renderPassiveEffectBadges() {

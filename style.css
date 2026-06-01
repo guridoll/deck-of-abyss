@@ -4347,6 +4347,7 @@ button.passive-skip-button:hover {
 }
 
 .passive-effect-badge {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -4361,6 +4362,46 @@ button.passive-skip-button:hover {
   box-shadow:
     0 4px 10px rgba(0,0,0,0.24),
     inset 0 1px 0 rgba(255,255,255,0.14);
+}
+
+.passive-effect-badge[data-tooltip] {
+  cursor: help;
+}
+
+.passive-effect-badge[data-tooltip]:focus-visible {
+  outline: 2px solid rgba(216,180,254,0.9);
+  outline-offset: 2px;
+}
+
+.passive-effect-badge[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 5000;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 9px 11px;
+  border-radius: 8px;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(216,180,254,0.62);
+  box-shadow: 0 16px 34px rgba(0,0,0,0.46), 0 0 18px rgba(168,85,247,0.20);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+  white-space: normal;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.passive-effect-badge[data-tooltip]:hover::after,
+.passive-effect-badge[data-tooltip]:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 
