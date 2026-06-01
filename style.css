@@ -4390,7 +4390,7 @@ button.passive-skip-button:hover {
   font-size: 12px;
   font-weight: 800;
   line-height: 1.45;
-  white-space: normal;
+  white-space: pre-line;
   text-align: left;
   opacity: 0;
   pointer-events: none;

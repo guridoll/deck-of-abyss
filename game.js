@@ -12235,11 +12235,11 @@ function showCardLibraryScreen() {
   }
 
   function recordEnemyEncounter(level) {
-   return enemyProgress.recordEnemyEncounter(level);
+   return enemyProgress.recordEnemyEncounter(level, currentDepth);
   }
 
   function recordEnemyBattleResult(result, level = enemyLevel) {
-   return enemyProgress.recordEnemyBattleResult(result, level);
+   return enemyProgress.recordEnemyBattleResult(result, level, currentDepth);
   }
 
   function recordEnemyPhaseEncounter(enemyId, phaseIndex) {
@@ -12466,6 +12466,22 @@ function addPassiveBadgeTooltip(html, detail = '') {
  return String(html || '').replace(/<div class="([^"]*passive-effect-badge[^"]*)"/, `<div class="$1" tabindex="0" data-tooltip="${tooltip}"`);
 }
 
+function getCurrentRunPassiveTooltipText() {
+ const ids = Array.from(currentRunPassiveIds || []);
+ if (!ids.length) return '';
+ const options = getPassiveOptions();
+ const counts = ids.reduce((map, id) => {
+  map[id] = (map[id] || 0) + 1;
+  return map;
+ }, {});
+
+ return Object.entries(counts).map(([id, count]) => {
+  const passive = options.find(item => item.id === id) || { name: id, text: '' };
+  const countText = count > 1 ? ` x${count}` : '';
+  return `${passive.name || id}${countText}\n${passive.text || ''}`.trim();
+ }).join('\n\n');
+}
+
 function getPassiveEffectBadgesHtml() {
    const badges = [];
 
@@ -12522,7 +12538,8 @@ if (playerPassives.poisonDamageBonus > 0) {
 
 if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-effect-badge">🐾 ペット必要枚数 -${playerPassives.petActionCostReduce}</div>`);
 
-   return badges.map(badge => addPassiveBadgeTooltip(badge)).join('');
+   const passiveTooltip = getCurrentRunPassiveTooltipText();
+   return badges.map(badge => addPassiveBadgeTooltip(badge, passiveTooltip)).join('');
   }
 
   function getEnemyPassiveEffectBadgesHtml() {

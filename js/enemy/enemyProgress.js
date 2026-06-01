@@ -29,7 +29,23 @@
    };
   }
 
-  function recordEnemyEncounter(level) {
+  function normalizeDepthValue(depth) {
+   const value = Math.floor(Number(depth || 1));
+   return value >= 1 ? value : 1;
+  }
+
+  function getEncounterDepths(current, depth) {
+   const normalizedDepth = normalizeDepthValue(depth);
+   const source = current && typeof current.depths === 'object' ? current.depths : {};
+   const depths = { ...source };
+   const firstDepth = normalizeDepthValue(current?.firstDepth || 1);
+
+   if (!Object.keys(depths).length) depths[firstDepth] = Math.max(1, Number(current?.count || 1));
+   depths[normalizedDepth] = Math.max(0, Number(depths[normalizedDepth] || 0)) + 1;
+   return depths;
+  }
+
+  function recordEnemyEncounter(level, depth = 1) {
    const enemy = getEnemyCatalogEntryByLevel(level);
 
    if (!enemy) return;
@@ -40,10 +56,14 @@
     ? Math.max(1, Number(current.maxPhaseSeen || (current.phase2Seen ? 2 : 1) || 1))
     : undefined;
 
+   const normalizedDepth = normalizeDepthValue(depth);
    encounters[enemy.id] = {
     ...current,
     firstLevel: current.firstLevel ? Math.min(current.firstLevel, level) : level,
     latestLevel: level,
+    firstDepth: current.firstDepth ? Math.min(normalizeDepthValue(current.firstDepth), normalizedDepth) : normalizedDepth,
+    latestDepth: normalizedDepth,
+    depths: getEncounterDepths(current, normalizedDepth),
     count: (current.count || 0) + 1,
     defeatedCount: Math.max(0, Number(current.defeatedCount || 0) || 0),
     defeatedByCount: Math.max(0, Number(current.defeatedByCount || 0) || 0),
@@ -53,7 +73,7 @@
    saveEncounteredEnemies(encounters);
   }
 
-  function recordEnemyBattleResult(result, level = enemyLevel) {
+  function recordEnemyBattleResult(result, level = 1, depth = 1) {
    const enemy = getEnemyCatalogEntryByLevel(level);
 
    if (!enemy) return;
@@ -65,10 +85,14 @@
     ? Math.max(1, Number(current.maxPhaseSeen || (current.phase2Seen ? 2 : 1) || 1))
     : undefined;
 
+   const normalizedDepth = normalizeDepthValue(depth);
    encounters[enemy.id] = {
     ...current,
     firstLevel: current.firstLevel ? Math.min(current.firstLevel, level) : level,
     latestLevel: level,
+    firstDepth: current.firstDepth ? Math.min(normalizeDepthValue(current.firstDepth), normalizedDepth) : normalizedDepth,
+    latestDepth: normalizedDepth,
+    depths: current.depths && typeof current.depths === 'object' ? current.depths : { [normalizeDepthValue(current.firstDepth || 1)]: Math.max(1, Number(current.count || 1)) },
     count: current.count || 1,
     defeatedCount: result === 'win' ? counts.defeatedCount + 1 : counts.defeatedCount,
     defeatedByCount: result === 'lose' ? counts.defeatedByCount + 1 : counts.defeatedByCount,

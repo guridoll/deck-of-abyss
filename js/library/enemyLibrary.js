@@ -12,6 +12,26 @@
    throw new Error('GameEnemyLibrary dependencies are missing.');
   }
 
+  function escapeHtml(value) {
+   return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+   }[char]));
+  }
+
+  function getEnemyLibraryDepthText(encounter) {
+   const depths = encounter && typeof encounter.depths === 'object' ? encounter.depths : null;
+   const keys = depths
+    ? Object.keys(depths).map(depth => Math.floor(Number(depth))).filter(depth => depth >= 1).sort((a, b) => a - b)
+    : [];
+
+   if (!keys.length) return '深度1';
+   return keys.map(depth => `深度${depth}`).join(' / ');
+  }
+
   function getEnemyLibraryPassives(enemy, encounter) {
    const passives = Array.isArray(enemy?.passives) ? [...enemy.passives] : [];
 
@@ -87,7 +107,7 @@
       </div>
       <div class="enemy-library-description">${discovered ? enemy.description : '戦闘で遭遇すると情報が記録されます。'}</div>
       ${discovered ? `
-       <div class="enemy-library-meta">初遭遇：Lv${encounter.firstLevel} / 遭遇回数：${encounter.count} / 倒した回数：${enemyBattleResultCounts.defeatedCount} / やられた回数：${enemyBattleResultCounts.defeatedByCount}</div>
+       <div class="enemy-library-meta">初遭遇：Lv${encounter.firstLevel} / 深度：${escapeHtml(getEnemyLibraryDepthText(encounter))} / 遭遇回数：${encounter.count} / 倒した回数：${enemyBattleResultCounts.defeatedCount} / やられた回数：${enemyBattleResultCounts.defeatedByCount}</div>
        ${libraryPassives.length > 0
         ? `<div class="enemy-library-section"><div class="enemy-library-section-title">パッシブ</div><div class="enemy-library-tags">${libraryPassives.map(passive => `<span>${passive}</span>`).join('')}</div></div>`
         : ''}
