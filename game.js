@@ -4438,7 +4438,7 @@ const ENEMY_PASSIVE_DEFINITIONS = {
  tenacity: { name: '執念', text: '致死ダメージを1回だけHP1で耐える' },
  poison_resist: { name: '毒耐性', text: '毒付与量50%減少' },
  bomb_resist: { name: '爆弾耐性', text: '爆弾ダメージ30%減少' },
- freeze_resist: { name: '凍結耐性', text: '凍結付与率50%減少' },
+ freeze_resist: { name: '凍結耐性', text: '50%の確率で凍結を無効化する' },
  fatal_power: { name: '致命強化', text: '執念発動後に攻撃力上昇' },
  poison_blood: { name: '毒血', text: '毒ダメージを受けると回復する' },
  bomb_frenzy: { name: '爆発狂', text: '爆弾を扱う攻撃を多用する' },
@@ -4485,7 +4485,7 @@ function getEnemyPoisonApplyMultiplier() {
 }
 
 function getEnemyFreezeApplyChanceMultiplier() {
- return enemyHasPassive('freeze_resist') ? 0.5 : 1;
+ return 1;
 }
 
 function clearEnemyStatusEffects() {
@@ -4793,56 +4793,89 @@ function getPassiveEnemyActionPool(enemyId, level) {
    { name: '朽ちた剣', type: 'attack', value: high ? 15 : 12, text: `${high ? 15 : 12}ダメージ` },
    { name: '不死の構え', type: 'defense', value: high ? 14 : 10, text: `防御+${high ? 14 : 10}` },
    { name: '墓所の一撃', type: 'attack', value: high ? 17 : 14, text: `${high ? 17 : 14}ダメージ` },
+   { name: '錆びた突き', type: 'attack', value: high ? 13 : 10, text: `${high ? 13 : 10}ダメージ` },
+   { name: '亡者の盾', type: 'defense', value: high ? 16 : 12, text: `防御+${high ? 16 : 12}` },
+   { name: '怨念斬り', type: 'enemy-poison', value: high ? 12 : 9, poisonTurns: 2, text: `${high ? 12 : 9}ダメージ / 毒` },
   ],
   powder_raider: [
    { name: '火薬殴打', type: 'attack', value: late ? 18 : 13, text: `${late ? 18 : 13}ダメージ` },
    { name: '爆弾投げ', type: 'enemy-bomb', value: late ? 10 : 7, bombKind: 'small', text: `${late ? 10 : 7}ダメージ / 小爆弾` },
    { name: '火薬隠れ', type: 'defense', value: late ? 16 : 11, text: `防御+${late ? 16 : 11}` },
+   { name: '導火殴り', type: 'attack', value: late ? 16 : 11, text: `${late ? 16 : 11}ダメージ` },
+   { name: '小爆弾ばら撒き', type: 'enemy-bomb', value: late ? 8 : 5, bombKind: 'small', bombDamage: 5, text: `${late ? 8 : 5}ダメージ / 小爆弾5ダメージ` },
+   { name: '煙幕防御', type: 'defense', value: late ? 18 : 13, text: `防御+${late ? 18 : 13}` },
   ],
   frozen_wraith: [
    { name: '冷気の爪', type: 'enemy-freeze', value: high ? 10 : 8, text: `${high ? 10 : 8}ダメージ / 凍結` },
    { name: '霜の壁', type: 'defense', value: high ? 13 : 9, text: `防御+${high ? 13 : 9}` },
    { name: '亡霊の一撃', type: 'attack', value: high ? 15 : 12, text: `${high ? 15 : 12}ダメージ` },
+   { name: '凍える吐息', type: 'enemy-freeze', value: high ? 8 : 6, text: `${high ? 8 : 6}ダメージ / 凍結` },
+   { name: '氷霧の守り', type: 'defense', value: high ? 15 : 11, text: `防御+${high ? 15 : 11}` },
+   { name: '霊氷打ち', type: 'attack', value: high ? 14 : 11, text: `${high ? 14 : 11}ダメージ` },
   ],
   abyss_poisoner: [
    { name: '毒針', type: 'enemy-poison', value: late ? 13 : 9, poisonTurns: high ? 4 : 3, text: `${late ? 13 : 9}ダメージ / 毒` },
    { name: '毒霧の守り', type: 'defense', value: high ? 12 : 8, text: `防御+${high ? 12 : 8}` },
    { name: 'アビスニードル', type: 'attack', value: late ? 17 : 13, text: `${late ? 17 : 13}ダメージ` },
+   { name: '濃毒散布', type: 'enemy-poison', value: late ? 11 : 7, poisonTurns: high ? 5 : 3, text: `${late ? 11 : 7}ダメージ / 毒` },
+   { name: '毒液防壁', type: 'defense', value: high ? 14 : 10, text: `防御+${high ? 14 : 10}` },
+   { name: '腐食の刃', type: 'attack', value: late ? 16 : 12, text: `${late ? 16 : 12}ダメージ` },
   ],
   frost_worm: [
    { name: 'フロストバイト', type: 'enemy-freeze', value: late ? 16 : 11, text: `${late ? 16 : 11}ダメージ / 凍結` },
    { name: '熱裂き', type: 'enemy-burn', value: late ? 14 : 10, burnTurns: 3, text: `${late ? 14 : 10}ダメージ / 火傷` },
    { name: '氷殻', type: 'defense', value: late ? 17 : 13, text: `防御+${late ? 17 : 13}` },
+   { name: '氷牙連突', type: 'attack', value: late ? 18 : 13, text: `${late ? 18 : 13}ダメージ` },
+   { name: '冷却潜行', type: 'defense', value: late ? 19 : 14, text: `防御+${late ? 19 : 14}` },
+   { name: '凍土噛み', type: 'enemy-freeze', value: late ? 13 : 9, text: `${late ? 13 : 9}ダメージ / 凍結` },
   ],
   bomb_eater: [
    { name: '爆食い', type: 'attack', value: late ? 17 : 12, text: `${late ? 17 : 12}ダメージ` },
    { name: '爆弾吐き', type: 'enemy-bomb', value: late ? 12 : 8, bombKind: 'normal', bombDamage: 12, text: `${late ? 12 : 8}ダメージ / 爆弾12ダメージ` },
    { name: '装甲腹', type: 'defense', value: late ? 18 : 14, text: `防御+${late ? 18 : 14}` },
+   { name: '爆圧噛み', type: 'attack', value: late ? 19 : 14, text: `${late ? 19 : 14}ダメージ` },
+   { name: '火薬反芻', type: 'enemy-bomb', value: late ? 9 : 6, bombKind: 'small', bombDamage: 5, text: `${late ? 9 : 6}ダメージ / 小爆弾5ダメージ` },
+   { name: '耐爆姿勢', type: 'defense', value: late ? 20 : 15, text: `防御+${late ? 20 : 15}` },
   ],
   blood_hound: [
    { name: '血牙', type: 'attack', value: late ? 20 : 14, text: `${late ? 20 : 14}ダメージ` },
    { name: '唸り構え', type: 'defense', value: late ? 14 : 10, text: `防御+${late ? 14 : 10}` },
    { name: '裂傷突進', type: 'attack', value: late ? 22 : 16, text: `${late ? 22 : 16}ダメージ` },
+   { name: '追跡噛み', type: 'attack', value: late ? 18 : 13, text: `${late ? 18 : 13}ダメージ` },
+   { name: '血の威嚇', type: 'defense', value: late ? 16 : 12, text: `防御+${late ? 16 : 12}` },
+   { name: '狂奔牙', type: 'attack', value: late ? 24 : 17, text: `${late ? 24 : 17}ダメージ` },
   ],
   lich_skull: [
    { name: '骨の呪弾', type: 'enemy-poison', value: late ? 14 : 10, poisonTurns: 3, text: `${late ? 14 : 10}ダメージ / 毒` },
    { name: '死霊障壁', type: 'defense', value: late ? 18 : 13, text: `防御+${late ? 18 : 13}` },
    { name: 'リッチボルト', type: 'attack', value: late ? 19 : 15, text: `${late ? 19 : 15}ダメージ` },
+   { name: '魂吸いの呪い', type: 'enemy-poison', value: late ? 12 : 9, poisonTurns: 4, text: `${late ? 12 : 9}ダメージ / 毒` },
+   { name: '骨盾再生', type: 'defense', value: late ? 20 : 15, text: `防御+${late ? 20 : 15}` },
+   { name: '冥火弾', type: 'enemy-burn', value: late ? 15 : 11, burnTurns: 2, text: `${late ? 15 : 11}ダメージ / 火傷` },
   ],
   death_reaper: [
    { name: '死神の鎌', type: 'attack', value: 22, text: '22ダメージ' },
    { name: '終末の構え', type: 'defense', value: 17, text: '防御+17' },
    { name: '致命の一閃', type: 'attack', value: 25, text: '25ダメージ' },
+   { name: '魂刈り', type: 'attack', value: 20, text: '20ダメージ' },
+   { name: '死影の防壁', type: 'defense', value: 20, text: '防御+20' },
+   { name: '断命の予兆', type: 'enemy-paralyze', value: 16, text: '16ダメージ / 麻痺' },
   ],
   frost_dragon: [
    { name: '竜の凍息', type: 'enemy-freeze', value: 17, text: '17ダメージ / 凍結' },
    { name: '時霜の鱗', type: 'defense', value: 20, text: '防御+20' },
    { name: '氷竜尾撃', type: 'attack', value: 22, text: '22ダメージ' },
+   { name: '氷河の咆哮', type: 'enemy-freeze', value: 14, text: '14ダメージ / 凍結' },
+   { name: '竜鱗結界', type: 'defense', value: 23, text: '防御+23' },
+   { name: '灼凍爪', type: 'enemy-burn', value: 18, burnTurns: 3, text: '18ダメージ / 火傷' },
   ],
   abyss_beast: [
    { name: '獣爪', type: 'attack', value: 21, text: '21ダメージ' },
    { name: '血の咆哮', type: 'attack', value: 24, text: '24ダメージ' },
    { name: '深淵皮膚', type: 'defense', value: 15, text: '防御+15' },
+   { name: '奈落噛み', type: 'attack', value: 19, text: '19ダメージ' },
+   { name: '獣の硬皮', type: 'defense', value: 19, text: '防御+19' },
+   { name: '深淵毒爪', type: 'enemy-poison', value: 16, poisonTurns: 3, text: '16ダメージ / 毒' },
   ],
  };
  return pools[enemyId] || null;
@@ -4956,6 +4989,11 @@ function tryApplyEnemyFreeze(turns = 1, chance = 1) {
  }
  const actualChance = Math.max(0, Math.min(1, Number(chance || 0) * getEnemyFreezeApplyChanceMultiplier()));
  if (Math.random() > actualChance) return false;
+ if (enemyHasPassive('freeze_resist') && Math.random() < 0.5) {
+  triggerCardVisualEffect('.cpu-img', 'guard');
+  playSound('guard');
+  return false;
+ }
  cpu.freeze = Math.max(Number(cpu.freeze || 0), Math.max(1, Number(turns || 1)));
  recordAchievementStat('freezeApplications');
  triggerFreezeEffect('.cpu-img');

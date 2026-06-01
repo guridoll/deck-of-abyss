@@ -147,7 +147,7 @@
      description: '一度だけ致死ダメージを耐える、粘り強い騎士です。',
      passiveIds: ['tenacity'],
      passives: ['執念'],
-     skills: ['朽ちた剣', '不死の構え', '墓所の一撃'],
+     skills: ['朽ちた剣', '不死の構え', '墓所の一撃', '錆びた突き', '亡者の盾', '怨念斬り'],
     },
     {
      id: 'powder_raider',
@@ -157,7 +157,7 @@
      description: '爆弾耐性を持ち、プレイヤーにも爆弾を押し付ける敵です。',
      passiveIds: ['bomb_resist'],
      passives: ['爆弾耐性'],
-     skills: ['火薬殴打', '爆弾投げ', '火薬隠れ'],
+     skills: ['火薬殴打', '爆弾投げ', '火薬隠れ', '導火殴り', '小爆弾ばら撒き', '煙幕防御'],
     },
     {
      id: 'frozen_wraith',
@@ -167,7 +167,7 @@
      description: '凍結耐性を持つ、冷気をまとう亡霊です。',
      passiveIds: ['freeze_resist'],
      passives: ['凍結耐性'],
-     skills: ['冷気の爪', '霜の壁', '亡霊の一撃'],
+     skills: ['冷気の爪', '霜の壁', '亡霊の一撃', '凍える吐息', '氷霧の守り', '霊氷打ち'],
     },
     {
      id: 'abyss_poisoner',
@@ -177,7 +177,7 @@
      description: '毒耐性を持ち、毒でプレイヤーを削る敵です。',
      passiveIds: ['poison_resist'],
      passives: ['毒耐性'],
-     skills: ['毒針', '毒霧の守り', 'アビスニードル'],
+     skills: ['毒針', '毒霧の守り', 'アビスニードル', '濃毒散布', '毒液防壁', '腐食の刃'],
     },
     {
      id: 'frost_worm',
@@ -187,7 +187,7 @@
      description: '凍結耐性を持ち、凍結と火傷を使い分ける氷の魔物です。',
      passiveIds: ['freeze_resist'],
      passives: ['凍結耐性'],
-     skills: ['フロストバイト', '熱裂き', '氷殻'],
+     skills: ['フロストバイト', '熱裂き', '氷殻', '氷牙連突', '冷却潜行', '凍土噛み'],
     },
     {
      id: 'bomb_eater',
@@ -197,7 +197,7 @@
      description: '爆発エネルギーを喰らう、爆弾耐性持ちの魔物です。',
      passiveIds: ['bomb_resist'],
      passives: ['爆弾耐性'],
-     skills: ['爆食い', '爆弾吐き', '装甲腹'],
+     skills: ['爆食い', '爆弾吐き', '装甲腹', '爆圧噛み', '火薬反芻', '耐爆姿勢'],
     },
     {
      id: 'blood_hound',
@@ -207,7 +207,7 @@
      description: '瀕死になるほど凶暴化する獣です。',
      passiveIds: ['desperate'],
      passives: ['背水'],
-     skills: ['血牙', '唸り構え', '裂傷突進'],
+     skills: ['血牙', '唸り構え', '裂傷突進', '追跡噛み', '血の威嚇', '狂奔牙'],
     },
     {
      id: 'lich_skull',
@@ -217,7 +217,7 @@
      description: '執念で一度だけ耐えるアンデッドです。',
      passiveIds: ['tenacity'],
      passives: ['執念'],
-     skills: ['骨の呪弾', '死霊障壁', 'リッチボルト'],
+     skills: ['骨の呪弾', '死霊障壁', 'リッチボルト', '魂吸いの呪い', '骨盾再生', '冥火弾'],
     },
     {
      id: 'death_reaper',
@@ -227,7 +227,7 @@
      description: '執念で耐えた後、致命的な一撃を狙う死神です。',
      passiveIds: ['tenacity', 'fatal_power'],
      passives: ['執念', '致命強化'],
-     skills: ['死神の鎌', '終末の構え', '致命の一閃'],
+     skills: ['死神の鎌', '終末の構え', '致命の一閃', '魂刈り', '死影の防壁', '断命の予兆'],
     },
     {
      id: 'frost_dragon',
@@ -237,7 +237,7 @@
      description: '凍結耐性と時魔術で長期戦に持ち込む氷竜です。',
      passiveIds: ['freeze_resist', 'time_magic'],
      passives: ['凍結耐性', '時魔術'],
-     skills: ['竜の凍息', '時霜の鱗', '氷竜尾撃'],
+     skills: ['竜の凍息', '時霜の鱗', '氷竜尾撃', '氷河の咆哮', '竜鱗結界', '灼凍爪'],
     },
     {
      id: 'abyss_beast',
@@ -247,7 +247,7 @@
      description: 'HPが減るほど獰猛になる深淵の獣です。',
      passiveIds: ['desperate', 'blood_price'],
      passives: ['背水', '血の代償'],
-     skills: ['獣爪', '血の咆哮', '深淵皮膚'],
+     skills: ['獣爪', '血の咆哮', '深淵皮膚', '奈落噛み', '獣の硬皮', '深淵毒爪'],
     },
     {
      id: 'void_knight',
