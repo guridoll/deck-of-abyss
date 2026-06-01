@@ -58,9 +58,9 @@ if (document.readyState === 'loading') {
 const MAX_HP = 40;
 const DEPTH_PROGRESS_STORAGE_KEY = 'deckOfAbyssDepthProgressV1';
 const DEPTH_CONFIG = {
- 1: { id: 1, name: '深度1', label: '深度1：浅層', description: '特になし', enemyHpMultiplier: 0.65, enemyAttackMultiplier: 0.65, playerMaxHp: 60, enemyPassives: false },
- 2: { id: 2, name: '深度2', label: '深度2：中層', description: '深度1比：敵HP・攻撃+10% / プレイヤーHP-10 / 敵パッシブあり', enemyHpMultiplier: 0.75, enemyAttackMultiplier: 0.75, playerMaxHp: 50, enemyPassives: true },
- 3: { id: 3, name: '深度3', label: '深度3：深淵', description: '深度1比：敵HP・攻撃+35% / プレイヤーHP-20 / 敵パッシブあり', enemyHpMultiplier: 1, enemyAttackMultiplier: 1, playerMaxHp: 40, enemyPassives: true },
+ 1: { id: 1, name: '深度1', label: '深度1：浅層', description: '特になし', enemyHpMultiplier: 0.7, enemyAttackMultiplier: 0.7, playerMaxHp: 60, enemyPassives: false, multiEnemyPassives: false },
+ 2: { id: 2, name: '深度2', label: '深度2：中層', description: '深度1比：敵HP・攻撃+10% / プレイヤーHP-10 / Lv9以降パッシブ敵出現', enemyHpMultiplier: 0.8, enemyAttackMultiplier: 0.8, playerMaxHp: 50, enemyPassives: true, multiEnemyPassives: false },
+ 3: { id: 3, name: '深度3', label: '深度3：深淵', description: '深度1比：敵HP・攻撃+30% / プレイヤーHP-10 / Lv17以降複数パッシブ敵出現', enemyHpMultiplier: 1, enemyAttackMultiplier: 1, playerMaxHp: 50, enemyPassives: true, multiEnemyPassives: true },
 };
   const INITIAL_HAND_COUNT = 5;
   const ENEMY_ACTION_INTERVAL = 5;
@@ -336,7 +336,7 @@ const PET_POOL = [
    { name: '毒爆発', type: 'poison-burst', value: 0.75, text: '敵の毒を半分消費 / 消費毒の75%分のダメージ', rare: true },
    { name: '侵食', type: 'poison-vulnerability', value: 0, turns: 3, text: '毒状態の敵が受けるダメージ+50% / 3T', rare: true },
    { name: '毒吸収', type: 'poison-drain', value: 0, text: '敵の毒を全消費 / 消費毒の半分だけ回復', rare: true },
-   { name: '毒の宴', type: 'poison-banquet', value: 0, text: '敵の毒を全消費 / 消費毒と同じダメージ / 毒耐性付与', rare: true, epic: true },
+   { name: '毒の宴', type: 'poison-banquet', value: 0, text: '敵の毒を全消費 / 消費毒と同じダメージ / 毒耐性付与（毒付与50%減少）', rare: true, epic: true },
    { name: '疫病', type: 'poison-plague', value: 2, text: '敵の毒が毎ターン+2 / 使用後破棄', rare: true, epic: true },
    { name: '火花斬り', type: 'burn', value: 2, chance: 0.3, turns: 3, burnText: '火傷+3T', text: '2ダメージ / 30%で火傷3T付与', shopOnly: true },
    { name: '小爆弾設置', type: 'bomb-place-small', value: 0, bombKind: 'small', text: '小爆弾を付与する' },
@@ -1438,6 +1438,10 @@ const PET_POOL = [
    return Boolean(getDepthConfig().enemyPassives);
   }
 
+  function areMultiEnemyPassivesEnabled() {
+   return Boolean(getDepthConfig().multiEnemyPassives);
+  }
+
   function scaleEnemyNumberByDepth(value, multiplierKey) {
    const base = Math.max(0, Number(value || 0));
    const multiplier = Math.max(0, Number(getDepthConfig()[multiplierKey] || 1));
@@ -1445,7 +1449,7 @@ const PET_POOL = [
   }
 
   function isEnemyAttackActionType(type) {
-   return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison'].includes(type);
+   return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison', 'enemy-bomb'].includes(type);
   }
 
   function updateEnemyActionText(card) {
@@ -1456,6 +1460,7 @@ const PET_POOL = [
    if (card.type === 'enemy-freeze') card.text = `${value}ダメージ / 凍結`;
    if (card.type === 'enemy-burn') card.text = `${value}ダメージ / 火傷`;
    if (card.type === 'enemy-poison') card.text = `${value}ダメージ / 毒`;
+   if (card.type === 'enemy-bomb') card.text = `${value}ダメージ / 爆弾`;
    return card;
   }
 
@@ -1541,7 +1546,7 @@ const PET_POOL = [
    save.deckCustomize = save.deckCustomize && typeof save.deckCustomize === 'object' ? normalizeDeckCustomizeForSave(save.deckCustomize) : getInitialDeckCustomize();
    save.selectedPetId = save.selectedPetId || 'none';
    save.petLevel = Math.min(MAX_PET_LEVEL, Math.max(1, Number(save.petLevel || 1)));
-   save.currentDepth = normalizeDepth(hasDepthField ? save.currentDepth : 3);
+   save.currentDepth = normalizeDepth(hasDepthField ? save.currentDepth : 1);
    save.depthProgress = normalizeDepthProgress(save.depthProgress);
    save.savedAt = save.savedAt || null;
    save.playerName = String(save.playerName || '').trim().replace(/\s+/g, ' ').slice(0, 16);
@@ -2046,7 +2051,7 @@ const PET_POOL = [
      id: String(item.id || `history-${Date.now()}-${Math.random().toString(16).slice(2)}`),
      recordedAt: Number(item.recordedAt || Date.now()),
      result: ['win', 'lose', 'progress'].includes(item.result) ? item.result : 'lose',
-     depth: normalizeDepth(item.depth || item.currentDepth || 3),
+     depth: normalizeDepth(item.depth || item.currentDepth || 1),
      runStartedAt: Number(item.runStartedAt || item.recordedAt || Date.now()),
      reachedLevel: Math.max(1, Number(item.reachedLevel || 1)),
      playTimeMs: Math.max(0, Number(item.playTimeMs || 0)),
@@ -2747,7 +2752,8 @@ function getEffectiveCardCooldownSeconds(card, options = {}) {
   && baseCooldown > 1;
  const tempReduce = canApplyTemporaryReduce ? temporaryReduceAmount : 0;
  const totalReduce = (playerPassives.cooldownReduce || 0) + tempReduce;
- const cooldown = Math.max(0.5, roundToTenthSecond(baseCooldown - totalReduce));
+ const burnPenalty = player && player.burn && Number(player.burnTurns || 0) > 0 ? 0.5 : 0;
+ const cooldown = Math.max(0.5, roundToTenthSecond(baseCooldown - totalReduce + burnPenalty));
 
  if (options.consume && tempReduce > 0) {
   player.nextCardCooldownReduceUses = Math.max(0, (player.nextCardCooldownReduceUses || 0) - 1);
@@ -4313,19 +4319,73 @@ function getDeckTotal() {
    return deck;
   }
 
-  function getEnemyCandidatesForLevel(level) {
-   if (level >= 20) return ['void_knight'];
-   if (level >= 17 && level <= 19) return ['shadow_knight', 'abyss_reaper', 'obsidian_warden'];
-   if (level >= 13) return ['ice_golem', 'crystal_serpent', 'stone_titan'];
-   if (level >= 9) return ['mage', 'rune_guardian', 'storm_adept'];
-   if (level >= 5) return ['wolf', 'orc', 'shaman'];
+  const ENEMY_TABLES = {
+   early: ['slime', 'goblin', 'bat'],
+   mid: ['wolf', 'orc', 'shaman'],
+   base9: ['mage', 'rune_guardian', 'storm_adept'],
+   base13: ['ice_golem', 'crystal_serpent', 'stone_titan'],
+   base17: ['shadow_knight', 'abyss_reaper', 'obsidian_warden'],
+   passive9: ['cultist', 'undead_knight', 'powder_raider', 'frozen_wraith', 'abyss_poisoner'],
+   passive13: ['frost_worm', 'bomb_eater', 'blood_hound', 'lich_skull', 'abyss_poisoner'],
+   passive17: ['powder_raider', 'frost_worm', 'bomb_eater', 'blood_hound', 'lich_skull', 'abyss_poisoner'],
+   multi17: ['death_reaper', 'venom_lord', 'hell_bomber', 'frost_dragon', 'abyss_beast'],
+  };
 
-   return ['slime', 'goblin', 'bat'];
+  function getEnemyCandidateGroupsForLevel(level) {
+   if (level >= 20) return { base: ['void_knight'], passive: [], multi: [] };
+   if (level >= 17) {
+    return {
+     base: ENEMY_TABLES.base17,
+     passive: areEnemyPassivesEnabled() ? ENEMY_TABLES.passive17 : [],
+     multi: areMultiEnemyPassivesEnabled() ? ENEMY_TABLES.multi17 : [],
+    };
+   }
+   if (level >= 13) {
+    return {
+     base: ENEMY_TABLES.base13,
+     passive: areEnemyPassivesEnabled() ? ENEMY_TABLES.passive13 : [],
+     multi: [],
+    };
+   }
+   if (level >= 9) {
+    return {
+     base: ENEMY_TABLES.base9,
+     passive: areEnemyPassivesEnabled() ? ENEMY_TABLES.passive9 : [],
+     multi: [],
+    };
+   }
+   if (level >= 5) return { base: ENEMY_TABLES.mid, passive: [], multi: [] };
+   return { base: ENEMY_TABLES.early, passive: [], multi: [] };
+  }
+
+  function getEnemyCandidatesForLevel(level) {
+   const groups = getEnemyCandidateGroupsForLevel(level);
+   return [...groups.base, ...groups.passive, ...groups.multi];
+  }
+
+  function pickRandomFromList(list, fallback = 'slime') {
+   return list[Math.floor(Math.random() * list.length)] || fallback;
   }
 
   function chooseEnemyIdForLevel(level) {
-   const candidates = getEnemyCandidatesForLevel(level);
-   return candidates[Math.floor(Math.random() * candidates.length)] || 'slime';
+   const groups = getEnemyCandidateGroupsForLevel(level);
+   if (level >= 20) return 'void_knight';
+   if (level >= 17 && groups.multi.length > 0) {
+    const roll = Math.random();
+    if (roll < 0.35) return pickRandomFromList(groups.multi, 'death_reaper');
+    if (roll < 0.8) return pickRandomFromList(groups.passive, 'powder_raider');
+    return pickRandomFromList(groups.base, 'shadow_knight');
+   }
+   if (level >= 17 && groups.passive.length > 0) {
+    return Math.random() < 0.7 ? pickRandomFromList(groups.passive, 'powder_raider') : pickRandomFromList(groups.base, 'shadow_knight');
+   }
+   if (level >= 13 && groups.passive.length > 0) {
+    return Math.random() < 0.6 ? pickRandomFromList(groups.passive, 'frost_worm') : pickRandomFromList(groups.base, 'ice_golem');
+   }
+   if (level >= 9 && groups.passive.length > 0) {
+    return Math.random() < 0.3 ? pickRandomFromList(groups.passive, 'cultist') : pickRandomFromList(groups.base, 'mage');
+   }
+   return pickRandomFromList(groups.base, 'slime');
   }
 
   function getDefaultEnemyIdForLevel(level) {
@@ -4372,6 +4432,61 @@ function getEnemyReloadTimeBonus() {
  return getCurrentEnemyCatalogEntry()?.id === 'obsidian_warden' ? 2 : 0;
 }
 
+const ENEMY_PASSIVE_DEFINITIONS = {
+ desperate: { name: '背水', text: 'HP50%以下で攻撃力上昇' },
+ tenacity: { name: '執念', text: '致死ダメージを1回だけHP1で耐える' },
+ poison_resist: { name: '毒耐性', text: '毒付与量50%減少' },
+ bomb_resist: { name: '爆弾耐性', text: '爆弾ダメージ30%減少' },
+ freeze_resist: { name: '凍結耐性', text: '凍結付与率50%減少' },
+ fatal_power: { name: '致命強化', text: '執念発動後に攻撃力上昇' },
+ poison_blood: { name: '毒血', text: '毒ダメージを受けると回復する' },
+ bomb_frenzy: { name: '爆発狂', text: '爆弾を扱う攻撃を多用する' },
+ flame_snare: { name: '火炎足止め', text: '火傷で硬直を伸ばす' },
+ time_magic: { name: '時魔術', text: '防御と状態異常で長期戦に持ち込む' },
+ blood_price: { name: '血の代償', text: 'HPが減るほど攻撃が激しくなる' },
+};
+
+function getCurrentEnemyPassiveIds() {
+ const entry = getCurrentEnemyCatalogEntry();
+ if (!areEnemyPassivesEnabled() || !entry) return [];
+ if (Array.isArray(entry.passiveIds)) return entry.passiveIds;
+ const map = {
+  shadow_knight: ['freeze_resist'],
+  obsidian_warden: ['time_magic'],
+ };
+ return map[entry.id] || [];
+}
+
+function enemyHasPassive(id) {
+ return getCurrentEnemyPassiveIds().includes(id);
+}
+
+function getEnemyPassiveNames() {
+ return getCurrentEnemyPassiveIds().map(id => ENEMY_PASSIVE_DEFINITIONS[id]?.name || id);
+}
+
+function getEnemyAttackPassiveMultiplier() {
+ if (!cpu || !areEnemyPassivesEnabled()) return 1;
+ const hpRate = Math.max(0, Number(cpu.hp || 0)) / Math.max(1, Number(cpu.maxHp || getEnemyMaxHp()));
+ let multiplier = 1;
+ if (enemyHasPassive('desperate') && hpRate <= 0.5) multiplier *= 1.25;
+ if (enemyHasPassive('fatal_power') && cpu.enemyTenacityTriggered) multiplier *= 1.35;
+ if (enemyHasPassive('blood_price')) multiplier *= hpRate <= 0.25 ? 1.35 : hpRate <= 0.5 ? 1.2 : 1;
+ return multiplier;
+}
+
+function getEnemyBombDamageMultiplier() {
+ return enemyHasPassive('bomb_resist') ? 0.7 : 1;
+}
+
+function getEnemyPoisonApplyMultiplier() {
+ return enemyHasPassive('poison_resist') || (cpu && cpu.poisonImmune) ? 0.5 : 1;
+}
+
+function getEnemyFreezeApplyChanceMultiplier() {
+ return enemyHasPassive('freeze_resist') ? 0.5 : 1;
+}
+
 function clearEnemyStatusEffects() {
   if (!cpu) return;
   cpu.paralysis = 0;
@@ -4396,6 +4511,12 @@ function getEnemyBombs() {
  if (!cpu) return [];
  if (!Array.isArray(cpu.bombs)) cpu.bombs = [];
  return cpu.bombs;
+}
+
+function getPlayerBombs() {
+ if (!player) return [];
+ if (!Array.isArray(player.bombs)) player.bombs = [];
+ return player.bombs;
 }
 
 function getBombDefinition(kind) {
@@ -4429,6 +4550,84 @@ function addBombToEnemy(kind = 'normal', options = {}) {
  return bomb;
 }
 
+function addBombToPlayer(kind = 'normal', options = {}) {
+ if (!player || gameOver) return null;
+ const def = getBombDefinition(kind);
+ const bomb = {
+  id: `player-bomb-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  kind: def.id,
+  name: options.name || def.name,
+  icon: def.icon,
+  count: Math.max(1, Number(options.count ?? def.count ?? 1)),
+  damage: Math.max(0, Number(options.damage ?? def.damage ?? 0)),
+  damageMultiplier: Math.max(0.1, Number(options.damageMultiplier || 1)),
+ };
+ getPlayerBombs().push(bomb);
+ addLog(`${getEnemyName()}：${bomb.name}をあなたに付与 (${bomb.count}枚後 / ${bomb.damage}ダメージ)`);
+ showDamagePopup('player-hp-change', `${bomb.name}+`);
+ triggerCardVisualEffect('.player-img', 'burn-flame');
+ return bomb;
+}
+
+function detonatePlayerBombs(bombs) {
+ if (!player || gameOver) return 0;
+ const source = Array.isArray(bombs) ? bombs.filter(Boolean) : [];
+ if (!source.length) return 0;
+ const ids = new Set(source.map(bomb => bomb.id));
+ player.bombs = getPlayerBombs().filter(bomb => !ids.has(bomb.id));
+ let exploded = 0;
+ source.forEach(bomb => {
+  const damage = Math.max(0, Math.round(Number(bomb.damage || 0) * Number(bomb.damageMultiplier || 1)));
+  const result = applyDamage(player, damage);
+  exploded += 1;
+  showDamagePopup('player-hp-change', `💣-${result.damage}`);
+  triggerDamageShake('.player-img');
+  triggerCardVisualEffect('.player-img', 'burn-flame');
+  addLog(`${bomb.name}が爆発：${result.damage}ダメージ`);
+  checkWinner();
+ });
+ playSound(exploded > 0 ? 'critical' : 'miss');
+ return exploded;
+}
+
+function advancePlayerBombsByCardUse() {
+ const bombs = getPlayerBombs();
+ if (!bombs.length || gameOver) return;
+ bombs.forEach(bomb => {
+  bomb.count = Math.max(-99, Number(bomb.count || 0) - 1);
+ });
+ const due = bombs.filter(bomb => Number(bomb.count || 0) <= 0);
+ if (due.length > 0) detonatePlayerBombs(due);
+}
+
+function applyPlayerPoison(turns = 3) {
+ if (!player || consumePlayerStatusGuard('毒')) return false;
+ player.poisonTurns = Math.max(Number(player.poisonTurns || 0), Math.max(1, Number(turns || 3)));
+ showDamagePopup('player-hp-change', `毒${player.poisonTurns}T`);
+ triggerPoisonEffect('.player-img');
+ return true;
+}
+
+function applyPlayerBurn(turns = 3) {
+ if (!player || consumePlayerStatusGuard('火傷')) return false;
+ player.burnTurns = Math.max(Number(player.burnTurns || 0), Math.max(1, Number(turns || 3)));
+ player.burn = true;
+ showDamagePopup('player-hp-change', `火傷${player.burnTurns}T`);
+ triggerCardVisualEffect('.player-img', 'burn-flame');
+ return true;
+}
+
+function applyPlayerPoisonReloadDamage() {
+ if (!player || !player.poisonTurns || player.poisonTurns <= 0) return;
+ const result = applyDamage(player, 3, { ignoreBlock: true, preserveBlock: true });
+ player.poisonTurns = Math.max(0, Number(player.poisonTurns || 0) - 1);
+ showDamagePopup('player-hp-change', `毒-${result.damage}`);
+ triggerPoisonEffect('.player-img');
+ addLog(`毒：リロード時に${result.damage}ダメージ${player.poisonTurns > 0 ? ` (残り${player.poisonTurns}T)` : ''}`);
+ if (player.poisonTurns <= 0) addLog('毒が解除');
+ checkWinner();
+}
+
 function advanceEnemyBombs(amount = 1, options = {}) {
  const bombs = getEnemyBombs();
  if (!bombs.length) {
@@ -4460,6 +4659,7 @@ function detonateBombs(bombs, options = {}) {
  source.forEach(bomb => {
   const multiplier = Number(bomb.damageMultiplier || 1)
    * Math.max(0, Number(options.damageMultiplier || 1))
+   * getEnemyBombDamageMultiplier()
    * (1 + Math.max(0, Number(playerPassives.bombDamageBonusMultiplier || 0)));
   const damage = Math.max(0, Math.round(Number(bomb.damage || 0) * multiplier));
   const result = applyDamage(cpu, damage);
@@ -4584,8 +4784,86 @@ function createEnemyDefenseAction(name, value) {
  };
 }
 
+function getPassiveEnemyActionPool(enemyId, level) {
+ const late = level >= 17;
+ const high = level >= 13;
+ const pools = {
+  cultist: [
+   { name: '狂信の刃', type: 'attack', value: high ? 14 : 11, text: `${high ? 14 : 11}ダメージ` },
+   { name: '祈りの防壁', type: 'defense', value: high ? 12 : 9, text: `防御+${high ? 12 : 9}` },
+   { name: '血の祈祷', type: 'attack', value: high ? 16 : 13, text: `${high ? 16 : 13}ダメージ` },
+  ],
+  undead_knight: [
+   { name: '朽ちた剣', type: 'attack', value: high ? 15 : 12, text: `${high ? 15 : 12}ダメージ` },
+   { name: '不死の構え', type: 'defense', value: high ? 14 : 10, text: `防御+${high ? 14 : 10}` },
+   { name: '墓所の一撃', type: 'attack', value: high ? 17 : 14, text: `${high ? 17 : 14}ダメージ` },
+  ],
+  powder_raider: [
+   { name: '火薬殴打', type: 'attack', value: late ? 18 : 13, text: `${late ? 18 : 13}ダメージ` },
+   { name: '爆弾投げ', type: 'enemy-bomb', value: late ? 10 : 7, bombKind: 'small', text: `${late ? 10 : 7}ダメージ / 小爆弾` },
+   { name: '火薬隠れ', type: 'defense', value: late ? 16 : 11, text: `防御+${late ? 16 : 11}` },
+  ],
+  frozen_wraith: [
+   { name: '冷気の爪', type: 'enemy-freeze', value: high ? 10 : 8, text: `${high ? 10 : 8}ダメージ / 凍結` },
+   { name: '霜の壁', type: 'defense', value: high ? 13 : 9, text: `防御+${high ? 13 : 9}` },
+   { name: '亡霊の一撃', type: 'attack', value: high ? 15 : 12, text: `${high ? 15 : 12}ダメージ` },
+  ],
+  abyss_poisoner: [
+   { name: '毒針', type: 'enemy-poison', value: late ? 13 : 9, poisonTurns: high ? 4 : 3, text: `${late ? 13 : 9}ダメージ / 毒` },
+   { name: '毒霧の守り', type: 'defense', value: high ? 12 : 8, text: `防御+${high ? 12 : 8}` },
+   { name: 'アビスニードル', type: 'attack', value: late ? 17 : 13, text: `${late ? 17 : 13}ダメージ` },
+  ],
+  frost_worm: [
+   { name: 'フロストバイト', type: 'enemy-freeze', value: late ? 16 : 11, text: `${late ? 16 : 11}ダメージ / 凍結` },
+   { name: '熱裂き', type: 'enemy-burn', value: late ? 14 : 10, burnTurns: 3, text: `${late ? 14 : 10}ダメージ / 火傷` },
+   { name: '氷殻', type: 'defense', value: late ? 17 : 13, text: `防御+${late ? 17 : 13}` },
+  ],
+  bomb_eater: [
+   { name: '爆食い', type: 'attack', value: late ? 17 : 12, text: `${late ? 17 : 12}ダメージ` },
+   { name: '爆弾吐き', type: 'enemy-bomb', value: late ? 12 : 8, bombKind: 'normal', text: `${late ? 12 : 8}ダメージ / 爆弾` },
+   { name: '装甲腹', type: 'defense', value: late ? 18 : 14, text: `防御+${late ? 18 : 14}` },
+  ],
+  blood_hound: [
+   { name: '血牙', type: 'attack', value: late ? 20 : 14, text: `${late ? 20 : 14}ダメージ` },
+   { name: '唸り構え', type: 'defense', value: late ? 14 : 10, text: `防御+${late ? 14 : 10}` },
+   { name: '裂傷突進', type: 'attack', value: late ? 22 : 16, text: `${late ? 22 : 16}ダメージ` },
+  ],
+  lich_skull: [
+   { name: '骨の呪弾', type: 'enemy-poison', value: late ? 14 : 10, poisonTurns: 3, text: `${late ? 14 : 10}ダメージ / 毒` },
+   { name: '死霊障壁', type: 'defense', value: late ? 18 : 13, text: `防御+${late ? 18 : 13}` },
+   { name: 'リッチボルト', type: 'attack', value: late ? 19 : 15, text: `${late ? 19 : 15}ダメージ` },
+  ],
+  death_reaper: [
+   { name: '死神の鎌', type: 'attack', value: 22, text: '22ダメージ' },
+   { name: '終末の構え', type: 'defense', value: 17, text: '防御+17' },
+   { name: '致命の一閃', type: 'attack', value: 25, text: '25ダメージ' },
+  ],
+  venom_lord: [
+   { name: '王毒牙', type: 'enemy-poison', value: 16, poisonTurns: 5, text: '16ダメージ / 毒' },
+   { name: '毒王の外套', type: 'defense', value: 18, text: '防御+18' },
+   { name: '腐蝕の爪', type: 'attack', value: 21, text: '21ダメージ' },
+  ],
+  hell_bomber: [
+   { name: '火炎瓶', type: 'enemy-burn', value: 15, burnTurns: 4, text: '15ダメージ / 火傷' },
+   { name: '大型爆弾', type: 'enemy-bomb', value: 14, bombKind: 'normal', text: '14ダメージ / 爆弾' },
+   { name: '爆炎防壁', type: 'defense', value: 16, text: '防御+16' },
+  ],
+  frost_dragon: [
+   { name: '竜の凍息', type: 'enemy-freeze', value: 17, text: '17ダメージ / 凍結' },
+   { name: '時霜の鱗', type: 'defense', value: 20, text: '防御+20' },
+   { name: '氷竜尾撃', type: 'attack', value: 22, text: '22ダメージ' },
+  ],
+  abyss_beast: [
+   { name: '獣爪', type: 'attack', value: 21, text: '21ダメージ' },
+   { name: '血の咆哮', type: 'attack', value: 24, text: '24ダメージ' },
+   { name: '深淵皮膚', type: 'defense', value: 15, text: '防御+15' },
+  ],
+ };
+ return pools[enemyId] || null;
+}
+
 function isEnemyDamageAction(action) {
- return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison'].includes(action?.type);
+ return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison', 'enemy-bomb'].includes(action?.type);
 }
 
 function applyDangerSenseForNextAction() {
@@ -4681,6 +4959,21 @@ function tryApplyEnemyParalysis(turns = 3) {
  cpu.paralysis = (cpu.paralysis || 0) + Math.max(1, Number(turns || 3));
  triggerParalysisEffect('.cpu-img');
  playSound('paralysis');
+ return true;
+}
+
+function tryApplyEnemyFreeze(turns = 1, chance = 1) {
+ if (isEnemyFreezeImmune()) {
+  triggerCardVisualEffect('.cpu-img', 'guard');
+  playSound('guard');
+  return false;
+ }
+ const actualChance = Math.max(0, Math.min(1, Number(chance || 0) * getEnemyFreezeApplyChanceMultiplier()));
+ if (Math.random() > actualChance) return false;
+ cpu.freeze = Math.max(Number(cpu.freeze || 0), Math.max(1, Number(turns || 1)));
+ recordAchievementStat('freezeApplications');
+ triggerFreezeEffect('.cpu-img');
+ playSound('freeze');
  return true;
 }
 
@@ -5009,6 +5302,10 @@ function tryApplyEnemyParalysis(turns = 3) {
     ];
  }
 
+ const passiveEnemyPool = getPassiveEnemyActionPool(getCurrentEnemyCatalogEntry()?.id || currentEnemyId || '', enemyLevel);
+ if (passiveEnemyPool) {
+  cpuPool = passiveEnemyPool;
+ }
 
  cpuPool = rebalanceLateEnemyActionPool(cpuPool).map(applyDepthScalingToEnemyCard);
 
@@ -5102,7 +5399,7 @@ function addTemporaryRandomCardToHand() {
 
 function isEnemyPreparingAttack() {
  if (!cpu || !cpu.nextAction) return false;
- return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison'].includes(cpu.nextAction.type);
+ return ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison', 'enemy-bomb'].includes(cpu.nextAction.type);
 }
 
 function discardRandomPlayerHandCard(options = {}) {
@@ -5426,6 +5723,11 @@ function startReload() {
      }
 
      if (drawPenalty > 0) addLog(`呪いの重圧：ドロー-${drawPenalty}`);
+     applyPlayerPoisonReloadDamage();
+     if (gameOver) {
+      render();
+      return;
+     }
 
      const drawCount = Math.max(1, RELOAD_DRAW_COUNT + playerPassives.reloadDrawBonus - drawPenalty);
      const newCards = drawCards(drawCount, true);
@@ -6375,6 +6677,10 @@ function saveDeckCustomize() {
     freezeTimer: 0,
     freezeClickCount: 0,
     freezeRequiredClicks: 10,
+    poisonTurns: 0,
+    burn: false,
+    burnTurns: 0,
+    bombs: [],
     nextCardCooldownReduceUses: 0,
     nextCardCooldownReduceAmount: 0,
     reflectNextAttack: false,
@@ -6422,6 +6728,8 @@ function saveDeckCustomize() {
      pendingEnemyActionDelayTurns: 0,
      pendingEnemyActionDelayAmount: 0,
      bombs: [],
+     enemyTenacityUsed: false,
+     enemyTenacityTriggered: false,
     };
 
     pendingVoidEntranceAnimation = enemyLevel >= 20 && cpu.phase === 1;
@@ -6962,7 +7270,13 @@ function playSound(type) {
    const actualDamage = incomingDamage - blocked;
    let endured = false;
 
-   if (target === player && player && player.endureNextAttack && actualDamage > 0) {
+   if (target === cpu && cpu && enemyHasPassive('tenacity') && !cpu.enemyTenacityUsed && actualDamage > 0 && target.hp - actualDamage <= 0) {
+    cpu.enemyTenacityUsed = true;
+    cpu.enemyTenacityTriggered = true;
+    target.hp = 1;
+    endured = true;
+    addLog(`${getEnemyName()}：執念でHP1に踏みとどまった`);
+   } else if (target === player && player && player.endureNextAttack && actualDamage > 0) {
     player.endureNextAttack = false;
     if (target.hp - actualDamage <= 0) {
      target.hp = 1;
@@ -6991,8 +7305,14 @@ function playSound(type) {
    const dealtDamage = beforeHp - target.hp;
 
    if (target === cpu && dealtDamage > 0) {
-    playSound('damage');
+   playSound('damage');
+   if (enemyHasPassive('poison_blood') && options.poisonDamage) {
+    const healAmount = Math.max(1, Math.floor(dealtDamage * 0.25));
+    cpu.hp = Math.min(Number(cpu.maxHp || getEnemyMaxHp()), Number(cpu.hp || 0) + healAmount);
+    showDamagePopup('cpu-hp-change', `+${healAmount}`);
+    addLog(`${getEnemyName()}：毒血で${healAmount}回復`);
    }
+  }
 
    if (battleResultStats && !battleResultStats.endedAt) {
     if (target === cpu) {
@@ -7056,7 +7376,7 @@ function playSound(type) {
     : cpu.hand;
    const actionHand = selectableHand.length > 0 ? selectableHand : cpu.hand;
 
-   const attacks = actionHand.filter(c => c.type === 'attack' || c.type === 'enemy-paralyze' || c.type === 'enemy-freeze');
+   const attacks = actionHand.filter(c => c.type === 'attack' || c.type === 'enemy-paralyze' || c.type === 'enemy-freeze' || c.type === 'enemy-burn' || c.type === 'enemy-poison' || c.type === 'enemy-bomb');
    const defenses = actionHand.filter(c => c.type === 'defense');
    const cleanses = actionHand.filter(c => c.type === 'enemy-cleanse');
 
@@ -7065,6 +7385,9 @@ function playSound(type) {
    const statusCards = actionHand.filter(c =>
     c.type === 'enemy-paralyze' ||
     c.type === 'enemy-freeze' ||
+    c.type === 'enemy-burn' ||
+    c.type === 'enemy-poison' ||
+    c.type === 'enemy-bomb' ||
     c.type === 'enemy-cleanse' ||
     c.type === 'freeze'
    );
@@ -7244,8 +7567,8 @@ function getEvolvedPetSkills(withBaseText) {
      const result = applyDamage(cpu, damage);
      const poison = applyPoisonToEnemy(turns);
      showDamagePopup('cpu-hp-change', `-${result.damage}`);
-     playSound(poison.immune ? 'guard' : 'poison');
-     return `${result.damage}ダメージ / ${poison.immune ? '毒付与無効' : `毒+${poison.applied}`}`;
+     playSound('poison');
+     return `${result.damage}ダメージ / 毒+${poison.applied}${poison.resisted ? ' (耐性)' : ''}`;
     },
    }),
    withBaseText({
@@ -7268,8 +7591,8 @@ function getEvolvedPetSkills(withBaseText) {
      const applied = applyPoisonToEnemy(poison);
      enemyTimer += delay;
      updateEnemyTimerText();
-     playSound(applied.immune ? 'guard' : 'poison');
-     return `${applied.immune ? '毒付与無効' : `毒+${applied.applied}`} / 敵の次行動+${delay}秒`;
+     playSound('poison');
+     return `毒+${applied.applied}${applied.resisted ? ' (耐性)' : ''} / 敵の次行動+${delay}秒`;
     },
    }),
    withBaseText({
@@ -7417,11 +7740,10 @@ function getEvolvedPetSkills(withBaseText) {
     execute() {
      const damage = getEvolvedPetAttackSkillPower(6);
      const result = applyDamage(cpu, damage);
-     cpu.freeze = 1;
+     const freezeApplied = tryApplyEnemyFreeze(1, 1);
      showDamagePopup('cpu-hp-change', `-${result.damage}`);
-     triggerFreezeEffect('.cpu-img');
      playSound('freeze');
-     return `${result.damage}ダメージ / 凍結 1T`;
+     return `${result.damage}ダメージ / ${freezeApplied ? '凍結 1T' : '凍結失敗'}`;
     },
    }),
    withBaseText({
@@ -7662,8 +7984,8 @@ function getPetSkills() {
      const poison = applyPoisonToEnemy(turns);
      showDamagePopup('cpu-hp-change', `-${result.damage}`);
      triggerDamageShake('.cpu-img');
-     playSound(poison.immune ? 'guard' : 'poison');
-     return `${result.damage}ダメージ / ${poison.immune ? '毒付与無効' : `毒+${poison.applied}`}`;
+     playSound('poison');
+     return `${result.damage}ダメージ / 毒+${poison.applied}${poison.resisted ? ' (耐性)' : ''}`;
     },
    }),
   ];
@@ -7797,11 +8119,10 @@ function getPetSkills() {
     execute() {
      const damage = getPetAttackSkillPower(2);
      const result = applyDamage(cpu, damage);
-     cpu.freeze = 1;
+     const freezeApplied = tryApplyEnemyFreeze(1, 1);
      showDamagePopup('cpu-hp-change', `-${result.damage}`);
-     triggerFreezeEffect('.cpu-img');
      playSound('freeze');
-     return `${result.damage}ダメージ / 凍結 1T`;
+     return `${result.damage}ダメージ / ${freezeApplied ? '凍結 1T' : '凍結失敗'}`;
     },
    }),
    withBaseText({
@@ -8103,15 +8424,14 @@ function getEnemyPoisonAmount() {
 }
 
 function applyPoisonToEnemy(amount, options = {}) {
- if (!cpu || gameOver) return { applied: 0, drawn: [] };
- if (cpu.poisonImmune) {
-  return { applied: 0, drawn: [], immune: true };
- }
+ if (!cpu || gameOver) return { applied: 0, drawn: [], resisted: false };
 
  const baseAmount = Math.max(0, Math.floor(Number(amount || 0)));
  const bonus = options.ignorePassiveBonus ? 0 : Math.max(0, Math.floor(Number(playerPassives.poisonApplyBonus || 0)));
- const applied = baseAmount + bonus;
- if (applied <= 0) return { applied: 0, drawn: [] };
+ const resistanceMultiplier = Math.max(0, Number(getEnemyPoisonApplyMultiplier() || 1));
+ const resisted = resistanceMultiplier < 1;
+ const applied = Math.max(0, Math.floor((baseAmount + bonus) * resistanceMultiplier));
+ if (applied <= 0) return { applied: 0, drawn: [], resisted };
 
  cpu.poisonTurns = getEnemyPoisonAmount() + applied;
  triggerPoisonEffect('.cpu-img');
@@ -8125,7 +8445,7 @@ function applyPoisonToEnemy(amount, options = {}) {
   }
  }
 
- return { applied, drawn };
+ return { applied, drawn, resisted };
 }
 
 function playPlayerCard(id, options = {}) {
@@ -8160,6 +8480,13 @@ function playPlayerCard(id, options = {}) {
 
    startEnemyTimerOnFirstCard();
    triggerNormalCardUseEffect(card);
+   if (!isEchoCopy) {
+    advancePlayerBombsByCardUse();
+    if (gameOver) {
+     render();
+     return;
+    }
+   }
    if (isCurseCard(card)) {
     addLog(`呪いカード：${card.name}（効果なし）`);
     playSound('miss');
@@ -8229,12 +8556,7 @@ function playPlayerCard(id, options = {}) {
    if (card.type === 'ice-needle') {
     const result = applyPlayerCardDamage(getEffectiveCardValue(card));
     consumeAttackBoostsAfterAttack();
-    const frozen = Math.random() < Number(card.chance || 0.2);
-    if (frozen) {
-     cpu.freeze = Math.max(cpu.freeze || 0, card.turns || 1);
-     recordAchievementStat('freezeApplications');
-     triggerFreezeEffect('.cpu-img');
-    }
+    const frozen = tryApplyEnemyFreeze(card.turns || 1, Number(card.chance || 0.2));
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
     triggerDamageShake('.cpu-img');
     addLog(`あなた：${card.name} (${result.damage}ダメージ${frozen ? ' / 凍結' : ''})`);
@@ -8481,13 +8803,7 @@ if (card.type === 'rare-double-attack') {
 
    if (card.type === 'mutual-freeze') {
     const turns = Math.max(1, Number(card.turns || 2));
-    const freezeApplied = !isEnemyFreezeImmune();
-    if (freezeApplied) {
-     cpu.freeze = Math.max(Number(cpu.freeze || 0), turns);
-     recordAchievementStat('freezeApplications');
-    }
-
-    triggerFreezeEffect('.cpu-img');
+    const freezeApplied = tryApplyEnemyFreeze(turns, 1);
     applyPlayerFreeze(Math.max(1, Number(card.selfFreezeClicks || 6)));
     showDamagePopup('cpu-hp-change', freezeApplied ? `凍結${turns}T` : '凍結無効');
     addLog(`あなた：${card.name} (${freezeApplied ? `敵凍結${turns}T` : '敵凍結無効'} / 自身も凍結)`);
@@ -8947,18 +9263,12 @@ if (card.type === 'dein') {
 
     consumeAttackBoostsAfterAttack();
 
-    const freezeApplied = !isEnemyFreezeImmune();
-
-    if (freezeApplied) {
-     cpu.freeze = 1;
-    }
+    const freezeApplied = tryApplyEnemyFreeze(1, 1);
 
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
 
     triggerDamageShake('.cpu-img');
-    if (freezeApplied) {
-     triggerFreezeEffect('.cpu-img');
-    } else {
+    if (!freezeApplied) {
      triggerCardVisualEffect('.cpu-img', 'guard');
     }
 
@@ -8982,7 +9292,7 @@ if (card.type === 'dein') {
 
     const poisonTurns = Math.max(1, Number(card.turns || 5));
     const poison = applyPoisonToEnemy(poisonTurns);
-    const poisonText = poison.immune ? '毒耐性で毒付与無効' : `毒+${poison.applied}`;
+    const poisonText = `毒+${poison.applied}${poison.resisted ? ' (耐性で50%)' : ''}`;
 
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
 
@@ -8995,15 +9305,15 @@ if (card.type === 'dein') {
      playSound('attack');
     }
 
-    playSound(poison.immune ? 'guard' : 'poison');
+    playSound('poison');
    }
 
    if (card.type === 'poison-cloud' || card.type === 'poison-inject') {
     const poison = applyPoisonToEnemy(Math.max(1, Number(card.turns || 5)));
-    const poisonText = poison.immune ? '毒耐性で毒付与無効' : `毒+${poison.applied}`;
-    showDamagePopup('cpu-hp-change', poison.immune ? '毒無効' : `毒+${poison.applied}`);
+    const poisonText = `毒+${poison.applied}${poison.resisted ? ' (耐性で50%)' : ''}`;
+    showDamagePopup('cpu-hp-change', `毒+${poison.applied}`);
     addLog(`あなた：${card.name} (${poisonText})`);
-    playSound(poison.immune ? 'guard' : 'poison');
+    playSound('poison');
    }
 
    if (card.type === 'poison-fang') {
@@ -9061,24 +9371,17 @@ if (card.type === 'dein') {
     const result = applyDamage(cpu, poisonAmount);
     showDamagePopup('cpu-hp-change', poisonAmount > 0 ? getDamagePopupText(result) : '毒不足');
     triggerPoisonEffect('.cpu-img');
-    addLog(`あなた：${card.name} (毒${poisonAmount}全消費 / ${result.damage}ダメージ / 毒耐性付与)`);
+    addLog(`あなた：${card.name} (毒${poisonAmount}全消費 / ${result.damage}ダメージ / 毒耐性付与：毒付与50%減少)`);
     playSound(poisonAmount > 0 ? 'poison' : 'miss');
    }
 
    if (card.type === 'poison-plague') {
-    if (cpu.poisonImmune) {
-     showDamagePopup('cpu-hp-change', '毒無効');
-     addLog(`あなた：${card.name} (毒耐性で毒成長無効 / 使用後破棄)`);
-     excludeCardTypeForCurrentBattle(card.type, card.id);
-     playSound('guard');
-    } else {
-     cpu.poisonGrowthPerTurn = Math.max(Number(cpu.poisonGrowthPerTurn || 0), Math.max(1, Number(card.value || 2)));
-     excludeCardTypeForCurrentBattle(card.type, card.id);
-     triggerPoisonEffect('.cpu-img');
-     showDamagePopup('cpu-hp-change', `毒成長+${cpu.poisonGrowthPerTurn}`);
-     addLog(`あなた：${card.name} (敵の毒が毎ターン+${cpu.poisonGrowthPerTurn} / 使用後破棄)`);
-     playSound('poison');
-    }
+    cpu.poisonGrowthPerTurn = Math.max(Number(cpu.poisonGrowthPerTurn || 0), Math.max(1, Number(card.value || 2)));
+    excludeCardTypeForCurrentBattle(card.type, card.id);
+    triggerPoisonEffect('.cpu-img');
+    showDamagePopup('cpu-hp-change', `毒成長+${cpu.poisonGrowthPerTurn}`);
+    addLog(`あなた：${card.name} (敵の毒が毎ターン+${cpu.poisonGrowthPerTurn}${getEnemyPoisonApplyMultiplier() < 1 ? ' / 耐性中は増加量50%' : ''} / 使用後破棄)`);
+    playSound('poison');
    }
 
    if (card.type === 'double-slash') {
@@ -9585,9 +9888,10 @@ if (card.type === 'rare-attack') {
    if (!cpu) return;
 
    const growth = Math.max(0, Math.floor(Number(cpu.poisonGrowthPerTurn || 0)));
-   if (growth > 0 && !cpu.poisonImmune) {
-    cpu.poisonTurns = getEnemyPoisonAmount() + growth;
-    showDamagePopup('cpu-hp-change', `毒+${growth}`);
+   if (growth > 0) {
+    const appliedGrowth = Math.max(0, Math.floor(growth * getEnemyPoisonApplyMultiplier()));
+    cpu.poisonTurns = getEnemyPoisonAmount() + appliedGrowth;
+    showDamagePopup('cpu-hp-change', `毒+${appliedGrowth}`);
    }
 
    if (!cpu.poisonTurns || cpu.poisonTurns <= 0) return;
@@ -9599,7 +9903,7 @@ if (card.type === 'rare-attack') {
     && poisonStacks >= Number(playerPassives.poisonOverdriveThreshold || 0);
    const overdriveMultiplier = overdriveActive ? Math.max(1, Number(playerPassives.poisonOverdriveMultiplier || 1)) : 1;
    const poisonDamage = (1 + (playerPassives.poisonDamageBonus || 0) + thresholdBonus) * overdriveMultiplier;
-   const result = applyDamage(cpu, poisonDamage, { ignoreBlock: true, preserveBlock: true });
+   const result = applyDamage(cpu, poisonDamage, { ignoreBlock: true, preserveBlock: true, poisonDamage: true });
 
    cpu.poisonTurns--;
 
@@ -9617,6 +9921,21 @@ if (card.type === 'rare-attack') {
    playSound('poison');
 
    checkWinner();
+  }
+
+  function getAdjustedEnemyAttackValue(baseValue) {
+   let attackValue = Math.max(0, Number(baseValue || 0));
+   attackValue = Math.round(attackValue * getEnemyAttackPassiveMultiplier());
+   const attackDown = cpu && cpu.attackDownTurns > 0 ? (cpu.attackDownValue || 0) : 0;
+   if (attackDown > 0) attackValue = Math.max(0, attackValue - attackDown);
+   const wasBurned = Boolean(cpu && cpu.burn && Number(cpu.burnTurns || 0) > 0);
+   if (wasBurned) {
+    attackValue = Math.ceil(attackValue / 2);
+    cpu.burnTurns = Math.max(0, Number(cpu.burnTurns || 0) - 1);
+    if (cpu.burnTurns <= 0) cpu.burn = false;
+    recordAchievementStat('burnHalves');
+   }
+   return { attackValue, wasBurned, attackDown };
   }
 
   function cpuAction() {
@@ -9655,24 +9974,12 @@ if (card.type === 'rare-attack') {
    const card = cpu.nextAction;
    if (!card) return;
 
-   if (card.type === 'attack' || card.type === 'enemy-paralyze' || card.type === 'enemy-freeze') {
+   if (card.type === 'attack' || card.type === 'enemy-paralyze' || card.type === 'enemy-freeze' || card.type === 'enemy-burn' || card.type === 'enemy-poison' || card.type === 'enemy-bomb') {
     triggerAttackStep('.cpu-img', 'enemy');
    }
 
    if (card.type === 'attack') {
-    let attackValue = card.value;
-    const attackDown = cpu.attackDownTurns > 0 ? (cpu.attackDownValue || 0) : 0;
-    if (attackDown > 0) {
-     attackValue = Math.max(0, attackValue - attackDown);
-    }
-    const wasBurned = Boolean(cpu.burn && Number(cpu.burnTurns || 0) > 0);
-
-    if (wasBurned) {
-     attackValue = Math.ceil(attackValue / 2);
-     cpu.burnTurns = Math.max(0, Number(cpu.burnTurns || 0) - 1);
-     if (cpu.burnTurns <= 0) cpu.burn = false;
-     recordAchievementStat('burnHalves');
-    }
+    const { attackValue, wasBurned } = getAdjustedEnemyAttackValue(card.value);
 
     if (!consumePlayerReflectAttack(card, attackValue)) {
      const result = applyDamage(player, attackValue);
@@ -9701,8 +10008,9 @@ if (card.type === 'rare-attack') {
    }
 
    if (card.type === 'enemy-paralyze') {
-    if (!consumePlayerReflectAttack(card, card.value)) {
-     const result = applyDamage(player, card.value);
+    const { attackValue, wasBurned } = getAdjustedEnemyAttackValue(card.value);
+    if (!consumePlayerReflectAttack(card, attackValue)) {
+     const result = applyDamage(player, attackValue);
 
      const statusBlocked = consumePlayerStatusGuard('麻痺');
      if (!statusBlocked) {
@@ -9722,14 +10030,15 @@ if (card.type === 'rare-attack') {
       triggerParalysisEffect('.player-img');
      }
 
-     addLog(`${getEnemyName()} Lv.${enemyLevel}：${card.name} (${result.damage}ダメージ${result.endured ? ' / HP1で耐えた' : ''} / ${statusBlocked ? '麻痺無効' : '麻痺'})`);
+     addLog(`${getEnemyName()} Lv.${enemyLevel}：${card.name} (${result.damage}ダメージ${result.endured ? ' / HP1で耐えた' : ''}${wasBurned ? ' / 火傷で半減' : ''} / ${statusBlocked ? '麻痺無効' : '麻痺'})`);
      playSound(statusBlocked ? 'guard' : 'paralysis');
     }
    }
 
    if (card.type === 'enemy-freeze') {
-    if (!consumePlayerReflectAttack(card, card.value)) {
-     const result = applyDamage(player, card.value);
+    const { attackValue, wasBurned } = getAdjustedEnemyAttackValue(card.value);
+    if (!consumePlayerReflectAttack(card, attackValue)) {
+     const result = applyDamage(player, attackValue);
 
      applyPlayerFreeze(10);
 
@@ -9737,8 +10046,44 @@ if (card.type === 'rare-attack') {
      triggerDamageShake('.player-img');
      triggerFreezeEffect('.player-img');
 
-     addLog(`${getEnemyName()} Lv.${enemyLevel}：${card.name} (${result.damage}ダメージ${result.endured ? ' / HP1で耐えた' : ''} / 凍結)`);
+     addLog(`${getEnemyName()} Lv.${enemyLevel}：${card.name} (${result.damage}ダメージ${result.endured ? ' / HP1で耐えた' : ''}${wasBurned ? ' / 火傷で半減' : ''} / 凍結)`);
      playSound('freeze');
+    }
+   }
+
+   if (card.type === 'enemy-burn') {
+    const { attackValue, wasBurned } = getAdjustedEnemyAttackValue(card.value);
+    if (!consumePlayerReflectAttack(card, attackValue)) {
+     const result = applyDamage(player, attackValue);
+     const applied = applyPlayerBurn(card.burnTurns || 3);
+     showDamagePopup('player-hp-change', result.endured ? 'ENDURE' : `-${result.damage}`);
+     triggerDamageShake('.player-img');
+     addLog(`${getEnemyName()} Lv.${enemyLevel}：${card.name} (${result.damage}ダメージ${result.endured ? ' / HP1で耐えた' : ''}${wasBurned ? ' / 火傷で半減' : ''} / ${applied ? '火傷' : '火傷無効'})`);
+     playSound(applied ? 'damage' : 'guard');
+    }
+   }
+
+   if (card.type === 'enemy-poison') {
+    const { attackValue, wasBurned } = getAdjustedEnemyAttackValue(card.value);
+    if (!consumePlayerReflectAttack(card, attackValue)) {
+     const result = applyDamage(player, attackValue);
+     const applied = applyPlayerPoison(card.poisonTurns || 3);
+     showDamagePopup('player-hp-change', result.endured ? 'ENDURE' : `-${result.damage}`);
+     triggerDamageShake('.player-img');
+     addLog(`${getEnemyName()} Lv.${enemyLevel}：${card.name} (${result.damage}ダメージ${result.endured ? ' / HP1で耐えた' : ''}${wasBurned ? ' / 火傷で半減' : ''} / ${applied ? '毒' : '毒無効'})`);
+     playSound(applied ? 'poison' : 'guard');
+    }
+   }
+
+   if (card.type === 'enemy-bomb') {
+    const { attackValue, wasBurned } = getAdjustedEnemyAttackValue(card.value);
+    if (!consumePlayerReflectAttack(card, attackValue)) {
+     const result = applyDamage(player, attackValue);
+     addBombToPlayer(card.bombKind || 'small', { damage: card.bombDamage, count: card.bombCount });
+     showDamagePopup('player-hp-change', result.endured ? 'ENDURE' : `-${result.damage}`);
+     triggerDamageShake('.player-img');
+     addLog(`${getEnemyName()} Lv.${enemyLevel}：${card.name} (${result.damage}ダメージ${result.endured ? ' / HP1で耐えた' : ''}${wasBurned ? ' / 火傷で半減' : ''} / 爆弾付与)`);
+     playSound('critical');
     }
    }
 
@@ -9775,6 +10120,13 @@ if (card.type === 'rare-attack') {
 
    if (player.statusGuardTurns && player.statusGuardTurns > 0) {
     player.statusGuardTurns = Math.max(0, player.statusGuardTurns - 1);
+   }
+   if (player.burnTurns && player.burnTurns > 0) {
+    player.burnTurns = Math.max(0, Number(player.burnTurns || 0) - 1);
+    if (player.burnTurns <= 0) {
+     player.burn = false;
+     addLog('火傷が解除');
+    }
    }
 
    cpu.lastActionName = card.name;
@@ -10759,6 +11111,9 @@ if (type === 'drain-sword') return '🩸';
    if (type === 'enemy-action-shift-delay') return '🌀⏳';
    if (type === 'enemy-paralyze') return '⚡';
    if (type === 'enemy-freeze') return '❄️';
+   if (type === 'enemy-burn') return '🔥';
+   if (type === 'enemy-poison') return '☠';
+   if (type === 'enemy-bomb') return '💣';
    if (type === 'enemy-cleanse') return '🌌';
    return '❔';
   }
@@ -10843,7 +11198,7 @@ function getDynamicCardDisplayText(card) {
 
  if (card.type === 'poison-banquet') {
   const poisonAmount = getEnemyPoisonAmount();
-  return `毒${poisonAmount}全消費 / ${poisonAmount}ダメージ / 毒耐性付与`;
+  return `毒${poisonAmount}全消費 / ${poisonAmount}ダメージ / 毒耐性付与(50%)`;
  }
 
  return getBaseCardDisplayText(card);
@@ -11330,7 +11685,7 @@ if (card.type === 'pet-attack-up') {
  }
 
  if (card.type === 'poison-banquet') {
-  return '敵の毒を全消費 / 消費毒と同じダメージ / 毒耐性付与';
+  return '敵の毒を全消費 / 消費毒と同じダメージ / 毒耐性付与(50%)';
  }
 
  if (card.type === 'poison-plague') {
@@ -12058,7 +12413,7 @@ function getStatusBadgesHtml(target) {
     badges.push(`<div class="status-badge poison-badge">☠ 疫病 <strong>+${target.poisonGrowthPerTurn}</strong></div>`);
    }
    if (target.poisonImmune) {
-    badges.push(`<div class="status-badge poison-badge">☠ 毒耐性 <strong>付与無効</strong></div>`);
+    badges.push(`<div class="status-badge poison-badge">☠ 毒耐性 <strong>50%</strong></div>`);
    }
 
     if (target.burn) {
@@ -12067,7 +12422,7 @@ function getStatusBadgesHtml(target) {
 
   if (Array.isArray(target.bombs) && target.bombs.length > 0) {
     target.bombs.forEach(bomb => {
-      const bombPreviewMultiplier = Number(bomb.damageMultiplier || 1) * (1 + Math.max(0, Number(playerPassives.bombDamageBonusMultiplier || 0)));
+      const bombPreviewMultiplier = Number(bomb.damageMultiplier || 1) * (target === cpu ? (1 + Math.max(0, Number(playerPassives.bombDamageBonusMultiplier || 0))) * getEnemyBombDamageMultiplier() : 1);
       badges.push(`<div class="status-badge bomb-badge">${escapeHtml(bomb.icon || '💣')} ${escapeHtml(bomb.name || '爆弾')} <strong>残り${Math.max(0, Number(bomb.count || 0))} / ${Math.round(Number(bomb.damage || 0) * bombPreviewMultiplier)}ダメ</strong></div>`);
     });
   }
@@ -12184,6 +12539,12 @@ if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-eff
    if (isEnemyFreezeImmune()) {
     badges.push(`<div class="passive-effect-badge enemy-passive-effect-badge">❄ 凍結無効</div>`);
    }
+
+   getCurrentEnemyPassiveIds().forEach(id => {
+    const passive = ENEMY_PASSIVE_DEFINITIONS[id];
+    if (!passive) return;
+    badges.push(`<div class="passive-effect-badge enemy-passive-effect-badge">${escapeHtml(passive.name)}</div>`);
+   });
 
    const reloadTimeBonus = getEnemyReloadTimeBonus();
    if (reloadTimeBonus > 0) {
@@ -12505,7 +12866,7 @@ const nextAction = getCpuNextAction();
    const prediction = document.getElementById('cpu-next-action');
 
    if (prediction && nextAction) {
-    const isStatusAttack = ['enemy-paralyze','enemy-freeze','enemy-burn','enemy-poison'].includes(nextAction.type);
+    const isStatusAttack = ['enemy-paralyze','enemy-freeze','enemy-burn','enemy-poison','enemy-bomb'].includes(nextAction.type);
 
     const kind = nextAction.type === 'defense'
      ? '防御'
@@ -12529,6 +12890,8 @@ const nextAction = getCpuNextAction();
      valueText = `${nextAction.value}ダメージ + 火傷`;
     } else if (nextAction.type === 'enemy-poison') {
      valueText = `${nextAction.value}ダメージ + 毒`;
+    } else if (nextAction.type === 'enemy-bomb') {
+     valueText = `${nextAction.value}ダメージ + 爆弾`;
     } else {
      valueText = `${nextAction.value}ダメージ`;
     }
