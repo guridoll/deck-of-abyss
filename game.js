@@ -4325,10 +4325,10 @@ function getDeckTotal() {
    base9: ['mage', 'rune_guardian', 'storm_adept'],
    base13: ['ice_golem', 'crystal_serpent', 'stone_titan'],
    base17: ['shadow_knight', 'abyss_reaper', 'obsidian_warden'],
-   passive9: ['cultist', 'undead_knight', 'powder_raider', 'frozen_wraith', 'abyss_poisoner'],
-   passive13: ['frost_worm', 'bomb_eater', 'blood_hound', 'lich_skull', 'abyss_poisoner'],
-   passive17: ['powder_raider', 'frost_worm', 'bomb_eater', 'blood_hound', 'lich_skull', 'abyss_poisoner'],
-   multi17: ['death_reaper', 'venom_lord', 'hell_bomber', 'frost_dragon', 'abyss_beast'],
+   passive9: ['undead_knight', 'powder_raider', 'frozen_wraith', 'abyss_poisoner'],
+   passive13: ['frost_worm', 'bomb_eater', 'blood_hound', 'lich_skull'],
+   passive17: ['death_reaper', 'frost_dragon', 'abyss_beast'],
+   multi17: ['death_reaper', 'frost_dragon', 'abyss_beast'],
   };
 
   function getEnemyCandidateGroupsForLevel(level) {
@@ -4373,17 +4373,18 @@ function getDeckTotal() {
    if (level >= 17 && groups.multi.length > 0) {
     const roll = Math.random();
     if (roll < 0.35) return pickRandomFromList(groups.multi, 'death_reaper');
-    if (roll < 0.8) return pickRandomFromList(groups.passive, 'powder_raider');
+    if (roll < 0.8) return pickRandomFromList(groups.passive, 'death_reaper');
     return pickRandomFromList(groups.base, 'shadow_knight');
    }
    if (level >= 17 && groups.passive.length > 0) {
-    return Math.random() < 0.7 ? pickRandomFromList(groups.passive, 'powder_raider') : pickRandomFromList(groups.base, 'shadow_knight');
+    return Math.random() < 0.7 ? pickRandomFromList(groups.passive, 'death_reaper') : pickRandomFromList(groups.base, 'shadow_knight');
    }
    if (level >= 13 && groups.passive.length > 0) {
     return Math.random() < 0.6 ? pickRandomFromList(groups.passive, 'frost_worm') : pickRandomFromList(groups.base, 'ice_golem');
    }
    if (level >= 9 && groups.passive.length > 0) {
-    return Math.random() < 0.3 ? pickRandomFromList(groups.passive, 'cultist') : pickRandomFromList(groups.base, 'mage');
+    if (level === 9) return pickRandomFromList(groups.passive, 'undead_knight');
+    return Math.random() < 0.3 ? pickRandomFromList(groups.passive, 'undead_knight') : pickRandomFromList(groups.base, 'mage');
    }
    return pickRandomFromList(groups.base, 'slime');
   }
@@ -4559,7 +4560,7 @@ function addBombToPlayer(kind = 'normal', options = {}) {
   name: options.name || def.name,
   icon: def.icon,
   count: Math.max(1, Number(options.count ?? def.count ?? 1)),
-  damage: Math.max(0, Number(options.damage ?? def.damage ?? 0)),
+  damage: Math.max(0, Number(options.damage ?? (def.id === 'normal' ? 5 : def.damage) ?? 0)),
   damageMultiplier: Math.max(0.1, Number(options.damageMultiplier || 1)),
  };
  getPlayerBombs().push(bomb);
@@ -4788,11 +4789,6 @@ function getPassiveEnemyActionPool(enemyId, level) {
  const late = level >= 17;
  const high = level >= 13;
  const pools = {
-  cultist: [
-   { name: '狂信の刃', type: 'attack', value: high ? 14 : 11, text: `${high ? 14 : 11}ダメージ` },
-   { name: '祈りの防壁', type: 'defense', value: high ? 12 : 9, text: `防御+${high ? 12 : 9}` },
-   { name: '血の祈祷', type: 'attack', value: high ? 16 : 13, text: `${high ? 16 : 13}ダメージ` },
-  ],
   undead_knight: [
    { name: '朽ちた剣', type: 'attack', value: high ? 15 : 12, text: `${high ? 15 : 12}ダメージ` },
    { name: '不死の構え', type: 'defense', value: high ? 14 : 10, text: `防御+${high ? 14 : 10}` },
@@ -4837,16 +4833,6 @@ function getPassiveEnemyActionPool(enemyId, level) {
    { name: '死神の鎌', type: 'attack', value: 22, text: '22ダメージ' },
    { name: '終末の構え', type: 'defense', value: 17, text: '防御+17' },
    { name: '致命の一閃', type: 'attack', value: 25, text: '25ダメージ' },
-  ],
-  venom_lord: [
-   { name: '王毒牙', type: 'enemy-poison', value: 16, poisonTurns: 5, text: '16ダメージ / 毒' },
-   { name: '毒王の外套', type: 'defense', value: 18, text: '防御+18' },
-   { name: '腐蝕の爪', type: 'attack', value: 21, text: '21ダメージ' },
-  ],
-  hell_bomber: [
-   { name: '火炎瓶', type: 'enemy-burn', value: 15, burnTurns: 4, text: '15ダメージ / 火傷' },
-   { name: '大型爆弾', type: 'enemy-bomb', value: 14, bombKind: 'normal', text: '14ダメージ / 爆弾' },
-   { name: '爆炎防壁', type: 'defense', value: 16, text: '防御+16' },
   ],
   frost_dragon: [
    { name: '竜の凍息', type: 'enemy-freeze', value: 17, text: '17ダメージ / 凍結' },
@@ -8480,13 +8466,6 @@ function playPlayerCard(id, options = {}) {
 
    startEnemyTimerOnFirstCard();
    triggerNormalCardUseEffect(card);
-   if (!isEchoCopy) {
-    advancePlayerBombsByCardUse();
-    if (gameOver) {
-     render();
-     return;
-    }
-   }
    if (isCurseCard(card)) {
     addLog(`呪いカード：${card.name}（効果なし）`);
     playSound('miss');
@@ -9842,6 +9821,14 @@ if (card.type === 'rare-attack') {
    }
 
    player.firstCardAfterReload = false;
+
+   if (!isEchoCopy) {
+    advancePlayerBombsByCardUse();
+    if (gameOver) {
+     render();
+     return;
+    }
+   }
 
    if (shouldDoublePlayThisCard && !gameOver && player && cpu) {
     const replayCard = {
