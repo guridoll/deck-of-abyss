@@ -4331,12 +4331,33 @@ function getDeckTotal() {
    multi17: ['death_reaper', 'frost_dragon', 'abyss_beast'],
   };
 
+  function getDepthBossEnemyId(depth = currentDepth) {
+   const normalizedDepth = normalizeDepth(depth);
+   if (normalizedDepth === 2) return 'obsidian_overlord';
+   if (normalizedDepth >= 3) return 'abyss_beast_king';
+   return 'void_knight';
+  }
+
+  function isVoidBossEnemyId(enemyId = currentEnemyId) {
+   return enemyId === 'void_knight';
+  }
+
+  function isMultiPassiveEnemyId(enemyId) {
+   const entry = getEnemyCatalog().find(enemy => enemy.id === enemyId);
+   return Array.isArray(entry?.passiveIds) && entry.passiveIds.length > 1;
+  }
+
+  function filterEnemyIdsByDepth(ids) {
+   if (areMultiEnemyPassivesEnabled()) return ids;
+   return ids.filter(enemyId => !isMultiPassiveEnemyId(enemyId));
+  }
+
   function getEnemyCandidateGroupsForLevel(level) {
-   if (level >= 20) return { base: ['void_knight'], passive: [], multi: [] };
+   if (level >= 20) return { base: [getDepthBossEnemyId()], passive: [], multi: [] };
    if (level >= 17) {
     return {
-     base: ENEMY_TABLES.base17,
-     passive: areEnemyPassivesEnabled() ? ENEMY_TABLES.passive17 : [],
+     base: filterEnemyIdsByDepth(ENEMY_TABLES.base17),
+     passive: areEnemyPassivesEnabled() ? filterEnemyIdsByDepth(ENEMY_TABLES.passive17) : [],
      multi: areMultiEnemyPassivesEnabled() ? ENEMY_TABLES.multi17 : [],
     };
    }
@@ -4369,7 +4390,7 @@ function getDeckTotal() {
 
   function chooseEnemyIdForLevel(level) {
    const groups = getEnemyCandidateGroupsForLevel(level);
-   if (level >= 20) return 'void_knight';
+   if (level >= 20) return getDepthBossEnemyId();
    if (level >= 17 && groups.multi.length > 0) {
     const roll = Math.random();
     if (roll < 0.35) return pickRandomFromList(groups.multi, 'death_reaper');
@@ -4413,7 +4434,9 @@ function getDeckTotal() {
 
   function getEnemyName() {
    const displayLevel = getDisplayEnemyLevel();
-   if (displayLevel >= 20) return cpu && cpu.phase === 2 ? '深淵騎士ヴォイド・暴走' : '深淵騎士ヴォイド';
+   if (displayLevel >= 20 && isVoidBossEnemyId(getCurrentEnemyCatalogEntry()?.id || currentEnemyId)) {
+    return cpu && cpu.phase === 2 ? '深淵騎士ヴォイド・暴走' : '深淵騎士ヴォイド';
+   }
 
    return getCurrentEnemyCatalogEntry()?.name || 'スライム';
   }
@@ -4430,7 +4453,7 @@ function isEnemyFreezeImmune() {
 
 function getEnemyReloadTimeBonus() {
  if (!areEnemyPassivesEnabled()) return 0;
- return getCurrentEnemyCatalogEntry()?.id === 'obsidian_warden' ? 2 : 0;
+ return enemyHasPassive('reload_plus_1') ? 1 : 0;
 }
 
 const ENEMY_PASSIVE_DEFINITIONS = {
@@ -4443,7 +4466,7 @@ const ENEMY_PASSIVE_DEFINITIONS = {
  poison_blood: { name: '毒血', text: '毒ダメージを受けると回復する' },
  bomb_frenzy: { name: '爆発狂', text: '爆弾を扱う攻撃を多用する' },
  flame_snare: { name: '火炎足止め', text: '火傷で硬直を伸ばす' },
- time_magic: { name: '時魔術', text: '防御と状態異常で長期戦に持ち込む' },
+ reload_plus_1: { name: 'リロード+1', text: 'プレイヤーのリロード時間+1秒' },
  blood_price: { name: '血の代償', text: 'HPが減るほど攻撃が激しくなる' },
 };
 
@@ -4453,7 +4476,7 @@ function getCurrentEnemyPassiveIds() {
  if (Array.isArray(entry.passiveIds)) return entry.passiveIds;
  const map = {
   shadow_knight: ['freeze_resist'],
-  obsidian_warden: ['time_magic'],
+  obsidian_warden: ['reload_plus_1'],
  };
  return map[entry.id] || [];
 }
@@ -5003,7 +5026,7 @@ function tryApplyEnemyFreeze(turns = 1, chance = 1) {
 
   function getEnemyImageSrc() {
    const displayLevel = getDisplayEnemyLevel();
-   if (displayLevel >= 20) {
+   if (displayLevel >= 20 && isVoidBossEnemyId(getCurrentEnemyCatalogEntry()?.id || currentEnemyId)) {
     return cpu && cpu.phase === 2 ? GAME_IMAGES.void_phase2 : GAME_IMAGES.img_009;
    }
 
@@ -5308,22 +5331,43 @@ function tryApplyEnemyFreeze(turns = 1, chance = 1) {
 
  // Lv20：ステージ1ボス。第1形態撃破後に第2形態へ復活する。
  if (enemyLevel >= 20) {
-  const isSecondPhase = Boolean(cpu && cpu.phase === 2);
-  cpuPool = isSecondPhase
-   ? [
-     { name: '虚無連斬', type: 'attack', value: 26, text: '26ダメージ' },
-     { name: 'ナイトメアレイド', type: 'enemy-paralyze', value: 18, text: '18ダメージ / 麻痺' },
-     { name: 'アビスブレイク', type: 'attack', value: 40, text: '40ダメージ' },
-     { name: '虚無の浄化', type: 'enemy-cleanse', value: 0, text: '自身の状態異常を全解除' },
-     { name: '深淵の盾', type: 'defense', value: 24, text: '防御+24' },
-    ]
-   : [
-     { name: 'ヴォイドスラッシュ', type: 'attack', value: 18, text: '18ダメージ' },
-     { name: '深淵の波動', type: 'enemy-paralyze', value: 12, text: '12ダメージ / 麻痺' },
-     { name: '闇の構え', type: 'defense', value: 18, text: '防御+18' },
-     { name: '崩壊斬', type: 'attack', value: 24, text: '24ダメージ' },
-     { name: '虚無の浄化', type: 'enemy-cleanse', value: 0, text: '自身の状態異常を全解除' },
-    ];
+  const bossId = getCurrentEnemyCatalogEntry()?.id || currentEnemyId || getDepthBossEnemyId();
+  if (bossId === 'obsidian_overlord') {
+   cpuPool = [
+    { name: '黒曜圧砕', type: 'attack', value: 22, text: '22ダメージ' },
+    { name: '門番の大盾', type: 'defense', value: 24, text: '防御+24' },
+    { name: 'リロード封じ', type: 'enemy-paralyze', value: 14, text: '14ダメージ / 麻痺' },
+    { name: '黒曜の防壁', type: 'defense', value: 28, text: '防御+28' },
+    { name: '重圧の一撃', type: 'attack', value: 30, text: '30ダメージ' },
+    { name: '深層の浄化', type: 'enemy-cleanse', value: 0, text: '自身の状態異常を全解除' },
+   ];
+  } else if (bossId === 'abyss_beast_king') {
+   cpuPool = [
+    { name: '奈落爪', type: 'attack', value: 24, text: '24ダメージ' },
+    { name: '深獣の咆哮', type: 'enemy-poison', value: 18, poisonTurns: 4, text: '18ダメージ / 毒' },
+    { name: '獣王の硬皮', type: 'defense', value: 25, text: '防御+25' },
+    { name: '血狂い突進', type: 'attack', value: 32, text: '32ダメージ' },
+    { name: '奈落毒爪', type: 'enemy-poison', value: 20, poisonTurns: 3, text: '20ダメージ / 毒' },
+    { name: '深淵の再生殻', type: 'defense', value: 22, text: '防御+22' },
+   ];
+  } else {
+   const isSecondPhase = Boolean(cpu && cpu.phase === 2);
+   cpuPool = isSecondPhase
+    ? [
+      { name: '虚無連斬', type: 'attack', value: 26, text: '26ダメージ' },
+      { name: 'ナイトメアレイド', type: 'enemy-paralyze', value: 18, text: '18ダメージ / 麻痺' },
+      { name: 'アビスブレイク', type: 'attack', value: 40, text: '40ダメージ' },
+      { name: '虚無の浄化', type: 'enemy-cleanse', value: 0, text: '自身の状態異常を全解除' },
+      { name: '深淵の盾', type: 'defense', value: 24, text: '防御+24' },
+     ]
+    : [
+      { name: 'ヴォイドスラッシュ', type: 'attack', value: 18, text: '18ダメージ' },
+      { name: '深淵の波動', type: 'enemy-paralyze', value: 12, text: '12ダメージ / 麻痺' },
+      { name: '闇の構え', type: 'defense', value: 18, text: '防御+18' },
+      { name: '崩壊斬', type: 'attack', value: 24, text: '24ダメージ' },
+      { name: '虚無の浄化', type: 'enemy-cleanse', value: 0, text: '自身の状態異常を全解除' },
+     ];
+  }
  }
 
  const passiveEnemyPool = getPassiveEnemyActionPool(getCurrentEnemyCatalogEntry()?.id || currentEnemyId || '', enemyLevel);
@@ -6744,7 +6788,7 @@ function saveDeckCustomize() {
     defenseDownValue: 0,
     nextAction: null,
     lastActionName: null,
-    phase: enemyLevel >= 20 ? 1 : 0,
+    phase: enemyLevel >= 20 && isVoidBossEnemyId() ? 1 : 0,
     secondPhaseUsed: false,
     invincible: false,
     enemyActionDelayTurns: 0,
@@ -6756,7 +6800,7 @@ function saveDeckCustomize() {
      enemyTenacityTriggered: false,
     };
 
-    pendingVoidEntranceAnimation = enemyLevel >= 20 && cpu.phase === 1;
+    pendingVoidEntranceAnimation = enemyLevel >= 20 && isVoidBossEnemyId() && cpu.phase === 1;
 
    // 図鑑の遭遇回数は「実際に戦闘へ入ったタイミング」でだけ加算する。
    // 戦闘開始前のパッシブ選択など、準備用の初期化でも resetGame() が呼ばれるため、
@@ -6787,7 +6831,10 @@ function saveDeckCustomize() {
 
   function getEnemyMaxHp() {
  if (enemyLevel >= 20) {
-  return scaleEnemyNumberByDepth(cpu && cpu.phase === 2 ? 260 : 430, 'enemyHpMultiplier');
+  if (isVoidBossEnemyId()) return scaleEnemyNumberByDepth(cpu && cpu.phase === 2 ? 260 : 430, 'enemyHpMultiplier');
+  if (currentEnemyId === 'obsidian_overlord') return scaleEnemyNumberByDepth(680, 'enemyHpMultiplier');
+  if (currentEnemyId === 'abyss_beast_king') return scaleEnemyNumberByDepth(700, 'enemyHpMultiplier');
+  return scaleEnemyNumberByDepth(430, 'enemyHpMultiplier');
  }
 
  const hpCurve = [
@@ -10723,7 +10770,7 @@ function triggerBurnEffect(selector) {
   function checkWinner() {
    if (!player || !cpu || enemyDefeatResolutionPending) return;
 
-   if (enemyLevel >= 20 && cpu.hp <= 0 && cpu.phase === 1 && !cpu.secondPhaseUsed) {
+   if (enemyLevel >= 20 && isVoidBossEnemyId() && cpu.hp <= 0 && cpu.phase === 1 && !cpu.secondPhaseUsed) {
     cpu.secondPhaseUsed = true;
     startVoidRevivalSequence();
     return;
@@ -12598,7 +12645,7 @@ if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-eff
    });
 
    const reloadTimeBonus = getEnemyReloadTimeBonus();
-   if (reloadTimeBonus > 0) {
+   if (reloadTimeBonus > 0 && !getCurrentEnemyPassiveIds().includes('reload_plus_1')) {
     badges.push(`<div class="passive-effect-badge enemy-passive-effect-badge">🔄 リロード +${reloadTimeBonus}秒</div>`);
    }
 
@@ -12610,11 +12657,13 @@ if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-eff
    const enemyPassiveElement = document.getElementById('enemy-passive-effect-badges');
 
    if (passiveElement) {
-    passiveElement.innerHTML = getPassiveEffectBadgesHtml();
+    const html = getPassiveEffectBadgesHtml();
+    if (passiveElement.innerHTML !== html) passiveElement.innerHTML = html;
    }
 
    if (enemyPassiveElement) {
-    enemyPassiveElement.innerHTML = getEnemyPassiveEffectBadgesHtml();
+    const html = getEnemyPassiveEffectBadgesHtml();
+    if (enemyPassiveElement.innerHTML !== html) enemyPassiveElement.innerHTML = html;
    }
   }
 
