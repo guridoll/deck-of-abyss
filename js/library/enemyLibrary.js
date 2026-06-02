@@ -56,13 +56,62 @@
    return enemy.phaseImages.slice(0, Math.min(maxPhaseSeen, enemy.phaseImages.length));
   }
 
+  const ENEMY_LIBRARY_ORDER = [
+   'slime',
+   'goblin',
+   'bat',
+   'wolf',
+   'orc',
+   'shaman',
+   'mage',
+   'rune_guardian',
+   'storm_adept',
+   'undead_knight',
+   'powder_raider',
+   'frozen_wraith',
+   'abyss_poisoner',
+   'ice_golem',
+   'crystal_serpent',
+   'stone_titan',
+   'frost_worm',
+   'bomb_eater',
+   'blood_hound',
+   'lich_skull',
+   'shadow_knight',
+   'abyss_reaper',
+   'obsidian_warden',
+   'death_reaper',
+   'frost_dragon',
+   'abyss_beast',
+   'void_knight',
+   'obsidian_overlord',
+   'abyss_beast_king',
+  ];
+
+  function compareEnemyLibraryOrder(a, b) {
+   const aIndex = ENEMY_LIBRARY_ORDER.indexOf(a?.id);
+   const bIndex = ENEMY_LIBRARY_ORDER.indexOf(b?.id);
+   const normalizedA = aIndex >= 0 ? aIndex : ENEMY_LIBRARY_ORDER.length;
+   const normalizedB = bIndex >= 0 ? bIndex : ENEMY_LIBRARY_ORDER.length;
+
+   if (normalizedA !== normalizedB) return normalizedA - normalizedB;
+
+   return String(a?.id || '').localeCompare(String(b?.id || ''));
+  }
+
+  function getEnemyLibraryImageSrc(enemy, image) {
+   if (enemy?.id === 'obsidian_overlord') return 'assets/enemies/obsidian_overlord.png';
+   if (enemy?.id === 'abyss_beast_king') return 'assets/enemies/abyss_beast_king.png';
+   return image?.src || enemy?.image || '';
+  }
+
   function renderEnemyLibraryScreen() {
    const list = document.getElementById('enemy-library-list');
 
    if (!list) return;
 
    const encounters = loadEncounteredEnemies();
-   const enemies = getEnemyCatalog();
+   const enemies = getEnemyCatalog().slice().sort(compareEnemyLibraryOrder);
    const encounterCount = enemies.filter(enemy => encounters[enemy.id]).length;
 
    list.innerHTML = `
@@ -81,8 +130,9 @@
     const enemyBattleResultCounts = getEnemyBattleResultCounts(encounter);
     const hasPhaseSwitch = discovered && visiblePhaseImages.length > 1;
     const discoveredImage = visiblePhaseImages[0] || { src: enemy.image, label: '' };
+    const discoveredImageSrc = getEnemyLibraryImageSrc(enemy, discoveredImage);
     const enemyImageHtml = discovered
-     ? `<img src="${discoveredImage.src}" alt="${enemy.name}${discoveredImage.label ? ` ${discoveredImage.label}` : ''}" class="enemy-library-image${hasPhaseSwitch ? ' enemy-library-phase-active-image' : ''}"${hasPhaseSwitch ? ` data-phase-image="${enemy.id}"` : ''} onerror="this.style.display='none';">`
+     ? `<img src="${discoveredImageSrc}" alt="${enemy.name}${discoveredImage.label ? ` ${discoveredImage.label}` : ''}" class="enemy-library-image${hasPhaseSwitch ? ' enemy-library-phase-active-image' : ''}"${hasPhaseSwitch ? ` data-phase-image="${enemy.id}"` : ''} onerror="this.style.display='none';">`
      : '<div class="enemy-library-unknown">?</div>';
 
     const phaseButtonsHtml = hasPhaseSwitch

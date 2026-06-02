@@ -5026,7 +5026,10 @@ function tryApplyEnemyFreeze(turns = 1, chance = 1) {
 
   function getEnemyImageSrc() {
    const displayLevel = getDisplayEnemyLevel();
-   if (displayLevel >= 20 && isVoidBossEnemyId(getCurrentEnemyCatalogEntry()?.id || currentEnemyId)) {
+   const enemyId = getCurrentEnemyCatalogEntry()?.id || currentEnemyId;
+   if (enemyId === 'obsidian_overlord') return 'assets/enemies/obsidian_overlord.png';
+   if (enemyId === 'abyss_beast_king') return 'assets/enemies/abyss_beast_king.png';
+   if (displayLevel >= 20 && isVoidBossEnemyId(enemyId)) {
     return cpu && cpu.phase === 2 ? GAME_IMAGES.void_phase2 : GAME_IMAGES.img_009;
    }
 
