@@ -9738,6 +9738,12 @@ body.battle-defeat-slowmo .battle-area {
   box-shadow: 0 0 18px rgba(180, 110, 255, 0.18);
 }
 
+.passive-rarity-epic .passive-rarity-heading {
+  background: linear-gradient(135deg, rgba(217, 70, 239, 0.28), rgba(245, 158, 11, 0.14));
+  border-color: rgba(240, 171, 252, 0.50);
+  box-shadow: 0 0 20px rgba(217, 70, 239, 0.18);
+}
+
 .rare-passive-library-card {
   border-color: rgba(215, 170, 255, 0.45);
   background: linear-gradient(145deg, rgba(105, 58, 160, 0.28), rgba(35, 25, 60, 0.86));
@@ -9767,6 +9773,11 @@ body.battle-defeat-slowmo .battle-area {
 .passive-rarity-section.passive-rarity-rare {
   border-color: rgba(168, 85, 247, 0.45);
   box-shadow: 0 0 24px rgba(168, 85, 247, 0.16);
+}
+
+.passive-rarity-section.passive-rarity-epic {
+  border-color: rgba(217, 70, 239, 0.45);
+  box-shadow: 0 0 24px rgba(217, 70, 239, 0.16);
 }
 
 .passive-rarity-heading {
@@ -9856,6 +9867,12 @@ body.battle-defeat-slowmo .battle-area {
   color: #f5d0fe;
   background: rgba(126, 34, 206, 0.32);
   border-color: rgba(216, 180, 254, 0.45);
+}
+
+.passive-library-rarity-badge.epic {
+  color: #fde68a;
+  background: rgba(190, 24, 93, 0.34);
+  border-color: rgba(251, 191, 36, 0.45);
 }
 
 .rare-passive-library-card {
@@ -10642,6 +10659,30 @@ body.battle-defeat-slowmo .battle-area {
   background: linear-gradient(145deg, rgba(22, 101, 52, 0.94), rgba(21, 94, 117, 0.92)) !important;
   border-color: rgba(110, 231, 183, 0.72) !important;
   box-shadow: 0 12px 28px rgba(16, 185, 129, 0.2) !important;
+}
+
+.card.pet-card,
+.shop-card.pet-card,
+.customize-card.pet-card,
+.library-card.pet-card,
+.card-library-card.pet-card,
+.deck-hover-row.pet-card,
+.owned-deck-card.pet-card,
+.random-event-choice-card.pet-card {
+  background: linear-gradient(145deg, rgba(109, 40, 217, 0.94), rgba(14, 116, 144, 0.90)) !important;
+  border-color: rgba(196, 181, 253, 0.76) !important;
+  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.22) !important;
+}
+
+.pet-card .card-text,
+.pet-card .customize-card-text,
+.pet-card .library-card-text,
+.pet-card .shop-card-text,
+.pet-card .deck-hover-card-text,
+.pet-card .owned-deck-card-text,
+.pet-card .random-event-choice-text {
+  color: #f5f3ff !important;
+  text-shadow: 0 1px 4px rgba(30, 41, 59, 0.55);
 }
 
 .defeat-result-modal .victory-dialog {

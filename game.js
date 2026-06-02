@@ -74,6 +74,8 @@ const RARE_CARD_COOLDOWN = 5;
   const REQUIRED_INITIAL_DECK_TOTAL = 20;
   const CRITICAL_CHANCE = 0.05;
   const CRITICAL_DAMAGE_MULTIPLIER = 1.5;
+  const PET_EXP_REQUIREMENTS = [1, 2, 2, 3, 3, 4, 4, 5, 5];
+  const MAX_PET_EXP = PET_EXP_REQUIREMENTS.reduce((sum, value) => sum + value, 0);
 
   
 const PET_POOL = [
@@ -477,16 +479,79 @@ const PET_POOL = [
     epic: true,
    },
    {
-    name: 'ペットトレーニング',
-    type: 'pet-attack-up',
-    value: 1,
-    text: 'ペットの攻撃力+1 / 使用後破棄（この戦闘中）',
-    rare: true,
-   },
-   {
-    name: 'リロードリンク',
-    type: 'reload-double-next',
-    value: 0,
+   name: 'ペットトレーニング',
+   type: 'pet-attack-up',
+   value: 1,
+   text: 'ペットの攻撃力+1 / 使用後破棄（この戦闘中）',
+   rare: true,
+  },
+  {
+   name: 'ペットのおやつ',
+   type: 'pet-exp',
+   value: 1,
+   text: 'ペットEXP+1 / 使用後破棄',
+  },
+  {
+   name: '高級ペットフード',
+   type: 'pet-exp',
+   value: 2,
+   text: 'ペットEXP+2 / 使用後破棄',
+   rare: true,
+  },
+  {
+   name: '特訓',
+   type: 'pet-exp',
+   value: 3,
+   selfDamage: 3,
+   text: 'ペットEXP+3 / HPを3失う / 使用後破棄',
+   rare: true,
+  },
+  {
+   name: '呼び鈴',
+   type: 'pet-count-down',
+   value: 1,
+   text: 'ペット行動カウント-1',
+  },
+  {
+   name: '急かし',
+   type: 'pet-count-down',
+   value: 2,
+   text: 'ペット行動カウント-2',
+  },
+  {
+   name: '連携指示',
+   type: 'pet-double-action-next',
+   value: 1,
+   text: '次回のペット行動を2回発動',
+   rare: true,
+  },
+  {
+   name: 'ご褒美',
+   type: 'pet-next-attack-double',
+   value: 2,
+   text: '次回のペット攻撃の威力2倍',
+   rare: true,
+  },
+  {
+   name: '獣の闘志',
+   type: 'pet-spirit-attack',
+   value: 2,
+   growth: 3,
+   text: 'この戦闘中 与ダメージ+2 / ペット行動ごとにさらに+3',
+   rare: true,
+  },
+  {
+   name: '獣の守り',
+   type: 'pet-spirit-defense',
+   value: 2,
+   growth: 3,
+   text: 'この戦闘中 防御力+2 / ペット行動ごとにさらに+3',
+   rare: true,
+  },
+  {
+   name: 'リロードリンク',
+   type: 'reload-double-next',
+   value: 0,
     text: '次のリロード時、最初に使用するカードを1回だけ2回プレイする',
     rare: true,
     epic: true,
@@ -755,6 +820,15 @@ const PET_POOL = [
    'フォーチュンセット': 'rare',
    '成長の一撃': 'rare',
    '成長の守り': 'rare',
+   'ペットのおやつ': 'normal',
+   '高級ペットフード': 'rare',
+   '特訓': 'rare',
+   '呼び鈴': 'normal',
+   '急かし': 'normal',
+   '連携指示': 'rare',
+   'ご褒美': 'rare',
+   '獣の闘志': 'rare',
+   '獣の守り': 'rare',
    '血裂斬': 'rare',
    '瀕死の力': 'rare',
    '狂戦士の一撃': 'epic',
@@ -924,6 +998,7 @@ const PET_POOL = [
   let currentScreen = 'start';
   let currentDepth = 1;
   let selectedNewGameDepth = 1;
+  let petExp = 0;
 
   const DEFAULT_MENU_BGM_VOLUME = 0.10;
   const DEFAULT_BATTLE_BGM_VOLUME = 0.065;
@@ -1322,6 +1397,7 @@ const PET_POOL = [
     deckCustomize: getInitialDeckCustomize(),
     selectedPetId: 'none',
     petLevel: 1,
+    petExp: 0,
     currentDepth: 1,
     depthProgress: normalizeDepthProgress(),
    };
@@ -1545,7 +1621,9 @@ const PET_POOL = [
    save.randomEvents = save.randomEvents && typeof save.randomEvents === 'object' ? save.randomEvents : {};
    save.deckCustomize = save.deckCustomize && typeof save.deckCustomize === 'object' ? normalizeDeckCustomizeForSave(save.deckCustomize) : getInitialDeckCustomize();
    save.selectedPetId = save.selectedPetId || 'none';
-   save.petLevel = Math.min(MAX_PET_LEVEL, Math.max(1, Number(save.petLevel || 1)));
+   const hasPetExpField = Object.prototype.hasOwnProperty.call(save, 'petExp');
+   save.petExp = normalizePetExp(hasPetExpField ? save.petExp : getTotalPetExpForLevel(save.petLevel || 1));
+   save.petLevel = getPetLevelFromExp(save.petExp);
    save.currentDepth = normalizeDepth(hasDepthField ? save.currentDepth : 1);
    save.depthProgress = normalizeDepthProgress(save.depthProgress);
    save.savedAt = save.savedAt || null;
@@ -1792,7 +1870,8 @@ const PET_POOL = [
    savedDeckCustomize = normalizeDeckCustomizeForSave(normalized.deckCustomize);
    deckCustomize = structuredClone(savedDeckCustomize);
    selectedPetId = normalized.selectedPetId || 'none';
-   petLevel = Math.min(MAX_PET_LEVEL, Math.max(1, Number(normalized.petLevel || 1)));
+   petExp = normalizePetExp(normalized.petExp);
+   syncPetLevelFromExp();
    currentDepth = normalizeDepth(normalized.currentDepth || currentDepth);
    selectedNewGameDepth = currentDepth;
    saveDepthProgress(mergeDepthProgress(loadDepthProgress(), normalized.depthProgress));
@@ -1870,7 +1949,8 @@ const PET_POOL = [
    deckCustomize = getInitialDeckCustomize();
    savedDeckCustomize = structuredClone(deckCustomize);
    selectedPetId = 'none';
-   petLevel = 1;
+   petExp = 0;
+   syncPetLevelFromExp();
    currentScreen = 'title';
 
    loadDiscoveredCards();
@@ -1915,11 +1995,24 @@ const PET_POOL = [
    if (!isActiveBattle) return false;
 
    finalizeBattleResult('lose');
+   resetRunProgressForNextDive();
    gameOver = true;
    if (reason) {
     addLog(reason);
    }
    return true;
+  }
+
+  function resetRunProgressForNextDive() {
+   enemyLevel = 1;
+   pendingNextLevel = null;
+   pendingPreviewEnemyId = null;
+   pendingPassiveChoice = false;
+   pendingShopChoice = false;
+   pendingRandomEvent = false;
+   pendingRandomEventNextLevel = null;
+   enemyTimerStarted = false;
+   saveCurrentGameData(false);
   }
 
   function backToStartScreen() {
@@ -1950,7 +2043,8 @@ const PET_POOL = [
     randomEvents: loadRandomEventProgress(),
     deckCustomize: sanitizeDeckCustomize(savedDeckCustomize),
     selectedPetId,
-    petLevel,
+    petLevel: getPetLevelFromExp(petExp),
+    petExp: normalizePetExp(petExp),
     currentDepth,
     depthProgress: loadDepthProgress(),
    });
@@ -2601,9 +2695,99 @@ function getMaxCardCount(cardName) {
  return isRareCardName(cardName) ? 1 : MAX_CARD_COUNT;
 }
 
+function normalizePetExp(value) {
+ const exp = Math.floor(Number(value || 0));
+ if (!Number.isFinite(exp)) return 0;
+ return Math.max(0, Math.min(MAX_PET_EXP, exp));
+}
+
+function getTotalPetExpForLevel(level) {
+ const normalizedLevel = Math.max(1, Math.min(MAX_PET_LEVEL, Math.floor(Number(level || 1))));
+ return PET_EXP_REQUIREMENTS
+  .slice(0, Math.max(0, normalizedLevel - 1))
+  .reduce((sum, required) => sum + required, 0);
+}
+
+function getPetLevelFromExp(exp) {
+ let level = 1;
+ let remaining = normalizePetExp(exp);
+
+ for (const required of PET_EXP_REQUIREMENTS) {
+  if (remaining < required) break;
+  remaining -= required;
+  level += 1;
+ }
+
+ return Math.max(1, Math.min(MAX_PET_LEVEL, level));
+}
+
+function getPetExpIntoCurrentLevel(exp = petExp) {
+ const level = getPetLevelFromExp(exp);
+ if (level >= MAX_PET_LEVEL) return 0;
+ return normalizePetExp(exp) - getTotalPetExpForLevel(level);
+}
+
+function getPetExpToNextLevel(exp = petExp) {
+ const level = getPetLevelFromExp(exp);
+ if (level >= MAX_PET_LEVEL) return 0;
+ const required = PET_EXP_REQUIREMENTS[level - 1] || 0;
+ return Math.max(0, required - getPetExpIntoCurrentLevel(exp));
+}
+
+function syncPetLevelFromExp() {
+ petExp = normalizePetExp(petExp);
+ petLevel = getPetLevelFromExp(petExp);
+}
+
+function canSelectedPetGainExp() {
+ return selectedPetId && selectedPetId !== 'none'
+  && getPetLevelFromExp(petExp) < MAX_PET_LEVEL
+  && !isPetEvolutionDiscovered(selectedPetId)
+  && !isSelectedPetEvolved();
+}
+
+function addPetExp(amount, source = 'ペットEXP') {
+ const gain = Math.max(0, Math.floor(Number(amount || 0)));
+ if (gain <= 0) return { gained: 0, beforeLevel: getPetLevelFromExp(petExp), afterLevel: getPetLevelFromExp(petExp), blocked: false };
+
+ const beforeExp = normalizePetExp(petExp);
+ const beforeLevel = getPetLevelFromExp(beforeExp);
+
+ if (!canSelectedPetGainExp()) {
+  return { gained: 0, beforeLevel, afterLevel: beforeLevel, blocked: true };
+ }
+
+ petExp = normalizePetExp(beforeExp + gain);
+ syncPetLevelFromExp();
+
+ const afterLevel = getPetLevelFromExp(petExp);
+ const actualGain = petExp - beforeExp;
+
+ if (actualGain > 0) {
+  addLog(`${source}：EXP+${actualGain}`);
+  if (afterLevel > beforeLevel) {
+   addLog(`ペットLvアップ：Lv${beforeLevel} → Lv${afterLevel}`);
+   showDamagePopup('player-hp-change', `ペットLv${afterLevel}`);
+   triggerPetMotion();
+  }
+  saveCurrentGameData(false);
+ }
+
+ return { gained: actualGain, beforeLevel, afterLevel, blocked: false };
+}
+
+function getPetExpStatusText() {
+ if (!selectedPetId || selectedPetId === 'none') return '';
+ if (isPetEvolutionDiscovered(selectedPetId) || isSelectedPetEvolved()) return '進化済み';
+ const level = getPetLevelFromExp(petExp);
+ if (level >= MAX_PET_LEVEL) return '進化可能';
+ return `次Lvまで ${getPetExpToNextLevel(petExp)}EXP`;
+}
+
 
 
 function getEffectivePetLevel() {
+  syncPetLevelFromExp();
   const baseLevel = Number.isFinite(Number(petLevel)) ? Number(petLevel) : 1;
   const bonus = Number(playerPassives?.petLevelBonus || 0);
 
@@ -2833,6 +3017,8 @@ function getEffectiveCardValue(card) {
 
   if (isAttackCardType(card.type)) {
    value += playerPassives.attack;
+   value += Math.max(0, Number(playerPassives.petSpiritAttackBase || 0))
+    + Math.max(0, Number(playerPassives.petSpiritAttackGrowth || 0)) * Math.max(0, Number(playerPassives.petSpiritAttackActions || 0));
    if (player && Array.isArray(player.hand) && player.hand.length <= 2) {
     value += Math.max(0, Number(playerPassives.lowHandAttackBonus || 0));
    }
@@ -2852,11 +3038,17 @@ function getEffectiveCardValue(card) {
    value *= 2;
   }
 
+  if (playerPassives.packAssaultReady) {
+   value = Math.round(value * 1.5);
+  }
+
   return value;
  }
 
  if (isDefenseCardType(card.type)) {
   value += playerPassives.defense;
+  value += Math.max(0, Number(playerPassives.petSpiritDefenseBase || 0))
+   + Math.max(0, Number(playerPassives.petSpiritDefenseGrowth || 0)) * Math.max(0, Number(playerPassives.petSpiritDefenseActions || 0));
 
   if (player && player.enhanceNextDefense) {
    value *= 2;
@@ -3318,6 +3510,36 @@ function getRarePassiveOptions() {
     );
    },
   },
+  {
+   id: 'petResonanceDraw',
+   icon: '🐾📚',
+   rarity: 'rare',
+   name: '共鳴',
+   text: 'ペット行動時にカードを1枚ドローする。',
+   apply() {
+    playerPassives.petResonanceDraw += 1;
+   },
+  },
+  {
+   id: 'petChainAction',
+   icon: '🐾🔗',
+   rarity: 'rare',
+   name: '鎖行動',
+   text: 'ペット行動時、50%で次回のペット行動に必要なカウントを半減する。',
+   apply() {
+    playerPassives.petChainActionChance = Math.max(Number(playerPassives.petChainActionChance || 0), 0.5);
+   },
+  },
+  {
+   id: 'packAssault',
+   icon: '🐾⚔',
+   rarity: 'rare',
+   name: '群れの猛攻',
+   text: 'ペット行動後、次に使用する攻撃カードのダメージ+50%。重複しない。',
+   apply() {
+    playerPassives.packAssaultPassive = true;
+   },
+  },
  ];
 }
 
@@ -3337,7 +3559,7 @@ if (typeof window !== 'undefined') {
     name: passive.name,
     icon: passive.icon || '✨',
     rarity,
-    rarityLabel: rarity === 'rare' ? 'レア' : 'ノーマル',
+    rarityLabel: rarity === 'epic' ? 'エピック' : rarity === 'rare' ? 'レア' : 'ノーマル',
     text: passive.text || passive.description || '',
    };
   },
@@ -5460,14 +5682,24 @@ function drawCardsToPlayerHand(count) {
 
 function filterCurrentBattleExcludedCards(cards, excludeCardId = null) {
  const excludedTypes = new Set(player?.excludedBattleCardTypes || []);
- if (!excludedTypes.size || !Array.isArray(cards)) return cards;
- return cards.filter(card => card.id === excludeCardId || !excludedTypes.has(card.type));
+ const excludedNames = new Set(player?.excludedBattleCardNames || []);
+ if ((!excludedTypes.size && !excludedNames.size) || !Array.isArray(cards)) return cards;
+ return cards.filter(card => card.id === excludeCardId || (!excludedTypes.has(card.type) && !excludedNames.has(card.name)));
 }
 
 function excludeCardTypeForCurrentBattle(type, excludeCardId = null) {
  if (!player || !type) return;
  if (!Array.isArray(player.excludedBattleCardTypes)) player.excludedBattleCardTypes = [];
  if (!player.excludedBattleCardTypes.includes(type)) player.excludedBattleCardTypes.push(type);
+ playerDeck = filterCurrentBattleExcludedCards(playerDeck, excludeCardId);
+ player.hand = filterCurrentBattleExcludedCards(player.hand, excludeCardId);
+ deckCount = playerDeck.length;
+}
+
+function excludeCardNameForCurrentBattle(cardName, excludeCardId = null) {
+ if (!player || !cardName) return;
+ if (!Array.isArray(player.excludedBattleCardNames)) player.excludedBattleCardNames = [];
+ if (!player.excludedBattleCardNames.includes(cardName)) player.excludedBattleCardNames.push(cardName);
  playerDeck = filterCurrentBattleExcludedCards(playerDeck, excludeCardId);
  player.hand = filterCurrentBattleExcludedCards(player.hand, excludeCardId);
  deckCount = playerDeck.length;
@@ -6224,7 +6456,7 @@ function selectPet(petId) {
  playUiSelectSound();
 
  selectedPetId = petId;
- petLevel = 1;
+ syncPetLevelFromExp();
  if (playerPassives) playerPassives.rarePetEvolutionAnnounced = false;
 
  renderPetSelectScreen();
@@ -6472,7 +6704,13 @@ function showPrepareScreen() {
 
   function backToTitle() {
    battleMenuOpen = false;
-   markCurrentBattleAsLossBeforeLeaving('タイトルへ戻ったため敗北扱いになりました');
+   const wasActiveBattleLoss = markCurrentBattleAsLossBeforeLeaving('タイトルへ戻ったため敗北扱いになりました');
+   const shouldResetEndedRun = currentScreen === 'clear'
+    || wasActiveBattleLoss
+    || (currentScreen === 'battle' && gameOver && battleResultStats && ['lose'].includes(battleResultStats.result));
+   if (shouldResetEndedRun) {
+    resetRunProgressForNextDive();
+   }
    clearPlayerParalysis();
    cancelPendingBattleChoices();
    clearPendingRandomEvent();
@@ -6625,6 +6863,19 @@ function saveDeckCustomize() {
      bombChainChance: 0,
      bombDrawOnExplosion: 0,
      bombTimingReduce: 0,
+     petDoubleActionNext: 0,
+     petNextAttackDamageMultiplier: 1,
+     petSpiritAttackBase: 0,
+     petSpiritAttackGrowth: 0,
+     petSpiritAttackActions: 0,
+     petSpiritDefenseBase: 0,
+     petSpiritDefenseGrowth: 0,
+     petSpiritDefenseActions: 0,
+     petResonanceDraw: 0,
+     petChainActionChance: 0,
+     petNextActionRequiredOverride: null,
+     packAssaultPassive: false,
+     packAssaultReady: false,
     };
 
    enemyLevel = 1;
@@ -6782,6 +7033,8 @@ function saveDeckCustomize() {
     doublePlayNextCard: false,
     lastPlayedCardForEcho: null,
     excludedBattleCardTypes: [],
+    excludedBattleCardNames: [],
+    currentPetAttackMultiplier: 1,
      bloodAwakenAttackBoostUses: 0,
      scalingAttackUses: 0,
      scalingDefenseUses: 0,
@@ -7542,7 +7795,8 @@ function getPetSkillPower(baseValue) {
 }
 
 function getPetAttackSkillPower(baseValue) {
- return getPetSkillPower(baseValue) + (playerPassives.petAttackPowerBonus || 0);
+ const multiplier = Math.max(1, Number(player?.currentPetAttackMultiplier || 1));
+ return Math.round((getPetSkillPower(baseValue) + (playerPassives.petAttackPowerBonus || 0)) * multiplier);
 }
 
 
@@ -8353,7 +8607,36 @@ function triggerPetMotion() {
  }, 500);
 }
 
-function triggerPetAction() {
+function handlePetActionSynergies() {
+ if (!player || !playerPassives) return;
+
+ if (playerPassives.petSpiritAttackGrowth > 0) {
+  playerPassives.petSpiritAttackActions += 1;
+ }
+
+ if (playerPassives.petSpiritDefenseGrowth > 0) {
+  playerPassives.petSpiritDefenseActions += 1;
+ }
+
+ if (playerPassives.petResonanceDraw > 0) {
+  const drawn = drawCardsToPlayerHand(playerPassives.petResonanceDraw);
+  if (drawn.length > 0) triggerCardResultReveal(drawn, '共鳴', `${drawn.length}枚引いた`, { delay: 220 });
+  addLog(`共鳴：${drawn.length}枚ドロー`);
+ }
+
+ if (playerPassives.packAssaultPassive) {
+  playerPassives.packAssaultReady = true;
+ }
+
+ if (playerPassives.petChainActionChance > 0 && Math.random() < playerPassives.petChainActionChance) {
+  const required = getPetActionRequiredCardCount({ ignoreOverride: true });
+  playerPassives.petNextActionRequiredOverride = Math.max(1, Math.floor(required / 2));
+  addLog(`鎖行動：次回ペット行動カウント${playerPassives.petNextActionRequiredOverride}`);
+  showDamagePopup('player-hp-change', `鎖${playerPassives.petNextActionRequiredOverride}`);
+ }
+}
+
+function triggerSinglePetAction() {
  if (!player || !cpu || gameOver || selectedPetId === 'none') return;
 
  const skills = getPetSkills();
@@ -8362,33 +8645,59 @@ function triggerPetAction() {
 
  const skillIndex = player.petNextSkillIndex ?? Math.floor(Math.random() * skills.length);
  const skill = skills[skillIndex];
+ const rewardMultiplier = Math.max(1, Number(playerPassives.petNextAttackDamageMultiplier || 1));
 
  triggerPetMotion();
 
+ player.currentPetAttackMultiplier = rewardMultiplier;
  const resultText = skill.execute();
+ const attackTriggered = rewardMultiplier > 1 && /ダメージ/.test(`${skill.text || ''} ${resultText || ''}`);
+ player.currentPetAttackMultiplier = 1;
+
+ if (attackTriggered) {
+  playerPassives.petNextAttackDamageMultiplier = 1;
+  addLog('ご褒美：ペット攻撃2倍を消費');
+ }
 
  player.petLastAction = `${skill.name}：${resultText}`;
 
  addLog(`ペット：${skill.name} (${resultText})`);
+
+ handlePetActionSynergies();
 
  player.petNextSkillIndex = Math.floor(Math.random() * skills.length);
 
  checkWinner();
 }
 
-function getPetActionRequiredCardCount() {
+function triggerPetAction() {
+ if (!player || !cpu || gameOver || selectedPetId === 'none') return;
+ const actionCount = 1 + Math.max(0, Number(playerPassives.petDoubleActionNext || 0));
+ playerPassives.petDoubleActionNext = 0;
+
+ for (let i = 0; i < actionCount; i++) {
+  if (gameOver) break;
+  triggerSinglePetAction();
+ }
+}
+
+function getPetActionRequiredCardCount(options = {}) {
+   if (!options.ignoreOverride && Number(playerPassives.petNextActionRequiredOverride || 0) > 0) {
+    return Math.max(1, Math.floor(Number(playerPassives.petNextActionRequiredOverride || 1)));
+   }
    const reduce = playerPassives.petActionCostReduce || 0;
 
    return Math.max(1, 5 - reduce);
   }
 
   function countPetCardUse() {
- if (!player || gameOver || selectedPetId === 'none') return;
+if (!player || gameOver || selectedPetId === 'none') return;
 
  player.petCardUseCount++;
 
  if (player.petCardUseCount >= getPetActionRequiredCardCount()) {
   player.petCardUseCount = 0;
+  playerPassives.petNextActionRequiredOverride = null;
   triggerPetAction();
  }
 }
@@ -8407,6 +8716,10 @@ function consumeAttackBoostsAfterAttack() {
 
  if (Number(player.bloodAwakenAttackBoostUses || 0) > 0) {
   player.bloodAwakenAttackBoostUses = Math.max(0, Number(player.bloodAwakenAttackBoostUses || 0) - 1);
+ }
+
+ if (playerPassives.packAssaultReady) {
+  playerPassives.packAssaultReady = false;
  }
 }
 
@@ -8975,9 +9288,75 @@ if (card.type === 'rare-double-attack') {
    if (card.type === 'pet-attack-up') {
     const value = Math.max(1, Number(card.value || 1));
     playerPassives.petAttackPowerBonus = (playerPassives.petAttackPowerBonus || 0) + value;
-    excludeCardTypeForCurrentBattle(card.type, card.id);
+    excludeCardNameForCurrentBattle(card.name, card.id);
     triggerPetMotion();
     addLog(`あなた：${card.name} (ペット攻撃力+${value})`);
+    playSound('success');
+   }
+
+   if (card.type === 'pet-exp') {
+    const value = Math.max(1, Number(card.value || 1));
+    const selfDamage = Math.max(0, Number(card.selfDamage || 0));
+
+    if (selfDamage > 0) {
+     player.hp = Math.max(0, Number(player.hp || 0) - selfDamage);
+     showDamagePopup('player-hp-change', `-${selfDamage}`);
+     triggerDamageShake('.player-img');
+     if (battleResultStats && !battleResultStats.endedAt) battleResultStats.damageTaken += selfDamage;
+    }
+
+    const result = addPetExp(value, card.name);
+    excludeCardNameForCurrentBattle(card.name, card.id);
+    triggerPetMotion();
+    addLog(`あなた：${card.name} (${result.blocked ? 'EXP獲得不可' : `EXP+${result.gained}`}${selfDamage > 0 ? ` / HP-${selfDamage}` : ''})`);
+    playSound(result.gained > 0 ? 'success' : 'miss');
+   }
+
+   if (card.type === 'pet-count-down') {
+    const value = Math.max(1, Number(card.value || 1));
+    const required = getPetActionRequiredCardCount();
+    const beforeRemain = Math.max(0, required - Math.max(0, Number(player.petCardUseCount || 0)));
+    const afterRemain = Math.max(0, beforeRemain - value);
+    player.petCardUseCount = Math.max(0, required - afterRemain);
+    showDamagePopup('player-hp-change', `あと${afterRemain}`);
+    addLog(`あなた：${card.name} (ペット行動まで ${beforeRemain} → ${afterRemain})`);
+    playSound('success');
+    if (afterRemain <= 0) {
+     player.petCardUseCount = 0;
+     playerPassives.petNextActionRequiredOverride = null;
+     triggerPetAction();
+    }
+   }
+
+   if (card.type === 'pet-double-action-next') {
+    playerPassives.petDoubleActionNext = Math.max(Number(playerPassives.petDoubleActionNext || 0), 1);
+    triggerPetMotion();
+    showDamagePopup('player-hp-change', '連携');
+    addLog(`あなた：${card.name} (次回ペット行動2回)`);
+    playSound('success');
+   }
+
+   if (card.type === 'pet-next-attack-double') {
+    playerPassives.petNextAttackDamageMultiplier = Math.max(Number(playerPassives.petNextAttackDamageMultiplier || 1), 2);
+    triggerPetMotion();
+    showDamagePopup('player-hp-change', 'ペット攻撃×2');
+    addLog(`あなた：${card.name} (次回ペット攻撃2倍)`);
+    playSound('success');
+   }
+
+   if (card.type === 'pet-spirit-attack') {
+    playerPassives.petSpiritAttackBase = Math.max(Number(playerPassives.petSpiritAttackBase || 0), Number(card.value || 2));
+    playerPassives.petSpiritAttackGrowth = Math.max(Number(playerPassives.petSpiritAttackGrowth || 0), Number(card.growth || 3));
+    triggerPetMotion();
+    addLog(`あなた：${card.name} (この戦闘中 与ダメージ+${playerPassives.petSpiritAttackBase} / ペット行動ごとに+${playerPassives.petSpiritAttackGrowth})`);
+    playSound('success');
+   }
+
+   if (card.type === 'pet-spirit-defense') {
+    playerPassives.petSpiritDefenseBase = Math.max(Number(playerPassives.petSpiritDefenseBase || 0), Number(card.value || 2));
+    playerPassives.petSpiritDefenseGrowth = Math.max(Number(playerPassives.petSpiritDefenseGrowth || 0), Number(card.growth || 3));
+    triggerPetMotion();
+    addLog(`あなた：${card.name} (この戦闘中 防御力+${playerPassives.petSpiritDefenseBase} / ペット行動ごとに+${playerPassives.petSpiritDefenseGrowth})`);
     playSound('success');
    }
 
@@ -10746,6 +11125,7 @@ function triggerBurnEffect(selector) {
    stopBossRevivalTimers();
    bossRevivalInProgress = false;
    currentScreen = 'clear';
+   resetRunProgressForNextDive();
    render();
   }
 
@@ -11139,6 +11519,9 @@ function getCardVisualClass(card) {
    if (isBombCardType(card.type)) {
     classes.push('bomb-card');
    }
+   if (String(card.type || '').startsWith('pet-')) {
+    classes.push('pet-card');
+   }
 
 return classes.join(' ');
   }
@@ -11196,6 +11579,12 @@ if (type === 'drain-sword') return '🩸';
    if (type === 'revenge-attack') return '↩️';
    if (type === 'enemy-action-delay-turns') return '⏳';
    if (type === 'pet-attack-up') return '🐾';
+   if (type === 'pet-exp') return '🐾✨';
+   if (type === 'pet-count-down') return '🔔';
+   if (type === 'pet-double-action-next') return '🐾🔁';
+   if (type === 'pet-next-attack-double') return '🐾💥';
+   if (type === 'pet-spirit-attack') return '🐾⚔️';
+   if (type === 'pet-spirit-defense') return '🐾🛡️';
    if (type === 'reload-double-next') return '🔁';
    if (type === 'draw-one') return '📚';
    if (type === 'draw-discard') return '📚🔀';
@@ -11370,6 +11759,30 @@ function getBaseCardDisplayText(card) {
 if (card.type === 'pet-attack-up') {
   return `ペットの攻撃力+${card.value || 1} / 使用後破棄（この戦闘中）`;
 }
+
+ if (card.type === 'pet-exp') {
+  return `ペットEXP+${card.value || 1}${card.selfDamage ? ` / HPを${card.selfDamage}失う` : ''} / 使用後破棄`;
+ }
+
+ if (card.type === 'pet-count-down') {
+  return `ペット行動カウント-${card.value || 1}`;
+ }
+
+ if (card.type === 'pet-double-action-next') {
+  return '次回のペット行動を2回発動';
+ }
+
+ if (card.type === 'pet-next-attack-double') {
+  return '次回のペット攻撃の威力2倍';
+ }
+
+ if (card.type === 'pet-spirit-attack') {
+  return `戦闘中 与ダメージ+${card.value || 2} / ペット行動ごとにさらに+${card.growth || 3}`;
+ }
+
+ if (card.type === 'pet-spirit-defense') {
+  return `戦闘中 防御力+${card.value || 2} / ペット行動ごとにさらに+${card.growth || 3}`;
+ }
 
  if (card.type === 'reload-double-next') {
   return '次のリロード後、最初に使用するカードを1回だけ2回プレイ';
@@ -11884,6 +12297,7 @@ function getOwnedDeckCardDisplayText(card) {
  if (card.type === 'freeze') return `${value}ダメージ / 凍結付与`;
  if (card.type === 'poison') return `${value}ダメージ / 毒${card.turns || 3}T付与`;
  if (String(card.type || '').startsWith('poison-')) return getBaseCardDisplayText(card);
+ if (String(card.type || '').startsWith('pet-')) return getBaseCardDisplayText(card);
  if (card.type === 'burn') {
   const chanceText = card.chance != null ? `${Math.round(card.chance * 100)}%で` : '50%で';
   return `${value}ダメージ / ${chanceText}火傷${card.turns || 3}T付与`;
@@ -12615,6 +13029,17 @@ function getPassiveEffectBadgesHtml() {
    if (playerPassives.reloadTimeReduce > 0) badges.push(`<div class="passive-effect-badge">🔄 リロード -${playerPassives.reloadTimeReduce}秒</div>`);
    if (playerPassives.healBonus > 0) badges.push(`<div class="passive-effect-badge">💖 回復 +${playerPassives.healBonus}</div>`);
    if (playerPassives.petAttackPowerBonus > 0) badges.push(`<div class="passive-effect-badge">🐾 ペット攻撃 +${playerPassives.petAttackPowerBonus}</div>`);
+   const petSpiritAttack = Math.max(0, Number(playerPassives.petSpiritAttackBase || 0))
+    + Math.max(0, Number(playerPassives.petSpiritAttackGrowth || 0)) * Math.max(0, Number(playerPassives.petSpiritAttackActions || 0));
+   const petSpiritDefense = Math.max(0, Number(playerPassives.petSpiritDefenseBase || 0))
+    + Math.max(0, Number(playerPassives.petSpiritDefenseGrowth || 0)) * Math.max(0, Number(playerPassives.petSpiritDefenseActions || 0));
+   if (petSpiritAttack > 0) badges.push(`<div class="passive-effect-badge">🐾 与ダメ +${petSpiritAttack}</div>`);
+   if (petSpiritDefense > 0) badges.push(`<div class="passive-effect-badge">🐾 防御 +${petSpiritDefense}</div>`);
+   if (Number(playerPassives.petDoubleActionNext || 0) > 0) badges.push(`<div class="passive-effect-badge">🐾 次回ペット2回行動</div>`);
+   if (Number(playerPassives.petNextAttackDamageMultiplier || 1) > 1) badges.push(`<div class="passive-effect-badge">🐾 次ペット攻撃×${playerPassives.petNextAttackDamageMultiplier}</div>`);
+   if (Number(playerPassives.petResonanceDraw || 0) > 0) badges.push(`<div class="passive-effect-badge">🐾 ペット行動時ドロー+${playerPassives.petResonanceDraw}</div>`);
+   if (Number(playerPassives.petChainActionChance || 0) > 0) badges.push(`<div class="passive-effect-badge">🐾 鎖行動${Math.round(playerPassives.petChainActionChance * 100)}%</div>`);
+   if (playerPassives.packAssaultReady) badges.push(`<div class="passive-effect-badge">🐾 次の攻撃+50%</div>`);
    
    
    if (playerPassives.petLevelBonus > 0) {
@@ -13052,7 +13477,7 @@ const nextAction = getCpuNextAction();
     petPanel.classList.toggle('pet-evolved', Boolean(selectedPet?.evolved));
    }
 
-   if (petTitle && petImage && petPlaceholder && selectedPet && selectedPet.id !== 'none') {
+  if (petTitle && petImage && petPlaceholder && selectedPet && selectedPet.id !== 'none') {
     petTitle.textContent = `ペット：${selectedPet.name} Lv.${getEffectivePetLevel() >= MAX_PET_LEVEL ? 'MAX' : getEffectivePetLevel()}`;
     petPlaceholder.textContent = selectedPet.placeholder;
     petPlaceholder.style.display = 'none';
@@ -13065,7 +13490,8 @@ const petCharge = document.getElementById('pet-charge');
    const petLastAction = document.getElementById('pet-last-action');
 
    if (petCharge && petLastAction) {
-    petCharge.textContent = `行動まであと：${Math.max(0, getPetActionRequiredCardCount() - (player.petCardUseCount || 0))}`;
+    const expText = getPetExpStatusText();
+    petCharge.textContent = `行動まであと：${Math.max(0, getPetActionRequiredCardCount() - (player.petCardUseCount || 0))}${expText ? ` / ${expText}` : ''}`;
     petLastAction.innerHTML = `
      <div class="pet-next-action">次行動：${getPetNextSkillPreview()}</div>
     `;
