@@ -255,8 +255,8 @@
      levelText: 'Lv20',
      image: 'assets/enemies/obsidian_overlord.png',
      description: '深度2の最奥で待つ黒曜の守護者です。重い防御とリロード妨害で長期戦に持ち込みます。',
-     passiveIds: ['reload_plus_1'],
-     passives: ['リロード+1'],
+     passiveIds: ['burn_immune', 'block_cap_45', 'reload_plus_1'],
+     passives: ['火傷無効', '最大防御45', 'リロード+1'],
      skills: ['黒曜圧砕', '門番の大盾', 'リロード封じ', '黒曜の防壁', '重圧の一撃', '深層の浄化'],
     },
     {

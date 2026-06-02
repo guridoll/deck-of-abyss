@@ -4043,10 +4043,7 @@ function startNextBattleFromPendingLevel(next) {
  pendingPreviewEnemyId = null;
 
  enemyLevel = next;
- const candidates = getEnemyCandidatesForLevel(next);
- currentEnemyId = candidates.includes(lockedEnemyId)
-  ? lockedEnemyId
-  : chooseEnemyIdForLevel(next);
+ currentEnemyId = sanitizeEnemyIdForLevel(lockedEnemyId, next);
  currentScreen = 'battle';
 
  resetGame(false, true);
@@ -4271,10 +4268,7 @@ if (selectedCards.length > 0) {
  pendingPreviewEnemyId = null;
 
  enemyLevel = next;
- const candidates = getEnemyCandidatesForLevel(next);
- currentEnemyId = candidates.includes(lockedEnemyId)
-  ? lockedEnemyId
-  : chooseEnemyIdForLevel(next);
+ currentEnemyId = sanitizeEnemyIdForLevel(lockedEnemyId, next);
  currentScreen = 'battle';
 
  resetGame(false, true);
@@ -4330,6 +4324,7 @@ function getDeckTotal() {
    passive17: ['shadow_knight', 'obsidian_warden', 'frost_worm', 'bomb_eater', 'blood_hound', 'lich_skull'],
    multi17: ['death_reaper', 'frost_dragon', 'abyss_beast'],
   };
+  const MULTI_PASSIVE_ENEMY_IDS = new Set(ENEMY_TABLES.multi17);
 
   function getDepthBossEnemyId(depth = currentDepth) {
    const normalizedDepth = normalizeDepth(depth);
@@ -4343,35 +4338,38 @@ function getDeckTotal() {
   }
 
   function isMultiPassiveEnemyId(enemyId) {
-   const entry = getEnemyCatalog().find(enemy => enemy.id === enemyId);
-   return Array.isArray(entry?.passiveIds) && entry.passiveIds.length > 1;
+   return MULTI_PASSIVE_ENEMY_IDS.has(enemyId);
   }
 
-  function filterEnemyIdsByDepth(ids) {
-   if (areMultiEnemyPassivesEnabled()) return ids;
+  function areMultiEnemyPassivesEnabledForDepth(depth = currentDepth) {
+   return Boolean(getDepthConfig(depth).multiEnemyPassives);
+  }
+
+  function filterEnemyIdsByDepth(ids, depth = currentDepth) {
+   if (areMultiEnemyPassivesEnabledForDepth(depth)) return ids;
    return ids.filter(enemyId => !isMultiPassiveEnemyId(enemyId));
   }
 
-  function getEnemyCandidateGroupsForLevel(level) {
-   if (level >= 20) return { base: [getDepthBossEnemyId()], passive: [], multi: [] };
+  function getEnemyCandidateGroupsForLevel(level, depth = currentDepth) {
+   if (level >= 20) return { base: [getDepthBossEnemyId(depth)], passive: [], multi: [] };
    if (level >= 17) {
     return {
-     base: filterEnemyIdsByDepth(ENEMY_TABLES.base17),
-     passive: areEnemyPassivesEnabled() ? filterEnemyIdsByDepth(ENEMY_TABLES.passive17) : [],
-     multi: areMultiEnemyPassivesEnabled() ? ENEMY_TABLES.multi17 : [],
+     base: filterEnemyIdsByDepth(ENEMY_TABLES.base17, depth),
+     passive: getDepthConfig(depth).enemyPassives ? filterEnemyIdsByDepth(ENEMY_TABLES.passive17, depth) : [],
+     multi: areMultiEnemyPassivesEnabledForDepth(depth) ? ENEMY_TABLES.multi17 : [],
     };
    }
    if (level >= 13) {
     return {
      base: ENEMY_TABLES.base13,
-     passive: areEnemyPassivesEnabled() ? ENEMY_TABLES.passive13 : [],
+     passive: getDepthConfig(depth).enemyPassives ? ENEMY_TABLES.passive13 : [],
      multi: [],
     };
    }
    if (level >= 9) {
     return {
      base: ENEMY_TABLES.base9,
-     passive: areEnemyPassivesEnabled() ? ENEMY_TABLES.passive9 : [],
+     passive: getDepthConfig(depth).enemyPassives ? ENEMY_TABLES.passive9 : [],
      multi: [],
     };
    }
@@ -4379,8 +4377,8 @@ function getDeckTotal() {
    return { base: ENEMY_TABLES.early, passive: [], multi: [] };
   }
 
-  function getEnemyCandidatesForLevel(level) {
-   const groups = getEnemyCandidateGroupsForLevel(level);
+  function getEnemyCandidatesForLevel(level, depth = currentDepth) {
+   const groups = getEnemyCandidateGroupsForLevel(level, depth);
    return [...groups.base, ...groups.passive, ...groups.multi];
   }
 
@@ -4388,9 +4386,9 @@ function getDeckTotal() {
    return list[Math.floor(Math.random() * list.length)] || fallback;
   }
 
-  function chooseEnemyIdForLevel(level) {
-   const groups = getEnemyCandidateGroupsForLevel(level);
-   if (level >= 20) return getDepthBossEnemyId();
+  function chooseEnemyIdForLevel(level, depth = currentDepth) {
+   const groups = getEnemyCandidateGroupsForLevel(level, depth);
+   if (level >= 20) return getDepthBossEnemyId(depth);
    if (level >= 17 && groups.multi.length > 0) {
     const roll = Math.random();
     if (roll < 0.35) return pickRandomFromList(groups.multi, 'death_reaper');
@@ -4410,8 +4408,14 @@ function getDeckTotal() {
    return pickRandomFromList(groups.base, 'slime');
   }
 
-  function getDefaultEnemyIdForLevel(level) {
-   return getEnemyCandidatesForLevel(level)[0] || 'slime';
+  function getDefaultEnemyIdForLevel(level, depth = currentDepth) {
+   return getEnemyCandidatesForLevel(level, depth)[0] || 'slime';
+  }
+
+  function sanitizeEnemyIdForLevel(enemyId, level, depth = currentDepth) {
+   const candidates = getEnemyCandidatesForLevel(level, depth);
+   if (candidates.includes(enemyId)) return enemyId;
+   return chooseEnemyIdForLevel(level, depth);
   }
 
   function getDisplayEnemyLevel() {
@@ -4425,9 +4429,7 @@ function getDeckTotal() {
    const preferredId = pendingPassiveChoice && pendingNextLevel ? pendingPreviewEnemyId : currentEnemyId;
    const selectedId = levelCandidates.includes(preferredId)
     ? preferredId
-    : levelCandidates.includes(currentEnemyId)
-     ? currentEnemyId
-     : getDefaultEnemyIdForLevel(displayLevel);
+    : sanitizeEnemyIdForLevel(currentEnemyId, displayLevel);
 
    return catalog.find(enemy => enemy.id === selectedId) || catalog.find(enemy => enemy.id === 'slime');
   }
@@ -4448,7 +4450,14 @@ function isEnemyParalysisImmune() {
 
 function isEnemyFreezeImmune() {
  if (!areEnemyPassivesEnabled()) return false;
+ const enemyId = getCurrentEnemyCatalogEntry()?.id || currentEnemyId;
+ if (enemyId === 'obsidian_overlord') return false;
  return getDisplayEnemyLevel() >= 20;
+}
+
+function isEnemyBurnImmune() {
+ if (!areEnemyPassivesEnabled()) return false;
+ return enemyHasPassive('burn_immune');
 }
 
 function getEnemyReloadTimeBonus() {
@@ -4462,6 +4471,8 @@ const ENEMY_PASSIVE_DEFINITIONS = {
  poison_resist: { name: '毒耐性', text: '毒付与量50%減少' },
  bomb_resist: { name: '爆弾耐性', text: '爆弾ダメージ30%減少' },
  freeze_resist: { name: '凍結耐性', text: '50%の確率で凍結を無効化する' },
+ burn_immune: { name: '火傷無効', text: '火傷付与を無効化する' },
+ block_cap_45: { name: '最大防御45', text: '防御は45を超えて増えない' },
  fatal_power: { name: '致命強化', text: '執念発動後に攻撃力上昇' },
  poison_blood: { name: '毒血', text: '毒ダメージを受けると回復する' },
  bomb_frenzy: { name: '爆発狂', text: '爆弾を扱う攻撃を多用する' },
@@ -4497,6 +4508,11 @@ function getEnemyAttackPassiveMultiplier() {
  if (enemyHasPassive('fatal_power') && cpu.enemyTenacityTriggered) multiplier *= 1.35;
  if (enemyHasPassive('blood_price')) multiplier *= hpRate <= 0.25 ? 1.35 : hpRate <= 0.5 ? 1.2 : 1;
  return multiplier;
+}
+
+function getEnemyBlockCap() {
+ if (enemyHasPassive('block_cap_45')) return 45;
+ return null;
 }
 
 function getEnemyBombDamageMultiplier() {
@@ -4694,11 +4710,16 @@ function detonateBombs(bombs, options = {}) {
   addLog(`爆弾：${bomb.name}が爆発 (${result.damage}ダメージ)`);
 
   if (bomb.burnTurns && bomb.burnTurns > 0) {
-   cpu.burn = true;
-   cpu.burnTurns = (cpu.burnTurns || 0) + Math.max(1, Number(bomb.burnTurns || 0));
-   recordAchievementStat('burnApplications');
-   addEnemyActionDelayFromBurnPassive();
-   addLog(`爆弾：${bomb.name}で火傷+${bomb.burnTurns}T`);
+   if (isEnemyBurnImmune()) {
+    triggerCardVisualEffect('.cpu-img', 'guard');
+    addLog(`爆弾：${bomb.name}の火傷は無効化された`);
+   } else {
+    cpu.burn = true;
+    cpu.burnTurns = (cpu.burnTurns || 0) + Math.max(1, Number(bomb.burnTurns || 0));
+    recordAchievementStat('burnApplications');
+    addEnemyActionDelayFromBurnPassive();
+    addLog(`爆弾：${bomb.name}で火傷+${bomb.burnTurns}T`);
+   }
   }
 
   if (playerPassives.bombDrawOnExplosion > 0) {
@@ -5338,9 +5359,9 @@ function tryApplyEnemyFreeze(turns = 1, chance = 1) {
   if (bossId === 'obsidian_overlord') {
    cpuPool = [
     { name: '黒曜圧砕', type: 'attack', value: 22, text: '22ダメージ' },
-    { name: '門番の大盾', type: 'defense', value: 24, text: '防御+24' },
+    { name: '門番の大盾', type: 'defense', value: 16, text: '防御+16' },
     { name: 'リロード封じ', type: 'enemy-paralyze', value: 14, text: '14ダメージ / 麻痺' },
-    { name: '黒曜の防壁', type: 'defense', value: 28, text: '防御+28' },
+    { name: '黒曜の防壁', type: 'defense', value: 18, text: '防御+18' },
     { name: '重圧の一撃', type: 'attack', value: 30, text: '30ダメージ' },
     { name: '深層の浄化', type: 'enemy-cleanse', value: 0, text: '自身の状態異常を全解除' },
    ];
@@ -6614,7 +6635,7 @@ function saveDeckCustomize() {
    // pendingNextLevel=1 にして「パッシブ選択 → Lv1戦闘」の順に戻す。
    pendingPassiveChoice = true;
    pendingNextLevel = 1;
-   pendingPreviewEnemyId = chooseEnemyIdForLevel(1);
+   pendingPreviewEnemyId = chooseEnemyIdForLevel(1, currentDepth);
    currentPassiveChoices = getRandomPassiveChoices(3);
 
    enemyTimerStarted = false;
@@ -6642,7 +6663,7 @@ function saveDeckCustomize() {
    if (shouldShowPassiveChoice(next)) {
     pendingPassiveChoice = true;
     pendingNextLevel = next;
-    pendingPreviewEnemyId = chooseEnemyIdForLevel(next);
+    pendingPreviewEnemyId = chooseEnemyIdForLevel(next, currentDepth);
     currentPassiveChoices = getRandomPassiveChoices(3, getPassivePoolForNextLevel(next));
     gameOver = false;
 
@@ -6720,12 +6741,8 @@ function saveDeckCustomize() {
    deckReloadTimer = 0;
 
    {
-    const candidates = getEnemyCandidatesForLevel(enemyLevel);
-    if (pendingPreviewEnemyId && candidates.includes(pendingPreviewEnemyId)) {
-     currentEnemyId = pendingPreviewEnemyId;
-    } else if (!candidates.includes(currentEnemyId)) {
-     currentEnemyId = chooseEnemyIdForLevel(enemyLevel);
-    }
+    const preferredEnemyId = pendingPreviewEnemyId || currentEnemyId;
+    currentEnemyId = sanitizeEnemyIdForLevel(preferredEnemyId, enemyLevel);
    }
    resetBattleResultStats();
 
@@ -9509,15 +9526,20 @@ if (card.type === 'gamble-attack') {
 
    if (card.type === 'pure-burn') {
     const burnTurns = Math.max(1, Number(card.turns || 3));
-    cpu.burn = true;
-    cpu.burnTurns = (cpu.burnTurns || 0) + burnTurns;
-    recordAchievementStat('burnApplications');
-    applyBurnActionDelayPassive();
+    const burnBlocked = isEnemyBurnImmune();
 
-    triggerBurnEffect('.cpu-img');
+    if (!burnBlocked) {
+     cpu.burn = true;
+     cpu.burnTurns = (cpu.burnTurns || 0) + burnTurns;
+     recordAchievementStat('burnApplications');
+     applyBurnActionDelayPassive();
+    }
+
+    if (burnBlocked) triggerCardVisualEffect('.cpu-img', 'guard');
+    else triggerBurnEffect('.cpu-img');
     triggerDamageShake('.cpu-img');
 
-    addLog(`あなた：${card.name} (火傷+${burnTurns}T)`);
+    addLog(`あなた：${card.name} (${burnBlocked ? '火傷無効' : `火傷+${burnTurns}T`})`);
 
     playSound('attack');
    }
@@ -9526,7 +9548,8 @@ if (card.type === 'burn') {
     const attackValue = getEffectiveCardValue(card);
     const result = applyPlayerCardDamage(attackValue);
     const guaranteed = consumeChanceGuaranteeIfAvailable(card);
-    const burned = guaranteed || Math.random() < (card.chance ?? 0.5);
+    const burnBlocked = isEnemyBurnImmune();
+    const burned = !burnBlocked && (guaranteed || Math.random() < (card.chance ?? 0.5));
 
     consumeAttackBoostsAfterAttack();
 
@@ -9542,7 +9565,7 @@ if (card.type === 'burn') {
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
     triggerDamageShake('.cpu-img');
 
-    addLog(`あなた：${card.name} (${result.damage}ダメージ${burned ? ` / 火傷+${burnTurns}T${guaranteed ? '確定' : ''}` : ''})`);
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${burned ? ` / 火傷+${burnTurns}T${guaranteed ? '確定' : ''}` : (burnBlocked ? ' / 火傷無効' : '')})`);
 
     if (result.fullyBlocked) {
      playSound('guard');
@@ -10172,9 +10195,14 @@ if (card.type === 'rare-attack') {
    if (card.type === 'defense') {
     const defenseDown = cpu.defenseDownTurns > 0 ? (cpu.defenseDownValue || 0) : 0;
     const blockGain = Math.max(0, card.value - defenseDown);
-    cpu.block += blockGain;
+    const blockCap = getEnemyBlockCap();
+    const beforeBlock = Math.max(0, Number(cpu.block || 0));
+    const actualBlockGain = Number.isFinite(blockCap)
+     ? Math.max(0, Math.min(blockGain, blockCap - beforeBlock))
+     : blockGain;
+    cpu.block = beforeBlock + actualBlockGain;
 
-    addLog(`${getEnemyName()}：${card.name} (防御+${blockGain}${defenseDown > 0 ? ' / 防御力低下中' : ''})`);
+    addLog(`${getEnemyName()}：${card.name} (防御+${actualBlockGain}${defenseDown > 0 ? ' / 防御力低下中' : ''}${Number.isFinite(blockCap) ? ` / 上限${blockCap}` : ''})`);
     playSound('defense');
    }
 
@@ -12294,10 +12322,7 @@ function showCardLibraryScreen() {
 
   function getEnemyCatalogEntryByLevel(level) {
    const catalog = getEnemyCatalog();
-   const candidates = getEnemyCandidatesForLevel(level);
-   const selectedId = candidates.includes(currentEnemyId)
-    ? currentEnemyId
-    : getDefaultEnemyIdForLevel(level);
+   const selectedId = sanitizeEnemyIdForLevel(currentEnemyId, level);
 
    return catalog.find(enemy => enemy.id === selectedId) || catalog.find(enemy => enemy.id === 'slime');
   }
@@ -12924,9 +12949,10 @@ function render() {
      ? ` / ${passiveTexts.join('')}`
      : '');
    document.getElementById('cpu-block').textContent =
-    `防御: ${cpu.block}`
+   `防御: ${cpu.block}`
     + `${isEnemyParalysisImmune() ? ' / 麻痺無効' : ''}`
     + `${isEnemyFreezeImmune() ? ' / 凍結無効' : ''}`
+    + `${isEnemyBurnImmune() ? ' / 火傷無効' : ''}`
     + `${cpu.paralysis && cpu.paralysis > 0 ? ` / 麻痺:${cpu.paralysis}` : ''}`
      + `${cpu.freeze && cpu.freeze > 0 ? ` / 凍結` : ''}`
      + `${cpu.poisonTurns && cpu.poisonTurns > 0 ? ` / 毒量:${cpu.poisonTurns}` : ''}`
