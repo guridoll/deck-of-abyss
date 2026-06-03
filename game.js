@@ -1001,6 +1001,7 @@ const PET_POOL = [
   let deckCount = 0;
   let currentScreen = 'start';
   let currentDepth = 1;
+  let lastClearedDepth = 1;
   let selectedNewGameDepth = 1;
   let petExp = 0;
 
@@ -7257,6 +7258,8 @@ function saveDeckCustomize() {
    });
    recordCardDiscoveries(playerDeck);
    deckCount = playerDeck.length;
+   playerPassives.petSpiritAttackActions = 0;
+   playerPassives.petSpiritDefenseActions = 0;
    playerPassives.battleMaxHpPenalty = 0;
    playerPassives.tenacityUsed = false;
 
@@ -11403,6 +11406,7 @@ function triggerBurnEffect(selector) {
   function showStageClearScreen() {
    stopBossRevivalTimers();
    bossRevivalInProgress = false;
+   lastClearedDepth = normalizeDepth(currentDepth);
    currentScreen = 'clear';
    resetRunProgressForNextDive();
    render();
@@ -13482,6 +13486,21 @@ function updateEnemyTimerText() {
    return saveSlotsView.renderSaveSlotList(mode);
   }
 
+  function renderClearScreen() {
+   const clearScreen = document.getElementById('clear-screen');
+   if (!clearScreen) return;
+
+   const depth = normalizeDepth(lastClearedDepth || currentDepth);
+   const depthLabel = getDepthLabel(depth);
+   const kicker = clearScreen.querySelector('.clear-kicker');
+   const title = clearScreen.querySelector('h1');
+   const description = clearScreen.querySelector('.title-description');
+
+   if (kicker) kicker.textContent = `${depthLabel.toUpperCase()} CLEAR`;
+   if (title) title.textContent = `${depthLabel}クリア！`;
+   if (description) description.textContent = `${depthLabel}の最深部を踏破しました。`;
+  }
+
 
 function render() {
 
@@ -13558,6 +13577,7 @@ function render() {
    if (rankingScreen) rankingScreen.style.display = currentScreen === 'ranking' ? 'flex' : 'none';
    document.getElementById('help-screen').style.display = currentScreen === 'help' ? 'flex' : 'none';
    document.getElementById('clear-screen').style.display = currentScreen === 'clear' ? 'flex' : 'none';
+   if (currentScreen === 'clear') renderClearScreen();
    document.getElementById('customize-screen').style.display = currentScreen === 'customize' ? 'block' : 'none';
    document.getElementById('pet-select-screen').style.display = currentScreen === 'pet-select' ? 'block' : 'none';
    document.getElementById('battle-screen').style.display = currentScreen === 'battle' ? 'block' : 'none';
