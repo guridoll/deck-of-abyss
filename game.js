@@ -5706,17 +5706,49 @@ function drawCardsToPlayerHand(count) {
  return drawn;
 }
 
-function filterCurrentBattleExcludedCards(cards, excludeCardId = null) {
- const excludedTypes = new Set(player?.excludedBattleCardTypes || []);
- const excludedNames = new Set(player?.excludedBattleCardNames || []);
- if ((!excludedTypes.size && !excludedNames.size) || !Array.isArray(cards)) return cards;
- return cards.filter(card => card.id === excludeCardId || (!excludedTypes.has(card.type) && !excludedNames.has(card.name)));
+function filterCurrentBattleExhaustedCards(cards) {
+ if (!Array.isArray(cards)) return cards;
+ const exhaustedCounts = player?.exhaustedBattleCardNames || {};
+ const remainingExhausted = {};
+ Object.entries(exhaustedCounts).forEach(([name, count]) => {
+  const normalizedCount = Math.max(0, Math.floor(Number(count || 0)));
+  if (name && normalizedCount > 0) remainingExhausted[name] = normalizedCount;
+ });
+
+ if (Object.keys(remainingExhausted).length <= 0) return cards;
+
+ return cards.filter(card => {
+  const name = card?.name;
+  if (!name || !remainingExhausted[name]) return true;
+  remainingExhausted[name] -= 1;
+  return false;
+ });
 }
 
-function discardPlayedCardForCurrentBattle(cardId) {
- if (!player || !cardId) return;
- playerDeck = Array.isArray(playerDeck) ? playerDeck.filter(card => card.id !== cardId) : [];
- player.hand = Array.isArray(player.hand) ? player.hand.filter(card => card.id !== cardId) : [];
+function filterCurrentBattleExcludedCards(cards, excludeCardId = null, options = {}) {
+ const excludedTypes = new Set(player?.excludedBattleCardTypes || []);
+ const excludedNames = new Set(player?.excludedBattleCardNames || []);
+ if (!Array.isArray(cards)) return cards;
+ const filtered = (!excludedTypes.size && !excludedNames.size)
+  ? cards
+  : cards.filter(card => card.id === excludeCardId || (!excludedTypes.has(card.type) && !excludedNames.has(card.name)));
+ return options.includeExhausted ? filterCurrentBattleExhaustedCards(filtered) : filtered;
+}
+
+function discardPlayedCardForCurrentBattle(cardOrId) {
+ if (!player || !cardOrId) return;
+ const card = typeof cardOrId === 'object' ? cardOrId : (player.hand || []).find(item => item.id === cardOrId);
+ const cardId = typeof cardOrId === 'object' ? cardOrId.id : cardOrId;
+ const cardName = card?.name || null;
+
+ if (cardName) {
+  if (!player.exhaustedBattleCardNames || typeof player.exhaustedBattleCardNames !== 'object') {
+   player.exhaustedBattleCardNames = {};
+  }
+  player.exhaustedBattleCardNames[cardName] = Math.max(0, Number(player.exhaustedBattleCardNames[cardName] || 0)) + 1;
+ }
+
+ player.hand = Array.isArray(player.hand) ? player.hand.filter(item => item.id !== cardId) : [];
  actionQueue = getActionQueue().filter(action => !(action && action.type === 'card' && action.cardId === cardId));
  deckCount = playerDeck.length;
 }
@@ -6198,7 +6230,7 @@ function processQueuedActions() {
       allowOverMaxTotal: getDeckTotal() > MAX_DECK_TOTAL,
       enforceMaxCardCount: false,
      });
-     playerDeck = filterCurrentBattleExcludedCards(playerDeck);
+     playerDeck = filterCurrentBattleExcludedCards(playerDeck, null, { includeExhausted: true });
      deckCount = playerDeck.length;
 
      deckReloading = false;
@@ -7274,6 +7306,7 @@ function saveDeckCustomize() {
     lastPlayedCardForEcho: null,
     excludedBattleCardTypes: [],
     excludedBattleCardNames: [],
+    exhaustedBattleCardNames: {},
     currentPetAttackMultiplier: 1,
      bloodAwakenAttackBoostUses: 0,
      scalingAttackUses: 0,
@@ -9529,7 +9562,7 @@ if (card.type === 'rare-double-attack') {
    if (card.type === 'pet-attack-up') {
     const value = Math.max(1, Number(card.value || 1));
     playerPassives.petAttackPowerBonus = (playerPassives.petAttackPowerBonus || 0) + value;
-    discardPlayedCardForCurrentBattle(card.id);
+    discardPlayedCardForCurrentBattle(card);
     triggerPetMotion();
     addLog(`あなた：${card.name} (ペット攻撃力+${value})`);
     playSound('success');
@@ -9547,7 +9580,7 @@ if (card.type === 'rare-double-attack') {
     }
 
     const result = addPetExp(value, card.name);
-    discardPlayedCardForCurrentBattle(card.id);
+    discardPlayedCardForCurrentBattle(card);
     triggerPetMotion();
     addLog(`あなた：${card.name} (${result.blocked ? 'EXP獲得不可' : `EXP+${result.gained}`}${selfDamage > 0 ? ` / HP-${selfDamage}` : ''})`);
     playSound(result.gained > 0 ? 'success' : 'miss');
@@ -10086,7 +10119,7 @@ if (card.type === 'dein') {
 
    if (card.type === 'poison-plague') {
     cpu.poisonGrowthPerTurn = Math.max(Number(cpu.poisonGrowthPerTurn || 0), Math.max(1, Number(card.value || 2)));
-    discardPlayedCardForCurrentBattle(card.id);
+    discardPlayedCardForCurrentBattle(card);
     triggerPoisonEffect('.cpu-img');
     showDamagePopup('cpu-hp-change', `毒成長+${cpu.poisonGrowthPerTurn}`);
     addLog(`あなた：${card.name} (敵の毒が毎ターン+${cpu.poisonGrowthPerTurn}${getEnemyPoisonApplyMultiplier() < 1 ? ' / 耐性中は増加量50%' : ''} / 使用後破棄)`);
