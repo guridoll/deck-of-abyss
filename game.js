@@ -1270,6 +1270,7 @@ const PET_POOL = [
   let currentCustomizeTab = 'attack';
   let currentCardLibraryTab = 'all';
   let isDeckDetailOpen = false;
+  let isDeckPresetPanelOpen = false;
   let ownedDeckModalOpen = false;
   let ownedPassivesModalOpen = false;
   let ownedPassivesModalHardClosed = false;
@@ -2129,6 +2130,20 @@ const PET_POOL = [
     fortuneUses: 0,
     level20Wins: 0,
     cardDiscoveries: 0,
+    depth1Clears: 0,
+    depth2Clears: 0,
+    depth3Clears: 0,
+    bombPlacements: 0,
+    bombExplosions: 0,
+    bombExplosionDamage: 0,
+    poisonApplications: 0,
+    poisonAppliedTotal: 0,
+    maxPoisonAmount: 0,
+    poisonBanquetUses: 0,
+    petExpGained: 0,
+    highestPetLevel: 1,
+    randomEventAcceptedTotal: 0,
+    randomEventRejectedTotal: 0,
    };
   }
 
@@ -2306,8 +2321,14 @@ const PET_POOL = [
     { id: 'enemy_discover_8', tier: '中級', icon: '👁️', name: '敵性調査', description: '敵を8種類図鑑に登録する。', target: 8, statKey: 'discoveredEnemyCount', progressText: value => `${value} / 8種類` },
     { id: 'passive_discover_10', tier: '中級', icon: '✨', name: '才能の採集者', description: 'パッシブを10種類発見する。', target: 10, statKey: 'discoveredPassiveCount', progressText: value => `${value} / 10種類` },
     { id: 'passive_select_20', tier: '中級', icon: '🧩', name: 'ビルド練習中', description: 'パッシブを累計20回取得する。', target: 20, statKey: 'selectedPassiveTotal', progressText: value => `${value} / 20回` },
+    { id: 'depth1_clear', tier: '中級', icon: '🌊', name: '浅層踏破', description: '深度1をクリアする。', target: 1, statKey: 'depth1Clears', progressText: value => `${value} / 1回` },
+    { id: 'random_event_5', tier: '中級', icon: '🎭', name: '偶然との遭遇', description: 'ランダムイベントを5種類図鑑に登録する。', target: 5, statKey: 'discoveredRandomEventCount', progressText: value => `${value} / 5種類` },
+    { id: 'random_event_accept_10', tier: '中級', icon: '🤝', name: '深淵の誘い', description: 'ランダムイベントを累計10回受諾する。', target: 10, statKey: 'randomEventAcceptedTotal', progressText: value => `${value} / 10回` },
     { id: 'freeze_20', tier: '中級', icon: '❄️', name: '凍てつく手札', description: '凍結を累計20回付与する。', target: 20, statKey: 'freezeApplications', progressText: value => `${value} / 20回` },
     { id: 'burn_50', tier: '中級', icon: '🔥', name: '火傷上手', description: '火傷を累計50回付与する。', target: 50, statKey: 'burnApplications', progressText: value => `${value} / 50回` },
+    { id: 'poison_apply_50', tier: '中級', icon: '☠️', name: '毒を盛る者', description: '毒を累計50回付与する。', target: 50, statKey: 'poisonAppliedTotal', progressText: value => `${value} / 50` },
+    { id: 'bomb_place_30', tier: '中級', icon: '💣', name: '火薬入門', description: '爆弾を累計30個設置する。', target: 30, statKey: 'bombPlacements', progressText: value => `${value} / 30個` },
+    { id: 'pet_level_5', tier: '中級', icon: '🐾', name: '相棒の成長', description: 'ペットをLv5以上にする。', target: 5, statKey: 'highestPetLevel', progressText: value => `最高Lv.${value} / 5` },
     { id: 'block_80', tier: '中級', icon: '🛡️', name: '鉄壁', description: '戦闘中に防御値80以上になる。', target: 80, statKey: 'maxBlock', progressText: value => `最大${value} / 80` },
     { id: 'reload_150', tier: '中級', icon: '🔄', name: '回転する山札', description: 'リロードを累計150回行う。', target: 150, statKey: 'totalReloads', progressText: value => `${value} / 150回` },
 
@@ -2324,6 +2345,12 @@ const PET_POOL = [
     { id: 'status_guard_30', tier: '上級', icon: '🛡️', name: '状態異常対策', description: '状態異常防御を累計30回使う。', target: 30, statKey: 'statusGuards', progressText: value => `${value} / 30回` },
     { id: 'passive_select_75', tier: '上級', icon: '🧩', name: '構築家', description: 'パッシブを累計75回取得する。', target: 75, statKey: 'selectedPassiveTotal', progressText: value => `${value} / 75回` },
     { id: 'enemy_discover_15', tier: '上級', icon: '👁️', name: '魔物研究家', description: '敵を15種類図鑑に登録する。', target: 15, statKey: 'discoveredEnemyCount', progressText: value => `${value} / 15種類` },
+    { id: 'depth2_clear', tier: '上級', icon: '🌊', name: '中層踏破', description: '深度2をクリアする。', target: 1, statKey: 'depth2Clears', progressText: value => `${value} / 1回` },
+    { id: 'random_event_all', tier: '上級', icon: '🎭', name: '出来事の蒐集家', description: '全ランダムイベントを図鑑に登録する。', target: () => getRandomEventDefinitions().length, statKey: 'discoveredRandomEventCount', progressText: value => `${value} / ${getRandomEventDefinitions().length}種類` },
+    { id: 'poison_50_stack', tier: '上級', icon: '☠️', name: '猛毒の沼', description: '敵の毒量を50以上にする。', target: 50, statKey: 'maxPoisonAmount', progressText: value => `最大${value} / 50` },
+    { id: 'poison_banquet_10', tier: '上級', icon: '🍽️', name: '毒の晩餐', description: '毒の宴を累計10回使用する。', target: 10, statKey: 'poisonBanquetUses', progressText: value => `${value} / 10回` },
+    { id: 'bomb_explode_50', tier: '上級', icon: '💣', name: '連続爆破', description: '爆弾を累計50個爆発させる。', target: 50, statKey: 'bombExplosions', progressText: value => `${value} / 50個` },
+    { id: 'pet_level_10', tier: '上級', icon: '🐾', name: '進化の準備', description: 'ペットをLv10にする。', target: 10, statKey: 'highestPetLevel', progressText: value => `最高Lv.${value} / 10` },
 
     { id: 'all_cards', tier: '廃人向け', icon: '📚', name: 'カードマスター', description: '全カードを発見する。', target: () => CARD_POOL.length, statKey: 'discoveredCardCount', progressText: value => `${value} / ${CARD_POOL.length}種類` },
     { id: 'all_enemies', tier: '廃人向け', icon: '👁️', name: '奈落図鑑完成', description: '全敵を図鑑に登録する。', target: () => getEnemyCatalog().length, statKey: 'discoveredEnemyCount', progressText: value => `${value} / ${getEnemyCatalog().length}種類` },
@@ -2336,6 +2363,10 @@ const PET_POOL = [
     { id: 'critical_500', tier: '廃人向け', icon: '💥', name: '会心中毒', description: 'クリティカルを累計500回発生させる。', target: 500, statKey: 'criticalHits', progressText: value => `${value} / 500回` },
     { id: 'single_hit_300', tier: '廃人向け', icon: '🗡️', name: '奈落割り', description: '1回の攻撃で300ダメージ以上与える。', target: 300, statKey: 'highestSingleHit', progressText: value => `最大${value} / 300` },
     { id: 'block_250', tier: '廃人向け', icon: '🛡️', name: '城塞化', description: '戦闘中に防御値250以上になる。', target: 250, statKey: 'maxBlock', progressText: value => `最大${value} / 250` },
+    { id: 'depth3_clear', tier: '廃人向け', icon: '🌌', name: '深淵踏破', description: '深度3をクリアする。', target: 1, statKey: 'depth3Clears', progressText: value => `${value} / 1回` },
+    { id: 'bomb_damage_5000', tier: '廃人向け', icon: '💣', name: '爆破専門家', description: '爆弾で累計5000ダメージを与える。', target: 5000, statKey: 'bombExplosionDamage', progressText: value => `${value} / 5000` },
+    { id: 'poison_100_stack', tier: '廃人向け', icon: '☠️', name: '毒海', description: '敵の毒量を100以上にする。', target: 100, statKey: 'maxPoisonAmount', progressText: value => `最大${value} / 100` },
+    { id: 'random_event_accept_100', tier: '廃人向け', icon: '🎭', name: '運命に身を任せる者', description: 'ランダムイベントを累計100回受諾する。', target: 100, statKey: 'randomEventAcceptedTotal', progressText: value => `${value} / 100回` },
 
     { id: 'secret_chaos', tier: '隠し', icon: '🌀', name: 'カオス中毒', description: 'カオスハンドを累計10回使用する。', hidden: true, target: 10, statKey: 'chaosHandUses', progressText: value => `${value} / 10回` },
     { id: 'secret_chaos_50', tier: '隠し', icon: '🌀', name: '混沌の常連', description: 'カオスハンドを累計50回使用する。', hidden: true, target: 50, statKey: 'chaosHandUses', progressText: value => `${value} / 50回` },
@@ -2366,6 +2397,21 @@ const PET_POOL = [
    }
    if (statKey === 'selectedPassiveTotal') {
     return Object.values(loadDiscoveredPassives() || {}).reduce((sum, passive) => sum + Math.max(0, Number(passive?.selectedCount || 0)), 0);
+   }
+   if (statKey === 'discoveredRandomEventCount') {
+    const eventIds = new Set(getRandomEventDefinitions().map(event => event.id));
+    return Object.keys(loadRandomEventProgress() || {}).filter(eventId => eventIds.has(eventId)).length;
+   }
+   if (statKey === 'randomEventAcceptedTotal') {
+    return Object.values(loadRandomEventProgress() || {}).reduce((sum, event) => sum + Math.max(0, Number(event?.acceptedCount || 0)), 0);
+   }
+   if (statKey === 'randomEventRejectedTotal') {
+    return Object.values(loadRandomEventProgress() || {}).reduce((sum, event) => sum + Math.max(0, Number(event?.rejectedCount || 0)), 0);
+   }
+   if (statKey === 'depth1Clears' || statKey === 'depth2Clears' || statKey === 'depth3Clears') {
+    const depth = Number(statKey.replace('depth', '').replace('Clears', ''));
+    const cleared = normalizeDepthProgress(loadDepthProgress()).clearedDepths[depth] ? 1 : 0;
+    return Math.max(cleared, Math.max(0, Number(stats[statKey] || 0)));
    }
    return Math.max(0, Number(stats[statKey] || 0));
   }
@@ -2471,6 +2517,10 @@ const PET_POOL = [
      }
      if (Number(battleResultStats.level || 0) >= 20) {
       stats.level20Wins += 1;
+      const depth = normalizeDepth(battleResultStats.depth || currentDepth);
+      if (depth === 1) stats.depth1Clears += 1;
+      if (depth === 2) stats.depth2Clears += 1;
+      if (depth === 3) stats.depth3Clears += 1;
      }
     } else {
      stats.totalLosses += 1;
@@ -2626,15 +2676,17 @@ const PET_POOL = [
    }
 
    const presets = loadCustomDeckPresets();
+   const nameInput = document.getElementById(`deck-preset-name-${slot}`);
+   const presetName = String(nameInput?.value || '').trim().replace(/\s+/g, ' ').slice(0, 16) || `マイデッキ${slot}`;
    presets[slot - 1] = {
     slot,
-    name: `マイデッキ${slot}`,
+    name: presetName,
     deck: normalized,
     savedAt: Date.now(),
    };
 
    saveCustomDeckPresets(presets);
-   addLog(`マイデッキ${slot}に現在の山札を保存しました`);
+   addLog(`${presetName}に現在の山札を保存しました`);
    renderCustomizeScreen();
   }
 
@@ -2779,6 +2831,8 @@ function addPetExp(amount, source = 'ペットEXP') {
  const actualGain = petExp - beforeExp;
 
  if (actualGain > 0) {
+  recordAchievementStat('petExpGained', actualGain);
+  recordAchievementMax('highestPetLevel', afterLevel);
   addLog(`${source}：EXP+${actualGain}`);
   if (afterLevel > beforeLevel) {
    addLog(`ペットLvアップ：Lv${beforeLevel} → Lv${afterLevel}`);
@@ -3699,6 +3753,9 @@ function recordRandomEventProgress(eventId, outcome = 'seen') {
  };
  progress[eventId] = next;
  saveRandomEventProgress(progress);
+ if (outcome === 'accepted') recordAchievementStat('randomEventAcceptedTotal');
+ if (outcome === 'rejected') recordAchievementStat('randomEventRejectedTotal');
+ evaluateAchievements();
 }
 
 function updateCurrentRunRandomEventOutcome(eventId, outcome) {
@@ -4218,21 +4275,27 @@ function renderRandomEventLibraryScreen() {
   const discovered = Boolean(entry);
   const card = document.createElement('div');
   card.className = `random-event-library-card${discovered ? '' : ' undiscovered'}`;
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  card.onclick = () => openRandomEventLibraryDetailModal(event.id);
+  card.onkeydown = keyEvent => {
+   if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+    keyEvent.preventDefault();
+    openRandomEventLibraryDetailModal(event.id);
+   }
+  };
   card.innerHTML = discovered ? `
    <div class="random-event-library-card-head">
     <div class="random-event-library-mark">EVENT</div>
     <div class="random-event-library-title">${escapeHtml(event.title)}</div>
    </div>
    <div class="random-event-library-description">${escapeHtml(event.description)}</div>
-   <div class="random-event-library-effects">
-    <span class="effect">効果：${escapeHtml(event.effect)}</span>
-    ${hasRandomEventDownside(event) ? `<span class="downside">デメリット：${escapeHtml(event.downside)}</span>` : ''}
-   </div>
    <div class="random-event-library-stats">
     <span><strong>${Number(entry.seenCount || 0)}</strong><small>遭遇</small></span>
     <span><strong>${Number(entry.acceptedCount || 0)}</strong><small>受諾</small></span>
     <span><strong>${Number(entry.rejectedCount || 0)}</strong><small>拒否</small></span>
    </div>
+   <div class="random-event-library-status">詳細を見る</div>
   ` : `
    <div class="random-event-library-card-head">
     <div class="random-event-library-mark unknown">LOCKED</div>
@@ -4832,6 +4895,7 @@ function addBombToEnemy(kind = 'normal', options = {}) {
   damageMultiplier: Math.max(0.1, Number(options.damageMultiplier || 1)),
  };
  getEnemyBombs().push(bomb);
+ recordAchievementStat('bombPlacements');
  addLog(`爆弾：${bomb.name}を設置 (${bomb.count}カウント / ${bomb.damage}ダメージ)${options.source ? ` / ${options.source}` : ''}`);
  showDamagePopup('cpu-hp-change', `${bomb.name}+`);
  triggerCardVisualEffect('.cpu-img', 'burn-flame');
@@ -4953,6 +5017,8 @@ function detonateBombs(bombs, options = {}) {
   const damage = Math.max(0, Math.round(Number(bomb.damage || 0) * multiplier));
   const result = applyDamage(cpu, damage);
   exploded += 1;
+  recordAchievementStat('bombExplosions');
+  recordAchievementStat('bombExplosionDamage', result.damage);
   showDamagePopup('cpu-hp-change', `💣-${result.damage}`);
   triggerDamageShake('.cpu-img');
   triggerCardVisualEffect('.cpu-img', 'burn-flame');
@@ -5724,6 +5790,64 @@ function filterCurrentBattleExhaustedCards(cards) {
   remainingExhausted[name] -= 1;
   return false;
  });
+}
+
+function getRandomEventLibraryDetailHtml(eventId) {
+ const progress = loadRandomEventProgress();
+ const event = getRandomEventDefinitions().find(item => item.id === eventId);
+ if (!event) return '';
+
+ const entry = progress[event.id];
+ const discovered = Boolean(entry);
+
+ if (!discovered) {
+  return `
+   <div class="random-event-library-detail-main undiscovered">
+    <div class="random-event-library-detail-mark unknown">?</div>
+    <div class="random-event-library-detail-body">
+     <div class="random-event-library-detail-kicker">LOCKED</div>
+     <h2>???</h2>
+     <p>未遭遇のランダムイベントです。</p>
+    </div>
+   </div>
+  `;
+ }
+
+ return `
+  <div class="random-event-library-detail-main">
+   <div class="random-event-library-detail-mark">EVENT</div>
+   <div class="random-event-library-detail-body">
+    <div class="random-event-library-detail-kicker">RANDOM EVENT</div>
+    <h2>${escapeHtml(event.title)}</h2>
+    <p>${escapeHtml(event.description)}</p>
+    <div class="random-event-library-detail-effects${hasRandomEventDownside(event) ? '' : ' no-downside'}">
+     <div class="effect"><span>効果</span><strong>${escapeHtml(event.effect)}</strong></div>
+     ${hasRandomEventDownside(event) ? `<div class="downside"><span>デメリット</span><strong>${escapeHtml(event.downside)}</strong></div>` : ''}
+    </div>
+    <div class="random-event-library-detail-stats">
+     <span><strong>${Number(entry.seenCount || 0)}</strong><small>遭遇</small></span>
+     <span><strong>${Number(entry.acceptedCount || 0)}</strong><small>受諾</small></span>
+     <span><strong>${Number(entry.rejectedCount || 0)}</strong><small>拒否</small></span>
+    </div>
+   </div>
+  </div>
+ `;
+}
+
+function openRandomEventLibraryDetailModal(eventId) {
+ const modal = document.getElementById('random-event-library-detail-modal');
+ const content = document.getElementById('random-event-library-detail-content');
+ if (!modal || !content) return;
+
+ content.innerHTML = getRandomEventLibraryDetailHtml(eventId);
+ modal.style.display = 'flex';
+}
+
+function closeRandomEventLibraryDetailModal(event) {
+ if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+
+ const modal = document.getElementById('random-event-library-detail-modal');
+ if (modal) modal.style.display = 'none';
 }
 
 function filterCurrentBattleExcludedCards(cards, excludeCardId = null, options = {}) {
@@ -6728,6 +6852,7 @@ function selectPet(petId) {
  selectedPetId = petId;
  syncPetLevelFromExp();
  if (playerPassives) playerPassives.rarePetEvolutionAnnounced = false;
+ closePetDetailModal();
 
  renderPetSelectScreen();
 }
@@ -6824,6 +6949,102 @@ function getPetEvolutionInfoHtml(pet, unlocked) {
  `;
 }
 
+function getPetSkillListHtml(skills, emptyText = '技なし') {
+ if (!Array.isArray(skills) || skills.length <= 0) {
+  return `<div class="pet-skill-empty">${escapeHtml(emptyText)}</div>`;
+ }
+
+ return skills.map(skill => `
+  <div class="pet-skill-item">
+   <span class="pet-skill-name">${escapeHtml(skill.name)}</span>
+   <span class="pet-skill-text">${escapeHtml(skill.text || '')}</span>
+  </div>
+ `).join('');
+}
+
+function getPetDetailSelectOnclick(petId) {
+ return `selectPet('${String(petId).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')`;
+}
+
+function getPetDetailModalHtml(pet, unlocked) {
+ const selected = unlocked && pet.id === selectedPetId;
+ const conditionText = getPetUnlockConditionText(pet.id);
+ const displayName = unlocked ? pet.name : '？？？';
+ const displayDescription = unlocked
+  ? pet.description
+  : `解放条件：${conditionText || 'ゲームを進める'}`;
+ const imageHtml = unlocked
+  ? `<img src="${pet.image}" alt="${escapeHtml(pet.name)}" class="pet-detail-img" style="${pet.image ? '' : 'display:none;'}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+    <div class="pet-detail-placeholder" style="${pet.image ? 'display:none;' : 'display:flex;'}">${escapeHtml(pet.placeholder || '？')}</div>`
+  : '<div class="pet-detail-placeholder pet-select-locked-mark">？</div>';
+ const evolutionDiscovered = unlocked && pet.id !== 'none' && isPetEvolutionDiscovered(pet.id);
+ const evolvedName = evolutionDiscovered ? getPetEvolutionPreviewName(pet) : '';
+ const evolvedImage = evolutionDiscovered ? getPetEvolutionPreviewImage(pet) : '';
+ const evolvedSkills = evolutionDiscovered ? getPetEvolutionPreviewSkills(pet.id) : [];
+ const evolutionHtml = evolutionDiscovered
+  ? `
+   <div class="pet-detail-evolution">
+    <div class="pet-detail-section-title">進化後</div>
+    <div class="pet-detail-evolution-head">
+     <div class="pet-detail-evolution-image-wrap">
+      <img src="${evolvedImage}" alt="${escapeHtml(evolvedName)}" class="pet-detail-evolution-img" style="${evolvedImage ? '' : 'display:none;'}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="pet-detail-placeholder" style="${evolvedImage ? 'display:none;' : 'display:flex;'}">進化</div>
+     </div>
+     <div>
+      <div class="pet-detail-evolution-name">${escapeHtml(evolvedName)}</div>
+      <div class="pet-detail-evolution-condition">条件：レアパッシブ「進化因子」取得 + ペットLv10以上</div>
+     </div>
+    </div>
+    <div class="pet-skill-list pet-detail-skill-list">
+     <div class="pet-skill-title">進化後の技</div>
+     ${getPetSkillListHtml(evolvedSkills, '進化後の技は未設定です。')}
+    </div>
+   </div>
+  `
+  : '';
+
+ return `
+  <div class="pet-detail-main">
+   <div class="pet-detail-visual">
+    ${imageHtml}
+   </div>
+   <div class="pet-detail-body">
+    <div class="pet-detail-kicker">${unlocked ? '選択可能' : '未解放'}</div>
+    <h2>${escapeHtml(displayName)}</h2>
+    <p>${escapeHtml(displayDescription)}</p>
+    <div class="pet-detail-rule">カード5枚使用ごとに自動行動</div>
+    <div class="pet-skill-list pet-detail-skill-list">
+     <div class="pet-skill-title">${unlocked ? '使用できる技' : '技は解放後に確認可能'}</div>
+     ${unlocked ? getPetSkillListHtml(pet.skills) : `<div class="pet-skill-empty">${escapeHtml(conditionText || '条件を満たすと解放されます')}</div>`}
+    </div>
+    <button class="ui-button ui-button-primary pet-detail-select-button" type="button" ${unlocked && !selected ? `onclick="${getPetDetailSelectOnclick(pet.id)}"` : 'disabled'}>
+     ${selected ? '選択中' : unlocked ? 'このペットを選択' : '未解放'}
+    </button>
+   </div>
+  </div>
+  ${evolutionHtml}
+ `;
+}
+
+function openPetDetailModal(petId) {
+ const modal = document.getElementById('pet-detail-modal');
+ const content = document.getElementById('pet-detail-content');
+ const pet = PET_POOL.find(item => item.id === petId);
+
+ if (!modal || !content || !pet) return;
+
+ playUiSelectSound();
+ content.innerHTML = getPetDetailModalHtml(pet, isPetUnlocked(pet.id));
+ modal.style.display = 'flex';
+}
+
+function closePetDetailModal(event) {
+ if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+
+ const modal = document.getElementById('pet-detail-modal');
+ if (modal) modal.style.display = 'none';
+}
+
 
 function renderPetSelectScreen() {
  const list = document.getElementById('pet-select-list');
@@ -6852,8 +7073,8 @@ function renderPetSelectScreen() {
   const button = document.createElement('button');
 
   button.className = `pet-select-card${selected ? ' selected' : ''}${unlocked ? '' : ' locked'}`;
-  button.disabled = !unlocked;
-  button.onclick = () => window.selectPet(pet.id);
+  button.type = 'button';
+  button.onclick = () => window.openPetDetailModal(pet.id);
 
   button.innerHTML = `
    <div class="pet-select-card-top">
@@ -6875,19 +7096,12 @@ function renderPetSelectScreen() {
     <div class="pet-skill-title">${unlocked ? '使用できる技' : '技は解放後に確認可能'}</div>
     ${
      unlocked
-      ? (pet.skills && pet.skills.length > 0
-       ? pet.skills.map(skill => `
-        <div class="pet-skill-item">
-         <span class="pet-skill-name">${skill.name}</span>
-         <span class="pet-skill-text">${skill.text}</span>
-        </div>
-       `).join('')
-       : '<div class="pet-skill-empty">技なし</div>')
+      ? getPetSkillListHtml(pet.skills)
       : `<div class="pet-skill-empty">${conditionText || '条件を満たすと解放されます'}</div>`
     }
    </div>
    ${getPetEvolutionInfoHtml(pet, unlocked)}
-   <div class="pet-select-status">${selected ? '選択中' : unlocked ? '選択する' : '未解放'}</div>
+   <div class="pet-select-status">${selected ? '選択中' : unlocked ? '詳細を見る' : '未解放'}</div>
   `;
 
   list.appendChild(button);
@@ -9110,6 +9324,9 @@ function applyPoisonToEnemy(amount, options = {}) {
  if (applied <= 0) return { applied: 0, drawn: [], resisted };
 
  cpu.poisonTurns = getEnemyPoisonAmount() + applied;
+ recordAchievementStat('poisonApplications');
+ recordAchievementStat('poisonAppliedTotal', applied);
+ recordAchievementMax('maxPoisonAmount', cpu.poisonTurns);
  triggerPoisonEffect('.cpu-img');
 
  let drawn = [];
@@ -10110,6 +10327,7 @@ if (card.type === 'dein') {
 
    if (card.type === 'poison-banquet') {
     const poisonAmount = getEnemyPoisonAmount();
+    recordAchievementStat('poisonBanquetUses');
     cpu.poisonTurns = 0;
     cpu.poisonImmune = true;
     cpu.poisonGrowthPerTurn = 0;
@@ -11611,19 +11829,27 @@ function getCustomizeTabs() {
 function toggleDeckTotalDetail() {
    playUiSelectSound();
 
-   isDeckDetailOpen = !isDeckDetailOpen;
+   isDeckDetailOpen = true;
 
    const detail = document.getElementById('deck-total-detail');
 
    if (!detail) return;
 
-   detail.classList.toggle('open', isDeckDetailOpen);
+   detail.classList.add('open');
+  }
+
+function toggleDeckPresetPanel() {
+   playUiSelectSound();
+   isDeckPresetPanelOpen = !isDeckPresetPanelOpen;
+   renderCustomizeScreen();
   }
 
   function renderDeckTotalDetail() {
    const detail = document.getElementById('deck-total-detail');
 
    if (!detail) return;
+   isDeckDetailOpen = true;
+   detail.classList.add('open');
 
    const selectedCards = Object.entries(deckCustomize)
     .filter(([, count]) => count > 0)
@@ -11651,6 +11877,14 @@ function renderDeckPresetList() {
    const list = document.getElementById('deck-preset-list');
    if (!list) return;
 
+   const panel = document.querySelector('.deck-preset-panel');
+   if (panel) panel.classList.toggle('open', isDeckPresetPanelOpen);
+
+   const toggleButton = document.getElementById('deck-preset-toggle-button');
+   if (toggleButton) {
+    toggleButton.textContent = isDeckPresetPanelOpen ? 'マイデッキを閉じる' : 'マイデッキ';
+   }
+
    list.innerHTML = '';
 
    loadCustomDeckPresets().forEach(preset => {
@@ -11665,6 +11899,10 @@ function renderDeckPresetList() {
       <span class="deck-preset-name">${escapeHtml(preset.name)}</span>
       <span class="deck-preset-tag">${hasDeck ? `${total}/${MAX_DECK_TOTAL}枚` : '未保存'}</span>
      </div>
+     <label class="deck-preset-name-field">
+      <span>保存名</span>
+      <input id="deck-preset-name-${slot}" type="text" maxlength="16" value="${escapeHtml(hasDeck ? preset.name : `マイデッキ${slot}`)}" placeholder="例：毒ビルド">
+     </label>
      <div class="deck-preset-description">
       ${hasDeck ? escapeHtml(getPresetDeckSummary(preset, 6)) : '現在の山札を保存すると、あとからすぐ呼び出せます。'}
      </div>
@@ -11746,7 +11984,7 @@ function renderCustomizeScreen() {
    totalElement.textContent = `${total} / ${REQUIRED_INITIAL_DECK_TOTAL}枚`;
    totalElement.classList.toggle('valid', isValidDeckTotal);
    totalElement.classList.toggle('invalid', !isValidDeckTotal);
-   totalElement.onclick = toggleDeckTotalDetail;
+   totalElement.onclick = null;
 
    if (saveButton) {
     saveButton.disabled = !isValidDeckTotal;
@@ -12921,6 +13159,7 @@ function showCardLibraryScreen() {
    playUiSelectSound();
 
    currentScreen = 'achievement-library';
+   evaluateAchievements();
 
    renderAchievementLibraryScreen();
    render();
@@ -13086,7 +13325,17 @@ function showCardLibraryScreen() {
    return enemyLibrary.switchEnemyLibraryPhase(enemyId, phaseIndex);
   }
 
+  function openEnemyLibraryDetailModal(enemyId) {
+   return enemyLibrary.openEnemyLibraryDetailModal(enemyId);
+  }
+
+  function closeEnemyLibraryDetailModal(event) {
+   return enemyLibrary.closeEnemyLibraryDetailModal(event);
+  }
+
   window.switchEnemyLibraryPhase = switchEnemyLibraryPhase;
+  window.openEnemyLibraryDetailModal = openEnemyLibraryDetailModal;
+  window.closeEnemyLibraryDetailModal = closeEnemyLibraryDetailModal;
   window.showRankingScreen = showRankingScreen;
   window.confirmNewPlayerName = confirmNewPlayerName;
   window.selectNewGameDepth = selectNewGameDepth;
@@ -13114,8 +13363,16 @@ function showCardLibraryScreen() {
    return passiveLibrary.renderPassiveLibraryScreen();
   }
 
+  function openPassiveLibraryDetailModal(passiveId) {
+   return passiveLibrary.openPassiveLibraryDetailModal(passiveId);
+  }
 
+  function closePassiveLibraryDetailModal(event) {
+   return passiveLibrary.closePassiveLibraryDetailModal(event);
+  }
 
+  window.openPassiveLibraryDetailModal = openPassiveLibraryDetailModal;
+  window.closePassiveLibraryDetailModal = closePassiveLibraryDetailModal;
 
 
 function clearPlayerParalysis() {
@@ -14080,6 +14337,8 @@ window.startBattle = startBattle;
 window.applyDeckPreset = applyDeckPreset;
 window.saveCurrentDeckPreset = saveCurrentDeckPreset;
 window.deleteDeckPreset = deleteDeckPreset;
+window.toggleDeckPresetPanel = toggleDeckPresetPanel;
+window.toggleDeckTotalDetail = toggleDeckTotalDetail;
 window.openOwnedDeckModal = openOwnedDeckModal;
 window.closeOwnedDeckModal = closeOwnedDeckModal;
 window.renderOwnedDeckModal = renderOwnedDeckModal;
@@ -14094,6 +14353,12 @@ window.selectPet = selectPet;
 window.showPetSelectScreen = showPetSelectScreen;
 window.renderPetSelectScreen = renderPetSelectScreen;
 window.togglePetEvolutionInfo = togglePetEvolutionInfo;
+window.openPetDetailModal = openPetDetailModal;
+window.closePetDetailModal = closePetDetailModal;
+window.openPassiveLibraryDetailModal = openPassiveLibraryDetailModal;
+window.closePassiveLibraryDetailModal = closePassiveLibraryDetailModal;
+window.openRandomEventLibraryDetailModal = openRandomEventLibraryDetailModal;
+window.closeRandomEventLibraryDetailModal = closeRandomEventLibraryDetailModal;
 window.backToTitle = backToTitle;
 window.startNewGameData = startNewGameData;
 window.showLoadSlotScreen = showLoadSlotScreen;
@@ -14123,6 +14388,10 @@ function closeBattleGuide() {
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
+    closePetDetailModal();
+    closeEnemyLibraryDetailModal();
+    closePassiveLibraryDetailModal();
+    closeRandomEventLibraryDetailModal();
     closeBattleGuide();
   }
 });

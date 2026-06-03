@@ -56,6 +56,67 @@
    });
   }
 
+  function getPassiveLibraryDetailHtml(passiveId) {
+   const discoveries = loadDiscoveredPassives();
+   const definitions = getAllPassiveLibraryDefinitions();
+   const passive = definitions.find(item => item.id === passiveId);
+
+   if (!passive) return '';
+
+   const rarity = passive.rarity || 'normal';
+   const meta = getPassiveLibraryRarityMeta(rarity);
+   const record = discoveries[passive.id] || {};
+   const discovered = (record.seenCount || record.count || 0) > 0;
+   const passiveSelectedCount = record.selectedCount || 0;
+   const seenCount = record.seenCount || record.count || 0;
+   const icon = passive.icon || (rarity === 'epic' ? '★' : rarity === 'rare' ? '◆' : '✦');
+
+   if (!discovered) {
+    return `
+     <div class="passive-library-detail-main undiscovered">
+      <div class="passive-library-detail-icon unknown">?</div>
+      <div class="passive-library-detail-body">
+       <div class="passive-library-detail-kicker">${escapeHtml(meta.title)}</div>
+       <h2>未発見パッシブ</h2>
+       <p>パッシブ選択の候補に出ると情報が記録されます。</p>
+      </div>
+     </div>
+    `;
+   }
+
+   return `
+    <div class="passive-library-detail-main">
+     <div class="passive-library-detail-icon">${escapeHtml(icon)}</div>
+     <div class="passive-library-detail-body">
+      <div class="passive-library-detail-kicker">${escapeHtml(meta.title)}</div>
+      <h2>${escapeHtml(passive.name)}</h2>
+      <p>${escapeHtml(passive.text || passive.description || '')}</p>
+      <div class="passive-library-detail-stats">
+       <span><strong>${passiveSelectedCount}</strong><small>選択回数</small></span>
+       <span><strong>${seenCount}</strong><small>候補に出現</small></span>
+      </div>
+     </div>
+    </div>
+   `;
+  }
+
+  function openPassiveLibraryDetailModal(passiveId) {
+   const modal = document.getElementById('passive-library-detail-modal');
+   const content = document.getElementById('passive-library-detail-content');
+
+   if (!modal || !content) return;
+
+   content.innerHTML = getPassiveLibraryDetailHtml(passiveId);
+   modal.style.display = 'flex';
+  }
+
+  function closePassiveLibraryDetailModal(event) {
+   if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+
+   const modal = document.getElementById('passive-library-detail-modal');
+   if (modal) modal.style.display = 'none';
+  }
+
   function renderPassiveLibraryScreen() {
    const list = document.getElementById('passive-library-list');
    if (!list) return;
@@ -114,6 +175,15 @@
 
      const div = document.createElement('div');
      div.className = `passive-library-card${discovered ? '' : ' undiscovered-passive'}${rarity !== 'normal' ? ' rare-passive-library-card' : ''}`;
+     div.setAttribute('role', 'button');
+     div.setAttribute('tabindex', '0');
+     div.onclick = () => openPassiveLibraryDetailModal(passive.id);
+     div.onkeydown = event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+       event.preventDefault();
+       openPassiveLibraryDetailModal(passive.id);
+      }
+     };
 
      div.innerHTML = discovered ? `
       <div class="passive-library-card-header">
@@ -122,15 +192,16 @@
         <div class="passive-library-title-row">
          <div class="passive-library-name">${escapeHtml(passive.name)}</div>
          <span class="passive-library-rarity-badge ${rarity === 'epic' ? 'epic' : rarity === 'rare' ? 'rare' : 'normal'}">${escapeHtml(meta.title)}</span>
-        </div>
-        <div class="passive-library-subtitle">発見済みパッシブ</div>
        </div>
+       <div class="passive-library-subtitle">発見済みパッシブ</div>
       </div>
+     </div>
       <div class="passive-library-text">${escapeHtml(passive.text || passive.description || '')}</div>
       <div class="passive-library-stats">
        <div class="passive-library-stat selected"><span>選択回数</span><strong>${passiveSelectedCount}</strong><em>回</em></div>
        <div class="passive-library-stat"><span>候補に出現</span><strong>${seenCount}</strong><em>回</em></div>
       </div>
+      <div class="passive-library-detail-button">詳細を見る</div>
      ` : `
       <div class="passive-library-unknown-mark">?</div>
       <div class="passive-library-card-header">
@@ -160,6 +231,8 @@
   return {
    getPassiveLibraryRarityMeta,
    getAllPassiveLibraryDefinitions,
+   openPassiveLibraryDetailModal,
+   closePassiveLibraryDetailModal,
    renderPassiveLibraryScreen,
   };
  }

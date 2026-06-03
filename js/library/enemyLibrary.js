@@ -105,6 +105,91 @@
    return image?.src || enemy?.image || '';
   }
 
+  function getEnemyLibraryDetailHtml(enemy, encounter) {
+   const discovered = Boolean(encounter);
+   const visiblePhaseImages = getEnemyLibraryPhaseImages(enemy, encounter);
+   const libraryPassives = getEnemyLibraryPassives(enemy, encounter);
+   const enemyBattleResultCounts = getEnemyBattleResultCounts(encounter);
+   const discoveredImage = visiblePhaseImages[0] || { src: enemy.image, label: '' };
+   const discoveredImageSrc = getEnemyLibraryImageSrc(enemy, discoveredImage);
+   const imageHtml = discovered
+    ? `<img src="${discoveredImageSrc}" alt="${escapeHtml(enemy.name)}" class="enemy-library-detail-image" onerror="this.style.display='none';">`
+    : '<div class="enemy-library-detail-unknown">?</div>';
+   const phaseGalleryHtml = discovered && visiblePhaseImages.length > 1
+    ? `<div class="enemy-library-detail-phase-gallery">
+      ${visiblePhaseImages.map(phase => `
+       <div class="enemy-library-detail-phase">
+        <div class="enemy-library-detail-phase-image-wrap">
+         <img src="${getEnemyLibraryImageSrc(enemy, phase)}" alt="${escapeHtml(enemy.name)} ${escapeHtml(phase.label || '')}" class="enemy-library-detail-phase-image" onerror="this.style.display='none';">
+        </div>
+        <div class="enemy-library-detail-phase-label">${escapeHtml(phase.label || '')}</div>
+       </div>
+      `).join('')}
+     </div>`
+    : '';
+
+   if (!discovered) {
+    return `
+     <div class="enemy-library-detail-main undiscovered">
+      <div class="enemy-library-detail-visual">${imageHtml}</div>
+      <div class="enemy-library-detail-body">
+       <div class="enemy-library-detail-kicker">未遭遇</div>
+       <h2>未遭遇の敵</h2>
+       <p>戦闘で遭遇すると情報が記録されます。</p>
+      </div>
+     </div>
+    `;
+   }
+
+   return `
+    <div class="enemy-library-detail-main">
+     <div class="enemy-library-detail-visual">${imageHtml}</div>
+     <div class="enemy-library-detail-body">
+      <div class="enemy-library-detail-kicker">${escapeHtml(enemy.levelText || '')}</div>
+      <h2>${escapeHtml(enemy.name)}</h2>
+      <p>${escapeHtml(enemy.description || '')}</p>
+      <div class="enemy-library-detail-meta">
+       <span>初遭遇 Lv${escapeHtml(encounter.firstLevel || '?')}</span>
+       <span>${escapeHtml(getEnemyLibraryDepthText(encounter))}</span>
+       <span>遭遇 ${escapeHtml(encounter.count || 0)}回</span>
+       <span>撃破 ${escapeHtml(enemyBattleResultCounts.defeatedCount || 0)}回</span>
+       <span>敗北 ${escapeHtml(enemyBattleResultCounts.defeatedByCount || 0)}回</span>
+      </div>
+      ${libraryPassives.length > 0
+       ? `<div class="enemy-library-detail-section">
+        <div class="enemy-library-detail-section-title">パッシブ</div>
+        <div class="enemy-library-tags">${libraryPassives.map(passive => `<span>${escapeHtml(passive)}</span>`).join('')}</div>
+       </div>`
+       : ''}
+      <div class="enemy-library-detail-section">
+       <div class="enemy-library-detail-section-title">技</div>
+       <div class="enemy-library-tags">${(enemy.skills || []).map(skill => `<span>${escapeHtml(skill)}</span>`).join('')}</div>
+      </div>
+     </div>
+    </div>
+    ${phaseGalleryHtml}
+   `;
+  }
+
+  function openEnemyLibraryDetailModal(enemyId) {
+   const modal = document.getElementById('enemy-library-detail-modal');
+   const content = document.getElementById('enemy-library-detail-content');
+   const enemy = getEnemyCatalog().find(item => item.id === enemyId);
+
+   if (!modal || !content || !enemy) return;
+
+   const encounter = loadEncounteredEnemies()[enemy.id];
+   content.innerHTML = getEnemyLibraryDetailHtml(enemy, encounter);
+   modal.style.display = 'flex';
+  }
+
+  function closeEnemyLibraryDetailModal(event) {
+   if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+
+   const modal = document.getElementById('enemy-library-detail-modal');
+   if (modal) modal.style.display = 'none';
+  }
+
   function renderEnemyLibraryScreen() {
    const list = document.getElementById('enemy-library-list');
 
@@ -124,6 +209,15 @@
     const div = document.createElement('div');
 
     div.className = `enemy-library-card${discovered ? '' : ' undiscovered'}`;
+    div.setAttribute('role', 'button');
+    div.setAttribute('tabindex', '0');
+    div.onclick = () => openEnemyLibraryDetailModal(enemy.id);
+    div.onkeydown = event => {
+     if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openEnemyLibraryDetailModal(enemy.id);
+     }
+    };
 
     const visiblePhaseImages = getEnemyLibraryPhaseImages(enemy, encounter);
     const libraryPassives = getEnemyLibraryPassives(enemy, encounter);
@@ -138,7 +232,7 @@
     const phaseButtonsHtml = hasPhaseSwitch
      ? `<div class="enemy-library-phase-buttons" data-enemy-id="${enemy.id}">
        ${visiblePhaseImages.map((phase, index) => `
-        <button type="button" class="enemy-library-phase-button${index === 0 ? ' active' : ''}" data-phase-button="${enemy.id}" onclick="switchEnemyLibraryPhase('${enemy.id}', ${index})">${phase.label}</button>
+        <button type="button" class="enemy-library-phase-button${index === 0 ? ' active' : ''}" data-phase-button="${enemy.id}" onclick="event.stopPropagation(); switchEnemyLibraryPhase('${enemy.id}', ${index})">${phase.label}</button>
        `).join('')}
       </div>`
      : '';
@@ -158,13 +252,7 @@
       <div class="enemy-library-description">${discovered ? enemy.description : '戦闘で遭遇すると情報が記録されます。'}</div>
       ${discovered ? `
        <div class="enemy-library-meta">初遭遇：Lv${encounter.firstLevel} / 深度：${escapeHtml(getEnemyLibraryDepthText(encounter))} / 遭遇回数：${encounter.count} / 倒した回数：${enemyBattleResultCounts.defeatedCount} / やられた回数：${enemyBattleResultCounts.defeatedByCount}</div>
-       ${libraryPassives.length > 0
-        ? `<div class="enemy-library-section"><div class="enemy-library-section-title">パッシブ</div><div class="enemy-library-tags">${libraryPassives.map(passive => `<span>${passive}</span>`).join('')}</div></div>`
-        : ''}
-       <div class="enemy-library-section">
-        <div class="enemy-library-section-title">技</div>
-        <div class="enemy-library-tags">${enemy.skills.map(skill => `<span>${skill}</span>`).join('')}</div>
-       </div>
+       <div class="enemy-library-status">詳細を見る</div>
       ` : ''}
      </div>
     `;
@@ -195,6 +283,8 @@
   return {
    getEnemyLibraryPassives,
    getEnemyLibraryPhaseImages,
+   openEnemyLibraryDetailModal,
+   closeEnemyLibraryDetailModal,
    renderEnemyLibraryScreen,
    switchEnemyLibraryPhase,
   };

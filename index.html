@@ -211,42 +211,63 @@
   </div>
 
   <div id="pet-select-screen" class="container pet-select-screen" style="display:none;">
-    <h1>ペット選択</h1>
-    <p>一緒に戦うペットを選択してください。ペットはカードを5枚使うたびに自動で行動します。</p>
+    <div class="pet-select-header">
+      <div>
+        <h1>ペット選択</h1>
+        <p>一緒に戦うペットを選択してください。ペットはカードを5枚使うたびに自動で行動します。</p>
+      </div>
+      <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">準備画面に戻る</button>
+    </div>
 
     <div id="pet-select-list" class="pet-select-list"></div>
 
-    <div class="controls">
-      <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">準備画面に戻る</button>
+    <div id="pet-detail-modal" class="pet-detail-modal" style="display:none;" onclick="closePetDetailModal(event)">
+      <div class="pet-detail-dialog" onclick="event.stopPropagation()">
+        <button class="ui-button ui-button-secondary pet-detail-close" type="button" onclick="closePetDetailModal()">閉じる</button>
+        <div id="pet-detail-content"></div>
+      </div>
     </div>
   </div>
 
   <div id="customize-screen" class="container customize-screen" style="display:none;">
-    <h1>山札カスタマイズ</h1>
-    <p>1種類につき最大2枚まで、初期山札は20枚ちょうどで保存できます。</p>
+    <div class="customize-header">
+      <div>
+        <h1>山札カスタマイズ</h1>
+        <p>1種類につき最大2枚まで、初期山札は20枚ちょうどで保存できます。</p>
+      </div>
+      <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">準備画面に戻る</button>
+    </div>
+
+    <div class="customize-sticky-bar">
+      <div class="customize-total-block">
+        <span>山札合計</span>
+        <button id="custom-deck-total" class="custom-deck-total" type="button"></button>
+        <div id="custom-deck-total-notice" class="deck-total-notice"></div>
+      </div>
+      <div id="deck-total-detail" class="deck-total-detail"></div>
+      <div class="customize-save-actions">
+        <button id="custom-deck-save-button" class="ui-button ui-button-primary" onclick="saveDeckCustomize()">山札設定を保存</button>
+        <button class="ui-button ui-button-secondary deck-clear-button" onclick="clearDeckCustomize()">山札を0枚にする</button>
+        <button id="deck-preset-toggle-button" class="ui-button ui-button-secondary" onclick="toggleDeckPresetPanel()">マイデッキ</button>
+        <button class="ui-button ui-button-secondary" onclick="resetDeckCustomize()">初期枚数に戻す</button>
+      </div>
+    </div>
+
     <div class="deck-preset-panel">
       <div class="deck-preset-header">
         <div>
           <h2>マイデッキ</h2>
-          <p>自分でカスタマイズした山札を保存して、あとから読み込めます。</p>
+          <p>名前を付けて山札を保存して、あとから読み込めます。</p>
         </div>
       </div>
       <div id="deck-preset-list" class="deck-preset-list"></div>
     </div>
-    <div id="customize-tabs" class="customize-tabs"></div>
-    <div id="customize-list" class="customize-list"></div>
-    <div class="panel">
-      <h2>山札合計</h2>
-      <div id="custom-deck-total" style="font-size:28px; font-weight:bold;" class="custom-deck-total" tabindex="0"></div>
-      <div id="custom-deck-total-notice" class="deck-total-notice"></div>
-    <div id="deck-total-detail" class="deck-total-detail"></div>
+
+    <div class="customize-workspace">
+      <div id="customize-tabs" class="customize-tabs"></div>
+      <div id="customize-list" class="customize-list"></div>
     </div>
-    <div class="controls">
-      <button id="custom-deck-save-button" class="ui-button ui-button-secondary" onclick="saveDeckCustomize()">保存</button>
-      <button class="ui-button ui-button-secondary deck-clear-button" onclick="clearDeckCustomize()">山札を0枚にする</button>
-      <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">準備画面に戻る</button>
-      <button class="ui-button ui-button-secondary" onclick="resetDeckCustomize()">初期枚数に戻す</button>
-    </div>
+
   </div>
 
   <div id="battle-screen" class="container" style="display:none;">
@@ -774,6 +795,12 @@
     </div>
     <p class="library-description">遭遇した敵の情報が記録されます。</p>
     <div id="enemy-library-list" class="enemy-library-list"></div>
+    <div id="enemy-library-detail-modal" class="enemy-library-detail-modal" style="display:none;" onclick="closeEnemyLibraryDetailModal(event)">
+      <div class="enemy-library-detail-dialog" onclick="event.stopPropagation()">
+        <button class="ui-button ui-button-secondary enemy-library-detail-close" type="button" onclick="closeEnemyLibraryDetailModal()">閉じる</button>
+        <div id="enemy-library-detail-content"></div>
+      </div>
+    </div>
   </div>
 
   <div id="passive-library-screen" class="screen library-screen" style="display:none;">
@@ -784,6 +811,12 @@
       </div>
     </div>
     <div id="passive-library-list" class="passive-library-list"></div>
+    <div id="passive-library-detail-modal" class="passive-library-detail-modal" style="display:none;" onclick="closePassiveLibraryDetailModal(event)">
+      <div class="passive-library-detail-dialog" onclick="event.stopPropagation()">
+        <button class="ui-button ui-button-secondary passive-library-detail-close" type="button" onclick="closePassiveLibraryDetailModal()">閉じる</button>
+        <div id="passive-library-detail-content"></div>
+      </div>
+    </div>
   </div>
 
   <div id="achievement-library-screen" class="screen library-screen" style="display:none;">
@@ -806,6 +839,12 @@
     </div>
     <p class="library-description">遭遇したランダムイベントが記録されます。</p>
     <div id="random-event-library-list" class="random-event-library-list"></div>
+    <div id="random-event-library-detail-modal" class="random-event-library-detail-modal" style="display:none;" onclick="closeRandomEventLibraryDetailModal(event)">
+      <div class="random-event-library-detail-dialog" onclick="event.stopPropagation()">
+        <button class="ui-button ui-button-secondary random-event-library-detail-close" type="button" onclick="closeRandomEventLibraryDetailModal()">閉じる</button>
+        <div id="random-event-library-detail-content"></div>
+      </div>
+    </div>
   </div>
 
   <div id="battle-history-screen" class="screen library-screen" style="display:none;">
