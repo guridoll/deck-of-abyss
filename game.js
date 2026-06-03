@@ -1877,8 +1877,7 @@ const PET_POOL = [
    savedDeckCustomize = normalizeDeckCustomizeForSave(normalized.deckCustomize);
    deckCustomize = structuredClone(savedDeckCustomize);
    selectedPetId = normalized.selectedPetId || 'none';
-   petExp = normalizePetExp(normalized.petExp);
-   syncPetLevelFromExp();
+   resetPetProgressForDive();
    currentDepth = normalizeDepth(normalized.currentDepth || currentDepth);
    selectedNewGameDepth = currentDepth;
    saveDepthProgress(mergeDepthProgress(loadDepthProgress(), normalized.depthProgress));
@@ -2012,6 +2011,7 @@ const PET_POOL = [
 
   function resetRunProgressForNextDive() {
    enemyLevel = 1;
+   resetPetProgressForDive();
    pendingNextLevel = null;
    pendingPreviewEnemyId = null;
    pendingPassiveChoice = false;
@@ -2744,6 +2744,11 @@ function getPetExpToNextLevel(exp = petExp) {
 function syncPetLevelFromExp() {
  petExp = normalizePetExp(petExp);
  petLevel = getPetLevelFromExp(petExp);
+}
+
+function resetPetProgressForDive() {
+ petExp = 0;
+ petLevel = 1;
 }
 
 function canSelectedPetGainExp() {
@@ -7018,6 +7023,7 @@ function saveDeckCustomize() {
    if (!isDepthUnlocked(currentDepth)) {
     currentDepth = getHighestUnlockedDepth();
    }
+   resetPetProgressForDive();
    saveCurrentGameData(false);
 
    deckCustomize = structuredClone(savedDeckCustomize);
