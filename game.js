@@ -74,6 +74,8 @@ const RARE_CARD_COOLDOWN = 5;
   const REQUIRED_INITIAL_DECK_TOTAL = 20;
   const CRITICAL_CHANCE = 0.05;
   const CRITICAL_DAMAGE_MULTIPLIER = 1.5;
+  const ACTION_QUEUE_LIMIT = 5;
+  const ACTION_QUEUE_LABELS = ['①', '②', '③', '④', '⑤'];
   const PET_EXP_REQUIREMENTS = [1, 2, 2, 3, 3, 4, 4, 5, 5];
   const MAX_PET_EXP = PET_EXP_REQUIREMENTS.reduce((sum, value) => sum + value, 0);
 
@@ -1278,6 +1280,11 @@ const PET_POOL = [
   let cooldownInterval = null;
   let playerStatusInterval = null;
   let deckReloading = false;
+  let actionQueue = [];
+  let actionQueueProcessing = false;
+  let suppressQueuedCardClickId = null;
+  let suppressQueuedCardClickUntil = 0;
+  let suppressQueuedReloadClickUntil = 0;
   let deckReloadTimer = 0;
   let deckReloadInterval = null;
   let playerPassives = {
@@ -5819,25 +5826,44 @@ function applyPlayerFreeze(requiredClicks = 10) {
  render();
 }
 
-function handleFrozenHandClick() {
- if (!isPlayerFrozen() || gameOver || currentScreen !== 'battle') return;
+function handleHandAreaClick(event) {
+ if (isPlayerFrozen()) {
+  if (gameOver || currentScreen !== 'battle') return;
 
- player.freezeClickCount = Math.min(
-  Number(player.freezeRequiredClicks || 10),
-  Number(player.freezeClickCount || 0) + 1
- );
+  player.freezeClickCount = Math.min(
+   Number(player.freezeRequiredClicks || 10),
+   Number(player.freezeClickCount || 0) + 1
+  );
 
- const remaining = getFreezeRemainingClicks();
- if (remaining <= 0) {
-  clearPlayerFreeze();
-  addLog('凍結解除');
-  playSound('iceBreak');
- } else {
-  playSound('iceTick');
+  const remaining = getFreezeRemainingClicks();
+  if (remaining <= 0) {
+   clearPlayerFreeze();
+   addLog('凍結解除');
+   playSound('iceBreak');
+  } else {
+   playSound('iceTick');
+  }
+
+  updatePlayerFreezeVisual();
+  render();
+  return;
  }
 
- updatePlayerFreezeVisual();
- render();
+ const cardButton = event?.target?.closest?.('.card[data-card-id]');
+ if (!cardButton) return;
+
+ const cardId = cardButton.dataset.cardId;
+ if (!cardId) return;
+
+ if (suppressQueuedCardClickId === cardId && Date.now() < suppressQueuedCardClickUntil) {
+  event.preventDefault();
+  event.stopPropagation();
+  return;
+ }
+
+ event.preventDefault();
+ event.stopPropagation();
+ playPlayerCard(cardId);
 }
 
   function stopEnemyTimer() {
@@ -5938,6 +5964,181 @@ function startEnemyTimer() {
    }
   }
  }, 100);
+}
+
+function clearActionQueue() {
+ actionQueue = [];
+ actionQueueProcessing = false;
+}
+
+function getActionQueue() {
+ if (!Array.isArray(actionQueue)) actionQueue = [];
+ return actionQueue;
+}
+
+function getActionQueueLabel(queueNumber) {
+ return ACTION_QUEUE_LABELS[Math.max(0, Number(queueNumber || 1) - 1)] || String(queueNumber);
+}
+
+function getQueuedCardNumber(cardId) {
+ const index = getActionQueue().findIndex(action => action && action.type === 'card' && action.cardId === cardId);
+ return index >= 0 ? index + 1 : 0;
+}
+
+function getQueuedReloadNumber() {
+ const index = getActionQueue().findIndex(action => action && action.type === 'reload');
+ return index >= 0 ? index + 1 : 0;
+}
+
+function showActionQueueNotice(text, sound = 'success') {
+ addLog(text);
+ if (player) showDamagePopup('player-hp-change', text);
+ if (sound) playSound(sound);
+}
+
+function canQueueActionNow() {
+ return currentScreen === 'battle'
+  && player
+  && cpu
+  && player.cooldown
+  && !player.reloading
+  && !gameOver
+  && !bossRevivalInProgress
+  && !pendingPassiveChoice
+  && !pendingShopChoice
+  && !isPlayerFrozen();
+}
+
+function removeQueuedActionAt(index, notice = '予約解除') {
+ const queue = getActionQueue();
+ if (index < 0 || index >= queue.length) return false;
+ queue.splice(index, 1);
+ showActionQueueNotice(notice, 'miss');
+ render();
+ return true;
+}
+
+function toggleQueuedCard(cardId) {
+ const queue = getActionQueue();
+ const existingIndex = queue.findIndex(action => action && action.type === 'card' && action.cardId === cardId);
+ if (existingIndex >= 0) return removeQueuedActionAt(existingIndex, '予約解除');
+
+ if (!canQueueActionNow()) return false;
+ if (!player.hand.some(card => card.id === cardId)) return false;
+ if (queue.length >= ACTION_QUEUE_LIMIT) {
+  showActionQueueNotice('予約上限', 'miss');
+  render();
+  return true;
+ }
+
+ queue.push({ type: 'card', cardId });
+ showActionQueueNotice(`予約${getActionQueueLabel(queue.length)}`, 'success');
+ render();
+ return true;
+}
+
+function toggleQueuedReload() {
+ const queue = getActionQueue();
+ const existingIndex = queue.findIndex(action => action && action.type === 'reload');
+ if (existingIndex >= 0) return removeQueuedActionAt(existingIndex, 'リロード予約解除');
+
+ if (!canQueueActionNow()) return false;
+ if (queue.length >= ACTION_QUEUE_LIMIT) {
+  showActionQueueNotice('予約上限', 'miss');
+  render();
+  return true;
+ }
+
+ queue.push({ type: 'reload' });
+ showActionQueueNotice(`リロード予約${getActionQueueLabel(queue.length)}`, 'success');
+ render();
+ return true;
+}
+
+function findCardButtonFromPointerEvent(event) {
+ const directCard = event?.target?.closest?.('#cards .card[data-card-id]');
+ if (directCard) return directCard;
+
+ if (typeof document === 'undefined' || typeof document.elementsFromPoint !== 'function') return null;
+
+ return document.elementsFromPoint(event.clientX, event.clientY)
+  .find(element => element?.matches?.('#cards .card[data-card-id]')) || null;
+}
+
+function handleActionQueuePointerDown(event) {
+ if (!player || currentScreen !== 'battle' || isPlayerFrozen()) return;
+
+ const cardButton = findCardButtonFromPointerEvent(event);
+ if (cardButton) {
+  const cardId = cardButton.dataset.cardId;
+  if (!cardId) return;
+  event.preventDefault();
+  event.stopPropagation();
+  suppressQueuedCardClickId = cardId;
+  suppressQueuedCardClickUntil = Date.now() + 450;
+  playPlayerCard(cardId);
+  return;
+ }
+
+ const reloadButton = event?.target?.closest?.('#manual-reload-button');
+ if (reloadButton) {
+  event.preventDefault();
+  event.stopPropagation();
+  suppressQueuedReloadClickUntil = Date.now() + 450;
+  manualReload({ fromPointer: true });
+ }
+}
+
+if (typeof document !== 'undefined' && !document.__deckActionQueuePointerInstalled) {
+ document.__deckActionQueuePointerInstalled = true;
+ document.addEventListener('pointerdown', handleActionQueuePointerDown, true);
+}
+
+function processQueuedActions() {
+ if (actionQueueProcessing) return false;
+ if (!player || !cpu || currentScreen !== 'battle' || gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || player.cooldown || player.reloading || isPlayerFrozen()) {
+  return false;
+ }
+
+ const queue = getActionQueue();
+ if (queue.length <= 0) return false;
+
+ actionQueueProcessing = true;
+ let startedAction = false;
+
+ try {
+  while (queue.length > 0 && !startedAction && !gameOver && player && cpu && currentScreen === 'battle' && !player.cooldown && !player.reloading && !isPlayerFrozen()) {
+   const action = queue.shift();
+
+   if (!action) continue;
+
+   if (action.type === 'reload') {
+    if (!player.hand || player.hand.length <= 0) {
+     showActionQueueNotice('予約失敗：リロード不可', 'miss');
+     continue;
+    }
+    manualReload({ fromQueue: true });
+    startedAction = Boolean(player.reloading || player.cooldown || gameOver);
+    continue;
+   }
+
+   if (action.type === 'card') {
+    const exists = player.hand && player.hand.some(card => card.id === action.cardId);
+    if (!exists) {
+     showActionQueueNotice('予約失敗：カードなし', 'miss');
+     continue;
+    }
+
+    playPlayerCard(action.cardId, { fromQueue: true });
+    startedAction = Boolean(player.cooldown || player.reloading || gameOver);
+   }
+  }
+ } finally {
+  actionQueueProcessing = false;
+ }
+
+ render();
+ return startedAction;
 }
 
   function startDeckReload() {
@@ -6069,13 +6270,21 @@ function startReload() {
      addLog(`リロード完了：${newCards.length}枚ドロー`);
      playSound('success');
 
+     processQueuedActions();
      render();
     }
     }, 100);
   }
 
-  function manualReload() {
+  function manualReload(options = {}) {
+ if (!options.fromQueue && !options.fromPointer && Date.now() < suppressQueuedReloadClickUntil) return;
+
  startEnemyTimerOnFirstCard();
+
+   if (!options.fromQueue && canQueueActionNow()) {
+    toggleQueuedReload();
+    return;
+   }
 
    if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || !player || player.reloading || player.cooldown || isPlayerFrozen()) return;
    if (player.hand.length === 0) return;
@@ -6170,7 +6379,8 @@ function startRareCardCooldown() {
 
      stopCooldown();
 
-     if (!gameOver && player && currentScreen === 'battle' && player.hand.length === 0 && !player.reloading) {
+     const queuedActionStarted = processQueuedActions();
+     if (!queuedActionStarted && !gameOver && player && currentScreen === 'battle' && player.hand.length === 0 && !player.reloading) {
       startReload();
      }
     }
@@ -6650,6 +6860,7 @@ function showPrepareScreen() {
 }
 
   function cancelPendingBattleChoices() {
+   clearActionQueue();
    pendingPassiveChoice = false;
    pendingShopChoice = false;
    pendingNextLevel = null;
@@ -6953,6 +7164,7 @@ function saveDeckCustomize() {
    enemyTimerStarted = false;
 
    battleActionToken++;
+   clearActionQueue();
    enemyDefeatResolutionPending = false;
    if (enemyDefeatResolutionTimer) {
     clearTimeout(enemyDefeatResolutionTimer);
@@ -7398,6 +7610,7 @@ function playSound(type) {
    }
 
    if (battleResultStats.endedAt) return;
+   clearActionQueue();
 
    if (player && Array.isArray(player.hand)) {
     player.hand = player.hand.filter(card => !card.temporaryBattleCard);
@@ -8856,6 +9069,11 @@ function playPlayerCard(id, options = {}) {
    if (player && player.cooldown && Number(player.cooldownTimer || 0) <= 0) {
     player.cooldown = false;
     player.cooldownTimer = 0;
+   }
+
+   if (!options.fromQueue && canQueueActionNow()) {
+    toggleQueuedCard(id);
+    return;
    }
 
    if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || !player || !cpu || player.reloading || player.cooldown || isPlayerFrozen()) return;
@@ -13408,7 +13626,12 @@ function render() {
 
    const manualReloadButton = document.getElementById('manual-reload-button');
    if (manualReloadButton) {
-    manualReloadButton.disabled = bossRevivalInProgress || pendingPassiveChoice || player.reloading || player.cooldown || gameOver;
+    const reloadQueueNumber = getQueuedReloadNumber();
+    const canReloadQueueClick = canQueueActionNow() || reloadQueueNumber > 0;
+    manualReloadButton.disabled = bossRevivalInProgress || pendingPassiveChoice || player.reloading || gameOver || isPlayerFrozen() || (player.cooldown && !canReloadQueueClick);
+    manualReloadButton.classList.toggle('action-queue-enabled', canReloadQueueClick);
+    manualReloadButton.classList.toggle('action-queued', reloadQueueNumber > 0);
+    manualReloadButton.innerHTML = `${reloadQueueNumber > 0 ? `<span class="action-queue-badge">${getActionQueueLabel(reloadQueueNumber)}</span>` : ''}リロード`;
    }
 
 
@@ -13500,7 +13723,7 @@ const petCharge = document.getElementById('pet-charge');
 const cards = document.getElementById('cards');
 
    if (cards) {
-    cards.onclick = handleFrozenHandClick;
+    cards.onclick = handleHandAreaClick;
    }
 
    if (cards && player) {
@@ -13516,14 +13739,18 @@ const cards = document.getElementById('cards');
    } else {
     player.hand.forEach(card => {
      const button = document.createElement('button');
+     const queueNumber = getQueuedCardNumber(card.id);
+     const canQueueClick = canQueueActionNow() || queueNumber > 0;
+     const inactive = bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isPlayerFrozen();
 
-     button.className = `card ${getCardVisualClass(card)} ${card.type || ''} ${card.type ? `${card.type}-card` : ''}${getCardRarityClass(card)}${(player.cooldown || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isPlayerFrozen()) ? ' disabled' : ''}`;
-     button.onclick = () => playPlayerCard(card.id);
+     button.className = `card ${getCardVisualClass(card)} ${card.type || ''} ${card.type ? `${card.type}-card` : ''}${getCardRarityClass(card)}${(player.cooldown || inactive) ? ' disabled' : ''}${canQueueClick ? ' action-queue-enabled' : ''}${queueNumber > 0 ? ' action-queued' : ''}`;
+     button.dataset.cardId = card.id;
 
      const displayValue = getBattleCardDisplayValue(card);
      const displayText = getDisplayCardText(card);
 
      button.innerHTML = `
+      ${queueNumber > 0 ? `<div class="action-queue-badge">${getActionQueueLabel(queueNumber)}</div>` : ''}
       <div class="card-shine"></div>
       ${hasCardRarityDisplay(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
       <div class="card-top">
