@@ -5699,6 +5699,14 @@ function filterCurrentBattleExcludedCards(cards, excludeCardId = null) {
  return cards.filter(card => card.id === excludeCardId || (!excludedTypes.has(card.type) && !excludedNames.has(card.name)));
 }
 
+function discardPlayedCardForCurrentBattle(cardId) {
+ if (!player || !cardId) return;
+ playerDeck = Array.isArray(playerDeck) ? playerDeck.filter(card => card.id !== cardId) : [];
+ player.hand = Array.isArray(player.hand) ? player.hand.filter(card => card.id !== cardId) : [];
+ actionQueue = getActionQueue().filter(action => !(action && action.type === 'card' && action.cardId === cardId));
+ deckCount = playerDeck.length;
+}
+
 function excludeCardTypeForCurrentBattle(type, excludeCardId = null) {
  if (!player || !type) return;
  if (!Array.isArray(player.excludedBattleCardTypes)) player.excludedBattleCardTypes = [];
@@ -9512,7 +9520,7 @@ if (card.type === 'rare-double-attack') {
    if (card.type === 'pet-attack-up') {
     const value = Math.max(1, Number(card.value || 1));
     playerPassives.petAttackPowerBonus = (playerPassives.petAttackPowerBonus || 0) + value;
-    excludeCardNameForCurrentBattle(card.name, card.id);
+    discardPlayedCardForCurrentBattle(card.id);
     triggerPetMotion();
     addLog(`あなた：${card.name} (ペット攻撃力+${value})`);
     playSound('success');
@@ -9530,7 +9538,7 @@ if (card.type === 'rare-double-attack') {
     }
 
     const result = addPetExp(value, card.name);
-    excludeCardNameForCurrentBattle(card.name, card.id);
+    discardPlayedCardForCurrentBattle(card.id);
     triggerPetMotion();
     addLog(`あなた：${card.name} (${result.blocked ? 'EXP獲得不可' : `EXP+${result.gained}`}${selfDamage > 0 ? ` / HP-${selfDamage}` : ''})`);
     playSound(result.gained > 0 ? 'success' : 'miss');
@@ -10064,7 +10072,7 @@ if (card.type === 'dein') {
 
    if (card.type === 'poison-plague') {
     cpu.poisonGrowthPerTurn = Math.max(Number(cpu.poisonGrowthPerTurn || 0), Math.max(1, Number(card.value || 2)));
-    excludeCardTypeForCurrentBattle(card.type, card.id);
+    discardPlayedCardForCurrentBattle(card.id);
     triggerPoisonEffect('.cpu-img');
     showDamagePopup('cpu-hp-change', `毒成長+${cpu.poisonGrowthPerTurn}`);
     addLog(`あなた：${card.name} (敵の毒が毎ターン+${cpu.poisonGrowthPerTurn}${getEnemyPoisonApplyMultiplier() < 1 ? ' / 耐性中は増加量50%' : ''} / 使用後破棄)`);
