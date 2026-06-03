@@ -535,19 +535,21 @@ const PET_POOL = [
    rare: true,
   },
   {
-   name: '獣の闘志',
-   type: 'pet-spirit-attack',
-   value: 2,
-   growth: 3,
-   text: 'この戦闘中 与ダメージ+2 / ペット行動ごとにさらに+3',
+  name: '獣の闘志',
+  type: 'pet-spirit-attack',
+  value: 2,
+  growth: 3,
+  maxValue: 40,
+  text: '2ダメージ / ペット行動ごとに+3（最大40）',
    rare: true,
   },
   {
    name: '獣の守り',
-   type: 'pet-spirit-defense',
-   value: 2,
-   growth: 3,
-   text: 'この戦闘中 防御力+2 / ペット行動ごとにさらに+3',
+  type: 'pet-spirit-defense',
+  value: 2,
+  growth: 3,
+  maxValue: 40,
+  text: '防御+2 / ペット行動ごとに+3（最大40）',
    rare: true,
   },
   {
@@ -2796,6 +2798,22 @@ function getPetExpStatusText() {
  return `次Lvまで ${getPetExpToNextLevel(petExp)}EXP`;
 }
 
+function getPetSpiritAttackValue(card = null) {
+ const base = Math.max(0, Number(card?.value ?? playerPassives?.petSpiritAttackBase ?? 2));
+ const growth = Math.max(0, Number(card?.growth ?? playerPassives?.petSpiritAttackGrowth ?? 3));
+ const actions = Math.max(0, Number(playerPassives?.petSpiritAttackActions || 0));
+ const maxValue = Math.max(1, Number(card?.maxValue ?? 40));
+ return Math.min(maxValue, base + growth * actions);
+}
+
+function getPetSpiritDefenseValue(card = null) {
+ const base = Math.max(0, Number(card?.value ?? playerPassives?.petSpiritDefenseBase ?? 2));
+ const growth = Math.max(0, Number(card?.growth ?? playerPassives?.petSpiritDefenseGrowth ?? 3));
+ const actions = Math.max(0, Number(playerPassives?.petSpiritDefenseActions || 0));
+ const maxValue = Math.max(1, Number(card?.maxValue ?? 40));
+ return Math.min(maxValue, base + growth * actions);
+}
+
 
 
 function getEffectivePetLevel() {
@@ -3029,8 +3047,6 @@ function getEffectiveCardValue(card) {
 
   if (isAttackCardType(card.type)) {
    value += playerPassives.attack;
-   value += Math.max(0, Number(playerPassives.petSpiritAttackBase || 0))
-    + Math.max(0, Number(playerPassives.petSpiritAttackGrowth || 0)) * Math.max(0, Number(playerPassives.petSpiritAttackActions || 0));
    if (player && Array.isArray(player.hand) && player.hand.length <= 2) {
     value += Math.max(0, Number(playerPassives.lowHandAttackBonus || 0));
    }
@@ -3059,8 +3075,6 @@ function getEffectiveCardValue(card) {
 
  if (isDefenseCardType(card.type)) {
   value += playerPassives.defense;
-  value += Math.max(0, Number(playerPassives.petSpiritDefenseBase || 0))
-   + Math.max(0, Number(playerPassives.petSpiritDefenseGrowth || 0)) * Math.max(0, Number(playerPassives.petSpiritDefenseActions || 0));
 
   if (player && player.enhanceNextDefense) {
    value *= 2;
@@ -8837,13 +8851,8 @@ function triggerPetMotion() {
 function handlePetActionSynergies() {
  if (!player || !playerPassives) return;
 
- if (playerPassives.petSpiritAttackGrowth > 0) {
-  playerPassives.petSpiritAttackActions += 1;
- }
-
- if (playerPassives.petSpiritDefenseGrowth > 0) {
-  playerPassives.petSpiritDefenseActions += 1;
- }
+ playerPassives.petSpiritAttackActions = Math.max(0, Number(playerPassives.petSpiritAttackActions || 0)) + 1;
+ playerPassives.petSpiritDefenseActions = Math.max(0, Number(playerPassives.petSpiritDefenseActions || 0)) + 1;
 
  if (playerPassives.petResonanceDraw > 0) {
   const drawn = drawCardsToPlayerHand(playerPassives.petResonanceDraw);
@@ -9577,19 +9586,24 @@ if (card.type === 'rare-double-attack') {
    }
 
    if (card.type === 'pet-spirit-attack') {
-    playerPassives.petSpiritAttackBase = Math.max(Number(playerPassives.petSpiritAttackBase || 0), Number(card.value || 2));
-    playerPassives.petSpiritAttackGrowth = Math.max(Number(playerPassives.petSpiritAttackGrowth || 0), Number(card.growth || 3));
+    const attackValue = getPetSpiritAttackValue(card);
+    const result = applyPlayerCardDamage(attackValue);
+    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+    triggerDamageShake('.cpu-img');
     triggerPetMotion();
-    addLog(`あなた：${card.name} (この戦闘中 与ダメージ+${playerPassives.petSpiritAttackBase} / ペット行動ごとに+${playerPassives.petSpiritAttackGrowth})`);
-    playSound('success');
+    addLog(`あなた：${card.name} (${result.damage}ダメージ / ペット行動${playerPassives.petSpiritAttackActions || 0}回)`);
+    playSound(result.fullyBlocked ? 'guard' : 'attack');
    }
 
    if (card.type === 'pet-spirit-defense') {
-    playerPassives.petSpiritDefenseBase = Math.max(Number(playerPassives.petSpiritDefenseBase || 0), Number(card.value || 2));
-    playerPassives.petSpiritDefenseGrowth = Math.max(Number(playerPassives.petSpiritDefenseGrowth || 0), Number(card.growth || 3));
+    const guard = getPetSpiritDefenseValue(card);
+    player.block += guard;
+    recordAchievementMax('maxBlock', player.block || 0);
     triggerPetMotion();
-    addLog(`あなた：${card.name} (この戦闘中 防御力+${playerPassives.petSpiritDefenseBase} / ペット行動ごとに+${playerPassives.petSpiritDefenseGrowth})`);
-    playSound('success');
+    showDamagePopup('player-hp-change', `防御+${guard}`);
+    triggerCardVisualEffect('.player-img', 'guard');
+    addLog(`あなた：${card.name} (防御+${guard} / ペット行動${playerPassives.petSpiritDefenseActions || 0}回)`);
+    playSound('defense');
    }
 
    if (card.type === 'reload-double-next') {
@@ -12009,11 +12023,11 @@ if (card.type === 'pet-attack-up') {
  }
 
  if (card.type === 'pet-spirit-attack') {
-  return `戦闘中 与ダメージ+${card.value || 2} / ペット行動ごとにさらに+${card.growth || 3}`;
+  return `${getPetSpiritAttackValue(card)}ダメージ / ペット行動ごとに+${card.growth || 3}（最大${card.maxValue || 40}）`;
  }
 
  if (card.type === 'pet-spirit-defense') {
-  return `戦闘中 防御力+${card.value || 2} / ペット行動ごとにさらに+${card.growth || 3}`;
+  return `防御+${getPetSpiritDefenseValue(card)} / ペット行動ごとに+${card.growth || 3}（最大${card.maxValue || 40}）`;
  }
 
  if (card.type === 'reload-double-next') {
@@ -12238,6 +12252,14 @@ function getBattleCardDisplayValue(card) {
 
  if (card.type === 'scaling-defense') {
   return getEffectiveCardValue({ ...card, value: getScalingCardCurrentValue(card) });
+ }
+
+ if (card.type === 'pet-spirit-attack') {
+  return getPlayerDamagePreviewValue(getPetSpiritAttackValue(card));
+ }
+
+ if (card.type === 'pet-spirit-defense') {
+  return getPetSpiritDefenseValue(card);
  }
 
  if (card.type === 'blood-slash') {
@@ -13261,12 +13283,8 @@ function getPassiveEffectBadgesHtml() {
    if (playerPassives.reloadTimeReduce > 0) badges.push(`<div class="passive-effect-badge">🔄 リロード -${playerPassives.reloadTimeReduce}秒</div>`);
    if (playerPassives.healBonus > 0) badges.push(`<div class="passive-effect-badge">💖 回復 +${playerPassives.healBonus}</div>`);
    if (playerPassives.petAttackPowerBonus > 0) badges.push(`<div class="passive-effect-badge">🐾 ペット攻撃 +${playerPassives.petAttackPowerBonus}</div>`);
-   const petSpiritAttack = Math.max(0, Number(playerPassives.petSpiritAttackBase || 0))
-    + Math.max(0, Number(playerPassives.petSpiritAttackGrowth || 0)) * Math.max(0, Number(playerPassives.petSpiritAttackActions || 0));
-   const petSpiritDefense = Math.max(0, Number(playerPassives.petSpiritDefenseBase || 0))
-    + Math.max(0, Number(playerPassives.petSpiritDefenseGrowth || 0)) * Math.max(0, Number(playerPassives.petSpiritDefenseActions || 0));
-   if (petSpiritAttack > 0) badges.push(`<div class="passive-effect-badge">🐾 与ダメ +${petSpiritAttack}</div>`);
-   if (petSpiritDefense > 0) badges.push(`<div class="passive-effect-badge">🐾 防御 +${petSpiritDefense}</div>`);
+   const petSpiritActions = Math.max(0, Number(playerPassives.petSpiritAttackActions || 0));
+   if (petSpiritActions > 0) badges.push(`<div class="passive-effect-badge">🐾 ペット行動 ${petSpiritActions}回</div>`);
    if (Number(playerPassives.petDoubleActionNext || 0) > 0) badges.push(`<div class="passive-effect-badge">🐾 次回ペット2回行動</div>`);
    if (Number(playerPassives.petNextAttackDamageMultiplier || 1) > 1) badges.push(`<div class="passive-effect-badge">🐾 次ペット攻撃×${playerPassives.petNextAttackDamageMultiplier}</div>`);
    if (Number(playerPassives.petResonanceDraw || 0) > 0) badges.push(`<div class="passive-effect-badge">🐾 ペット行動時ドロー+${playerPassives.petResonanceDraw}</div>`);
