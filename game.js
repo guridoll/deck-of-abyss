@@ -2809,7 +2809,6 @@ function resetPetProgressForDive() {
 function canSelectedPetGainExp() {
  return selectedPetId && selectedPetId !== 'none'
   && getPetLevelFromExp(petExp) < MAX_PET_LEVEL
-  && !isPetEvolutionDiscovered(selectedPetId)
   && !isSelectedPetEvolved();
 }
 
@@ -2847,7 +2846,7 @@ function addPetExp(amount, source = 'ペットEXP') {
 
 function getPetExpStatusText() {
  if (!selectedPetId || selectedPetId === 'none') return '';
- if (isPetEvolutionDiscovered(selectedPetId) || isSelectedPetEvolved()) return '進化済み';
+ if (isSelectedPetEvolved()) return '進化済み';
  const level = getPetLevelFromExp(petExp);
  if (level >= MAX_PET_LEVEL) return '進化可能';
  return `次Lvまで ${getPetExpToNextLevel(petExp)}EXP`;
