@@ -1072,13 +1072,18 @@ const PET_POOL = [
    'load-slot',
    'save-slot',
    'title',
+   'prepare',
+   'depth-select',
    'customize',
    'pet-select',
    'card-library',
    'enemy-library',
    'passive-library',
    'achievement-library',
+   'random-event-library',
    'battle-history',
+   'ranking',
+   'help',
    'clear',
   ]);
   const AUDIO_ASSETS = {
@@ -1182,6 +1187,15 @@ const PET_POOL = [
    }
   }
 
+  function isSoundSettingsOpen() {
+   const modal = document.getElementById('sound-settings-modal');
+   return Boolean(modal && modal.classList.contains('is-open'));
+  }
+
+  function isBattlePausedBySettings() {
+   return currentScreen === 'battle' && isSoundSettingsOpen();
+  }
+
   function getUploadedSoundBase(type) {
    if (!AUDIO_ASSETS[type]) return null;
 
@@ -1220,9 +1234,14 @@ const PET_POOL = [
    playUiSelectSound();
    const modal = document.getElementById('sound-settings-modal');
    if (!modal) return;
+   if (currentScreen === 'battle') {
+    battleMenuOpen = false;
+   }
    modal.classList.add('is-open');
    modal.style.display = 'flex';
+   modal.setAttribute('aria-hidden', 'false');
    renderSoundSettingsControls();
+   render();
   }
 
   function closeSoundSettings() {
@@ -1231,6 +1250,8 @@ const PET_POOL = [
    if (!modal) return;
    modal.classList.remove('is-open');
    modal.style.display = 'none';
+   modal.setAttribute('aria-hidden', 'true');
+   render();
   }
 
   function getSoundSettingPercent(key) {
@@ -6195,6 +6216,7 @@ function startEnemyTimer() {
    || pendingPassiveChoice
    || pendingShopChoice
    || bossRevivalInProgress
+   || isBattlePausedBySettings()
   ) {
    return;
   }
@@ -6206,11 +6228,12 @@ function startEnemyTimer() {
   if (enemyTimer <= 0) {
    enemyTurn();
 
-   if (
-    !gameOver
-    && currentScreen === 'battle'
-    && !pendingPassiveChoice
-    && !pendingShopChoice
+    if (
+     !gameOver
+     && currentScreen === 'battle'
+     && !pendingPassiveChoice
+     && !pendingShopChoice
+     && !isBattlePausedBySettings()
    ) {
     enemyTimer = getEnemyActionInterval();
     updateEnemyTimerText();
@@ -6259,7 +6282,8 @@ function canQueueActionNow() {
   && !bossRevivalInProgress
   && !pendingPassiveChoice
   && !pendingShopChoice
-  && !isPlayerFrozen();
+  && !isPlayerFrozen()
+  && !isBattlePausedBySettings();
 }
 
 function removeQueuedActionAt(index, notice = '予約解除') {
@@ -6319,7 +6343,7 @@ function findCardButtonFromPointerEvent(event) {
 }
 
 function handleActionQueuePointerDown(event) {
- if (!player || currentScreen !== 'battle' || isPlayerFrozen()) return;
+ if (!player || currentScreen !== 'battle' || isPlayerFrozen() || isBattlePausedBySettings()) return;
 
  const cardButton = findCardButtonFromPointerEvent(event);
  if (cardButton) {
@@ -6349,7 +6373,7 @@ if (typeof document !== 'undefined' && !document.__deckActionQueuePointerInstall
 
 function processQueuedActions() {
  if (actionQueueProcessing) return false;
- if (!player || !cpu || currentScreen !== 'battle' || gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || player.cooldown || player.reloading || isPlayerFrozen()) {
+ if (!player || !cpu || currentScreen !== 'battle' || gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || player.cooldown || player.reloading || isPlayerFrozen() || isBattlePausedBySettings()) {
   return false;
  }
 
@@ -6413,6 +6437,10 @@ function processQueuedActions() {
      return;
     }
 
+    if (isBattlePausedBySettings()) {
+     return;
+    }
+
     deckReloadTimer--;
 
     render();
@@ -6444,7 +6472,7 @@ function processQueuedActions() {
   }
 
 function startReload() {
-   if (pendingPassiveChoice || pendingShopChoice || !player || player.reloading || player.cooldown || gameOver) return;
+   if (pendingPassiveChoice || pendingShopChoice || !player || player.reloading || player.cooldown || gameOver || isBattlePausedBySettings()) return;
 
    if (playerDeck.length <= 0) {
     startDeckReload();
@@ -6473,6 +6501,10 @@ function startReload() {
     reloadInterval = setInterval(() => {
      if (!player || gameOver || currentScreen !== 'battle') {
       stopReload();
+      return;
+     }
+
+     if (isBattlePausedBySettings()) {
       return;
      }
 
@@ -6531,6 +6563,7 @@ function startReload() {
 
   function manualReload(options = {}) {
  if (!options.fromQueue && !options.fromPointer && Date.now() < suppressQueuedReloadClickUntil) return;
+ if (isBattlePausedBySettings()) return;
 
  startEnemyTimerOnFirstCard();
 
@@ -6566,6 +6599,10 @@ function startRareCardCooldown() {
    cooldownInterval = setInterval(() => {
     if (!player || gameOver || currentScreen !== 'battle') {
      stopCooldown();
+     return;
+    }
+
+    if (isBattlePausedBySettings()) {
      return;
     }
 
@@ -6609,6 +6646,10 @@ function startRareCardCooldown() {
      stopCooldown();
      clearPlayerParalysis();
      render();
+     return;
+    }
+
+    if (isBattlePausedBySettings()) {
      return;
     }
 
@@ -6658,6 +6699,10 @@ function startRareCooldown() {
  cooldownInterval = setInterval(() => {
   if (!player || gameOver || currentScreen !== 'battle') {
    stopCooldown();
+   return;
+  }
+
+  if (isBattlePausedBySettings()) {
    return;
   }
 
@@ -9356,6 +9401,7 @@ function startEnemyTimerOnFirstCard() {
   || pendingPassiveChoice
   || pendingShopChoice
   || bossRevivalInProgress
+  || isBattlePausedBySettings()
  ) {
   return;
  }
@@ -9421,7 +9467,7 @@ function playPlayerCard(id, options = {}) {
     return;
    }
 
-   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || !player || !cpu || player.reloading || player.cooldown || isPlayerFrozen()) return;
+   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isBattlePausedBySettings() || !player || !cpu || player.reloading || player.cooldown || isPlayerFrozen()) return;
 
    const cardIndex = player.hand.findIndex(c => c.id === id);
    if (cardIndex === -1) return;
