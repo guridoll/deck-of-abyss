@@ -1283,7 +1283,12 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  display: none;
+  display: block;
+  margin: 12px 0 0;
+  color: #e5e7eb;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.7;
   align-items: center;
   justify-content: center;
   padding: 24px;
@@ -10015,7 +10020,103 @@ body.battle-defeat-slowmo .battle-area {
 }
 
 .help-screen .battle-guide-card {
-  min-height: 155px;
+  min-height: 168px;
+  cursor: pointer;
+}
+
+.help-screen .battle-guide-card:hover,
+.help-screen .battle-guide-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(250, 204, 21, 0.55);
+  box-shadow: 0 18px 38px rgba(0,0,0,0.34), 0 0 22px var(--guide-glow, rgba(250,204,21,0.18));
+  outline: none;
+}
+
+.help-screen .battle-guide-card > p,
+.help-screen .battle-guide-card > ul,
+.help-screen .battle-guide-card > ol {
+  display: block;
+  margin: 12px 0 0;
+  color: #e5e7eb;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.7;
+}
+
+.help-screen .battle-guide-card::after {
+  content: "クリックで詳細";
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 900;
+  content: "クリックで拡大";
+}
+
+.help-detail-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, 0.74);
+  backdrop-filter: blur(10px);
+}
+
+.help-detail-dialog {
+  width: min(760px, 94vw);
+  max-height: min(78vh, 720px);
+  overflow: auto;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(96,165,250,0.22), transparent 34%),
+    linear-gradient(180deg, rgba(15,23,42,0.98), rgba(30,41,59,0.96));
+  box-shadow: 0 28px 76px rgba(0,0,0,0.56);
+}
+
+.help-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.help-detail-kicker {
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: 0.22em;
+}
+
+.help-detail-header h2 {
+  margin: 4px 0 0;
+  color: #f8fafc;
+  font-size: clamp(1.6rem, 3vw, 2.3rem);
+}
+
+.help-detail-close {
+  white-space: nowrap;
+}
+
+.help-detail-body {
+  color: #e5e7eb;
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.85;
+}
+
+.help-detail-body p {
+  margin: 0;
 }
 
 .guide-objective { border-left-color: #facc15; --guide-glow: rgba(250, 204, 21, 0.24); }

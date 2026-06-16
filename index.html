@@ -965,13 +965,26 @@
 
         <section class="battle-guide-card guide-card-view">
           <div class="battle-guide-card-title"><span class="battle-guide-icon">🔎</span><h3>カードの見方</h3></div>
-          <p>説明の「T」はターン数です。「防御無視」は相手の防御を無視してHPへダメージを与えます。</p>
+          <p>T：ターン数。敵が1回行動すると1ターン経過します。「防御無視」は相手の防御を無視してHPへダメージを与えます。</p>
         </section>
 
         <section class="battle-guide-card guide-discard">
           <div class="battle-guide-card-title"><span class="battle-guide-icon">🗑️</span><h3>破棄</h3></div>
           <p>「使用後破棄」とあるカードは、使うとその戦闘中の手札・山札から除外されます。次のレベルの戦闘では通常通り山札に戻ります。</p>
         </section>
+      </div>
+    </div>
+
+    <div id="help-detail-modal" class="help-detail-modal" style="display:none;" onclick="closeHelpDetailModal(event)">
+      <div class="help-detail-dialog panel" onclick="event.stopPropagation()">
+        <div class="help-detail-header">
+          <div>
+            <div class="help-detail-kicker">HELP</div>
+            <h2 id="help-detail-title"></h2>
+          </div>
+          <button class="ui-button ui-button-secondary help-detail-close" type="button" onclick="closeHelpDetailModal()">閉じる</button>
+        </div>
+        <div id="help-detail-body" class="help-detail-body"></div>
       </div>
     </div>
   </div>

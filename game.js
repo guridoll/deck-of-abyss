@@ -13315,6 +13315,49 @@ function showCardLibraryScreen() {
    currentScreen = 'help';
 
    render();
+   setupHelpGuideCards();
+  }
+
+  function setupHelpGuideCards() {
+   const helpScreen = document.getElementById('help-screen');
+   if (!helpScreen) return;
+
+   helpScreen.querySelectorAll('.battle-guide-card').forEach((card, index) => {
+    card.classList.add('help-clickable-card');
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.dataset.helpIndex = String(index);
+    card.onclick = () => openHelpDetailModal(card);
+    card.onkeydown = event => {
+     if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openHelpDetailModal(card);
+     }
+    };
+   });
+  }
+
+  function openHelpDetailModal(card) {
+   if (!card) return;
+   playUiSelectSound();
+
+   const modal = document.getElementById('help-detail-modal');
+   const titleElement = document.getElementById('help-detail-title');
+   const bodyElement = document.getElementById('help-detail-body');
+   const title = card.querySelector('.battle-guide-card-title h3')?.textContent?.trim() || '遊び方';
+   const body = Array.from(card.querySelectorAll('p, ul, ol'))
+    .map(element => element.outerHTML)
+    .join('');
+
+   if (titleElement) titleElement.textContent = title;
+   if (bodyElement) bodyElement.innerHTML = body || '<p>説明はありません。</p>';
+   if (modal) modal.style.display = 'flex';
+  }
+
+  function closeHelpDetailModal(event) {
+   if (event && event.target !== event.currentTarget && event.currentTarget?.id === 'help-detail-modal') return;
+   const modal = document.getElementById('help-detail-modal');
+   if (modal) modal.style.display = 'none';
   }
 
   const achievementLibrary = window.GameAchievementLibrary.createAchievementLibrary({
@@ -13948,6 +13991,7 @@ function render() {
    const rankingScreen = document.getElementById('ranking-screen');
    if (rankingScreen) rankingScreen.style.display = currentScreen === 'ranking' ? 'flex' : 'none';
    document.getElementById('help-screen').style.display = currentScreen === 'help' ? 'flex' : 'none';
+   if (currentScreen === 'help') setupHelpGuideCards();
    document.getElementById('clear-screen').style.display = currentScreen === 'clear' ? 'flex' : 'none';
    if (currentScreen === 'clear') renderClearScreen();
    document.getElementById('customize-screen').style.display = currentScreen === 'customize' ? 'block' : 'none';
@@ -14441,6 +14485,7 @@ window.loadGameDataFromSlot = loadGameDataFromSlot;
 window.backToStartScreen = backToStartScreen;
 window.showSaveSlotScreen = showSaveSlotScreen;
 window.saveCurrentGameDataToSlot = saveCurrentGameDataToSlot;
+window.closeHelpDetailModal = closeHelpDetailModal;
 window.acceptRandomEvent = acceptRandomEvent;
 window.confirmRandomEventResult = confirmRandomEventResult;
 window.declineRandomEvent = declineRandomEvent;
@@ -14507,6 +14552,7 @@ document.addEventListener('keydown', (event) => {
     closeEnemyLibraryDetailModal();
     closePassiveLibraryDetailModal();
     closeRandomEventLibraryDetailModal();
+    closeHelpDetailModal();
     closeBattleGuide();
   }
 });
