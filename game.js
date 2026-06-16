@@ -5990,7 +5990,7 @@ function stopPlayerStatusTimer() {
 }
 
 function startPlayerStatusTimer() {
- // 凍結は時間経過では解除しない。手札エリアのクリックで解除する。
+ // 凍結は時間経過では解除しない。戦闘画面のクリックで解除する。
  // 既存呼び出し互換のため関数は残すが、タイマーは開始しない。
  stopPlayerStatusTimer();
 }
@@ -6005,30 +6005,100 @@ function applyPlayerFreeze(requiredClicks = 10) {
  player.freezeClickCount = 0;
 
  updatePlayerFreezeVisual();
- addLog(`凍結：手札エリアを${requiredClicks}回クリックで解除`);
+ addLog(`凍結：戦闘画面を${requiredClicks}回クリックで解除`);
  render();
 }
 
-function handleHandAreaClick(event) {
- if (isPlayerFrozen()) {
-  if (gameOver || currentScreen !== 'battle') return;
+let lastPlayerFreezeBreakInputAt = 0;
+let lastPlayerFreezeBreakInputX = null;
+let lastPlayerFreezeBreakInputY = null;
 
+function stopPlayerFreezeBreakEvent(event) {
+ if (!event) return;
+ event.preventDefault();
+ event.stopPropagation();
+ if (typeof event.stopImmediatePropagation === 'function') {
+  event.stopImmediatePropagation();
+ }
+}
+
+function isRecentPlayerFreezeBreakInput(event) {
+ const now = Date.now();
+ const clientX = Number(event?.clientX ?? NaN);
+ const clientY = Number(event?.clientY ?? NaN);
+
+ return now - lastPlayerFreezeBreakInputAt < 250
+  && (Number.isNaN(clientX) || lastPlayerFreezeBreakInputX === null || Math.abs(clientX - lastPlayerFreezeBreakInputX) < 4)
+  && (Number.isNaN(clientY) || lastPlayerFreezeBreakInputY === null || Math.abs(clientY - lastPlayerFreezeBreakInputY) < 4);
+}
+
+function shouldHandlePlayerFreezeBreakClick(event) {
+ if (!isPlayerFrozen() || gameOver || currentScreen !== 'battle') return false;
+ if (bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice) return false;
+ if (event && typeof event.button === 'number' && event.button !== 0) return false;
+ if (event && event.type === 'pointerdown' && event.isPrimary === false) return false;
+
+ const target = event?.target;
+ if (!target || typeof target.closest !== 'function') return false;
+
+ return Boolean(target.closest('#battle-screen'));
+}
+
+function consumePlayerFreezeBreakClick(event) {
+ if (!shouldHandlePlayerFreezeBreakClick(event)) return false;
+
+ const now = Date.now();
+ const clientX = Number(event?.clientX ?? NaN);
+ const clientY = Number(event?.clientY ?? NaN);
+ const isDuplicateClick = event?.type === 'click' && isRecentPlayerFreezeBreakInput(event);
+
+ stopPlayerFreezeBreakEvent(event);
+
+ if (isDuplicateClick) return true;
+
+ lastPlayerFreezeBreakInputAt = now;
+ lastPlayerFreezeBreakInputX = Number.isNaN(clientX) ? null : clientX;
+ lastPlayerFreezeBreakInputY = Number.isNaN(clientY) ? null : clientY;
+
+ if (player) {
   player.freezeClickCount = Math.min(
    Number(player.freezeRequiredClicks || 10),
    Number(player.freezeClickCount || 0) + 1
   );
+ }
 
-  const remaining = getFreezeRemainingClicks();
-  if (remaining <= 0) {
-   clearPlayerFreeze();
-   addLog('凍結解除');
-   playSound('iceBreak');
-  } else {
-   playSound('iceTick');
-  }
+ const remaining = getFreezeRemainingClicks();
+ if (remaining <= 0) {
+  clearPlayerFreeze();
+  addLog('凍結解除');
+  playSound('iceBreak');
+ } else {
+  playSound('iceTick');
+ }
 
-  updatePlayerFreezeVisual();
-  render();
+ updatePlayerFreezeVisual();
+ render();
+ return true;
+}
+
+function handlePlayerFreezeBreakGlobalInput(event) {
+ if (event?.type === 'click' && isRecentPlayerFreezeBreakInput(event)) {
+  stopPlayerFreezeBreakEvent(event);
+  return;
+ }
+
+ consumePlayerFreezeBreakClick(event);
+}
+
+if (typeof document !== 'undefined' && !document.__deckPlayerFreezeBreakInstalled) {
+ document.__deckPlayerFreezeBreakInstalled = true;
+ document.addEventListener('pointerdown', handlePlayerFreezeBreakGlobalInput, true);
+ document.addEventListener('click', handlePlayerFreezeBreakGlobalInput, true);
+}
+
+function handleHandAreaClick(event) {
+ if (isPlayerFrozen()) {
+  consumePlayerFreezeBreakClick(event);
   return;
  }
 
