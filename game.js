@@ -13418,6 +13418,10 @@ function showCardLibraryScreen() {
    return cardLibrary.renderCardLibraryScreen();
   }
 
+  function closeCardLibraryDetailModal(event) {
+   return cardLibrary.closeCardLibraryDetailModal(event);
+  }
+
   function getEnemyCatalog() {
    return window.GameEnemies.getEnemyCatalog(GAME_IMAGES);
   }
@@ -14479,6 +14483,7 @@ window.showAchievementLibraryScreen = showAchievementLibraryScreen;
 window.showRandomEventLibraryScreen = showRandomEventLibraryScreen;
 window.showEnemyLibraryScreen = showEnemyLibraryScreen;
 window.changeCardLibraryTab = changeCardLibraryTab;
+window.closeCardLibraryDetailModal = closeCardLibraryDetailModal;
 window.startNewGameData = startNewGameData;
 window.showLoadSlotScreen = showLoadSlotScreen;
 window.loadGameDataFromSlot = loadGameDataFromSlot;
@@ -14515,6 +14520,7 @@ window.renderPetSelectScreen = renderPetSelectScreen;
 window.togglePetEvolutionInfo = togglePetEvolutionInfo;
 window.openPetDetailModal = openPetDetailModal;
 window.closePetDetailModal = closePetDetailModal;
+window.closeCardLibraryDetailModal = closeCardLibraryDetailModal;
 window.openPassiveLibraryDetailModal = openPassiveLibraryDetailModal;
 window.closePassiveLibraryDetailModal = closePassiveLibraryDetailModal;
 window.openRandomEventLibraryDetailModal = openRandomEventLibraryDetailModal;
@@ -14549,6 +14555,7 @@ function closeBattleGuide() {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closePetDetailModal();
+    closeCardLibraryDetailModal();
     closeEnemyLibraryDetailModal();
     closePassiveLibraryDetailModal();
     closeRandomEventLibraryDetailModal();

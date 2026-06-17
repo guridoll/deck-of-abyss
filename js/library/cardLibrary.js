@@ -111,6 +111,66 @@
    return map[rarity] || map.normal;
   }
 
+  function getCardLibraryCategoryLabel(card) {
+   const map = {
+    attack: '攻撃',
+    defense: '防御',
+    status: '状態異常',
+    support: '補助',
+    rare: 'レア',
+   };
+
+   return map[getCardLibraryCategory(card)] || '補助';
+  }
+
+  function openCardLibraryDetailModal(cardName) {
+   const discoveredCards = loadDiscoveredCards();
+   const card = CARD_POOL.find(item => item.name === cardName);
+   if (!card || !discoveredCards[card.name]) return;
+
+   const modal = document.getElementById('card-library-detail-modal');
+   const content = document.getElementById('card-library-detail-content');
+   if (!modal || !content) return;
+
+   const rarity = getCardLibraryRarity(card);
+   const rarityMeta = getCardLibraryRarityMeta(rarity);
+   const visualClasses = `${getCardVisualClass(card)} ${card.type || ''} ${card.type ? `${card.type}-card` : ''}${getCardRarityClass(card)}`;
+   const value = card.value === undefined || card.value === null || card.value === '' ? '-' : String(card.value);
+
+   playUiSelectSound();
+
+   content.innerHTML = `
+    <div class="library-card card-library-detail-card ${visualClasses}">
+     <div class="card-shine"></div>
+     ${isRareCard(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
+     <div class="card-library-detail-top">
+      <div>
+       <div class="card-library-detail-kicker">${escapeHtml(rarityMeta.title)} / ${escapeHtml(getCardLibraryCategoryLabel(card))}</div>
+       <h2>${escapeHtml(card.name)}</h2>
+      </div>
+      <div class="card-library-detail-icon">${getCardIcon(card.type)}</div>
+     </div>
+     <div class="card-library-detail-value">${escapeHtml(value)}</div>
+     <div class="card-library-detail-effect">${escapeHtml(getBaseCardDisplayText(card))}</div>
+     <div class="card-library-detail-meta">
+      <span><small>レアリティ</small><strong>${escapeHtml(rarityMeta.title)}</strong></span>
+      <span><small>種別</small><strong>${escapeHtml(getCardLibraryCategoryLabel(card))}</strong></span>
+      <span><small>硬直時間</small><strong>${escapeHtml(getCardCooldownText(card))}</strong></span>
+     </div>
+     <div class="library-card-note">${isRareCard(card) ? 'ショップ・報酬などで入手' : '山札カスタマイズ可'}</div>
+    </div>
+   `;
+
+   modal.style.display = 'flex';
+  }
+
+  function closeCardLibraryDetailModal(event) {
+   if (event && event.target !== event.currentTarget && event.currentTarget?.id === 'card-library-detail-modal') return;
+
+   const modal = document.getElementById('card-library-detail-modal');
+   if (modal) modal.style.display = 'none';
+  }
+
   function renderCardLibraryScreen() {
    const tabs = document.getElementById('card-library-tabs');
    const list = document.getElementById('card-library-list');
@@ -155,10 +215,21 @@
      const discovered = Boolean(discoveredCards[card.name]);
 
      div.className = discovered
-      ? `library-card ${getCardVisualClass(card)} ${card.type || ''} ${card.type ? `${card.type}-card` : ''}${getCardRarityClass(card)}`
+      ? `library-card clickable-library-card ${getCardVisualClass(card)} ${card.type || ''} ${card.type ? `${card.type}-card` : ''}${getCardRarityClass(card)}`
       : 'library-card undiscovered-card';
 
      if (discovered) {
+      div.setAttribute('role', 'button');
+      div.setAttribute('tabindex', '0');
+      div.setAttribute('aria-label', `${card.name}の詳細を表示`);
+      div.onclick = () => openCardLibraryDetailModal(card.name);
+      div.onkeydown = event => {
+       if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openCardLibraryDetailModal(card.name);
+       }
+      };
+
       div.innerHTML = `
        <div class="card-shine"></div>
        ${isRareCard(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
@@ -197,6 +268,8 @@
    getCardLibraryCategory,
    getCardLibraryRarity,
    getCardLibraryRarityMeta,
+   openCardLibraryDetailModal,
+   closeCardLibraryDetailModal,
    renderCardLibraryScreen,
   };
  }
