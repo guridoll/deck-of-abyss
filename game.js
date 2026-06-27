@@ -1424,6 +1424,21 @@ const PET_POOL = [
   let pendingRandomEventRollOutcome = null;
   let pendingRandomEventReveals = [];
   let pendingRandomEventAwaitingConfirm = false;
+
+  function isRandomEventInputBlocked() {
+   const modal = typeof document !== 'undefined' ? document.getElementById('random-event-actions') : null;
+   const modalVisible = Boolean(modal && modal.style.display !== 'none');
+   return Boolean(pendingRandomEvent || modalVisible);
+  }
+
+  function stopRandomEventUiEvent(event) {
+   if (!event) return;
+   event.preventDefault();
+   event.stopPropagation();
+   if (typeof event.stopImmediatePropagation === 'function') {
+    event.stopImmediatePropagation();
+   }
+  }
   let popupOffsetIndex = 0;
   let shopOpenedForLevel = null;
   let currentPassiveChoices = [];
@@ -4490,7 +4505,8 @@ function beginRandomEvent(nextLevel) {
  render();
 }
 
-function acceptRandomEvent() {
+function acceptRandomEvent(event) {
+ stopRandomEventUiEvent(event);
  playUiSelectSound();
  if (!pendingRandomEvent || pendingRandomEventAccepted) return;
  pendingRandomEventAccepted = true;
@@ -4499,7 +4515,8 @@ function acceptRandomEvent() {
  continueRandomEventSteps();
 }
 
-function declineRandomEvent() {
+function declineRandomEvent(event) {
+ stopRandomEventUiEvent(event);
  playUiSelectSound();
  if (!pendingRandomEvent) return;
  recordRandomEventProgress(pendingRandomEvent.id, 'rejected');
@@ -4507,7 +4524,8 @@ function declineRandomEvent() {
  finishRandomEvent();
 }
 
-function confirmRandomEventResult() {
+function confirmRandomEventResult(event) {
+ stopRandomEventUiEvent(event);
  playUiSelectSound();
  if (!pendingRandomEvent || !pendingRandomEventAccepted || !pendingRandomEventAwaitingConfirm || pendingRandomEventRolling) return;
  pendingRandomEventAwaitingConfirm = false;
@@ -4517,7 +4535,8 @@ function confirmRandomEventResult() {
  continueRandomEventSteps();
 }
 
-function chooseRandomEventCard(cardName) {
+function chooseRandomEventCard(cardName, event) {
+ stopRandomEventUiEvent(event);
  playUiSelectSound();
  if (!pendingRandomEvent || !pendingRandomEventAccepted) return;
  const step = pendingRandomEventSteps[pendingRandomEventStepIndex];
@@ -4528,7 +4547,8 @@ function chooseRandomEventCard(cardName) {
  continueRandomEventSteps();
 }
 
-function chooseRandomEventRemoveCard(cardName) {
+function chooseRandomEventRemoveCard(cardName, event) {
+ stopRandomEventUiEvent(event);
  playUiSelectSound();
  if (!pendingRandomEvent || !pendingRandomEventAccepted) return;
  const step = pendingRandomEventSteps[pendingRandomEventStepIndex];
@@ -4608,10 +4628,10 @@ function renderRandomEventModal() {
  if (actions) {
   if (!pendingRandomEventAccepted) {
    actions.style.display = 'flex';
-   actions.innerHTML = '<button class="ui-button ui-button-primary" onclick="acceptRandomEvent()">受け入れる</button><button class="ui-button ui-button-secondary" onclick="declineRandomEvent()">拒否する</button>';
+   actions.innerHTML = '<button class="ui-button ui-button-primary" onclick="acceptRandomEvent(event)">受け入れる</button><button class="ui-button ui-button-secondary" onclick="declineRandomEvent(event)">拒否する</button>';
   } else if (awaitingConfirm) {
    actions.style.display = 'flex';
-   actions.innerHTML = '<button class="ui-button ui-button-primary" onclick="confirmRandomEventResult()">確認</button>';
+   actions.innerHTML = '<button class="ui-button ui-button-primary" onclick="confirmRandomEventResult(event)">確認</button>';
   } else {
    actions.style.display = 'none';
    actions.innerHTML = '';
@@ -4663,7 +4683,7 @@ function renderRandomEventModal() {
   pendingRandomEventChoices.forEach(card => {
    const button = document.createElement('button');
    button.className = `random-event-choice-card ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}`;
-   button.onclick = () => chooseRandomEventCard(card.name);
+   button.onclick = event => chooseRandomEventCard(card.name, event);
    button.innerHTML = `
     <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)}</strong></div>
     <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
@@ -4677,7 +4697,7 @@ function renderRandomEventModal() {
   pendingRandomEventChoices.forEach(card => {
    const button = document.createElement('button');
    button.className = `random-event-choice-card remove-choice ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}`;
-   button.onclick = () => chooseRandomEventRemoveCard(card.name);
+   button.onclick = event => chooseRandomEventRemoveCard(card.name, event);
    button.innerHTML = `
     <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)} ×${card.count}</strong></div>
     <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
@@ -6702,6 +6722,7 @@ function isRecentPlayerFreezeBreakInput(event) {
 
 function shouldHandlePlayerFreezeBreakClick(event) {
  if (!isPlayerFrozen() || gameOver || currentScreen !== 'battle') return false;
+ if (isRandomEventInputBlocked()) return false;
  if (bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice) return false;
  if (event && typeof event.button === 'number' && event.button !== 0) return false;
  if (event && event.type === 'pointerdown' && event.isPrimary === false) return false;
@@ -6750,6 +6771,8 @@ function consumePlayerFreezeBreakClick(event) {
 }
 
 function handlePlayerFreezeBreakGlobalInput(event) {
+ if (isRandomEventInputBlocked()) return;
+
  if (event?.type === 'click' && isRecentPlayerFreezeBreakInput(event)) {
   stopPlayerFreezeBreakEvent(event);
   return;
@@ -6765,6 +6788,12 @@ if (typeof document !== 'undefined' && !document.__deckPlayerFreezeBreakInstalle
 }
 
 function handleHandAreaClick(event) {
+ if (isRandomEventInputBlocked()) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  return;
+ }
+
  if (isPlayerFrozen()) {
   consumePlayerFreezeBreakClick(event);
   return;
@@ -6929,6 +6958,7 @@ function canQueueActionNow() {
   && !bossRevivalInProgress
   && !pendingPassiveChoice
   && !pendingShopChoice
+  && !isRandomEventInputBlocked()
   && !isPlayerFrozen()
   && !isBattlePausedBySettings();
 }
@@ -6990,6 +7020,7 @@ function findCardButtonFromPointerEvent(event) {
 }
 
 function handleActionQueuePointerDown(event) {
+ if (isRandomEventInputBlocked()) return;
  if (!player || currentScreen !== 'battle' || isPlayerFrozen() || isBattlePausedBySettings()) return;
 
  const cardButton = findCardButtonFromPointerEvent(event);
@@ -7020,7 +7051,7 @@ if (typeof document !== 'undefined' && !document.__deckActionQueuePointerInstall
 
 function processQueuedActions() {
  if (actionQueueProcessing) return false;
- if (!player || !cpu || currentScreen !== 'battle' || gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || player.cooldown || player.reloading || isPlayerFrozen() || isBattlePausedBySettings()) {
+ if (!player || !cpu || currentScreen !== 'battle' || gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || player.cooldown || player.reloading || isPlayerFrozen() || isBattlePausedBySettings()) {
   return false;
  }
 
@@ -7031,7 +7062,7 @@ function processQueuedActions() {
  let startedAction = false;
 
  try {
-  while (queue.length > 0 && !startedAction && !gameOver && player && cpu && currentScreen === 'battle' && !player.cooldown && !player.reloading && !isPlayerFrozen()) {
+  while (queue.length > 0 && !startedAction && !gameOver && player && cpu && currentScreen === 'battle' && !isRandomEventInputBlocked() && !player.cooldown && !player.reloading && !isPlayerFrozen()) {
    const action = queue.shift();
 
    if (!action) continue;
@@ -7119,7 +7150,7 @@ function processQueuedActions() {
   }
 
 function startReload() {
-   if (pendingPassiveChoice || pendingShopChoice || !player || player.reloading || player.cooldown || gameOver || isBattlePausedBySettings()) return;
+   if (pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || !player || player.reloading || player.cooldown || gameOver || isBattlePausedBySettings()) return;
 
    if (playerDeck.length <= 0) {
     startDeckReload();
@@ -7209,6 +7240,7 @@ function startReload() {
   }
 
   function manualReload(options = {}) {
+ if (isRandomEventInputBlocked()) return;
  if (!options.fromQueue && !options.fromPointer && Date.now() < suppressQueuedReloadClickUntil) return;
  if (isBattlePausedBySettings()) return;
 
@@ -7219,7 +7251,7 @@ function startReload() {
     return;
    }
 
-   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || !player || player.reloading || player.cooldown || isPlayerFrozen()) return;
+   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || !player || player.reloading || player.cooldown || isPlayerFrozen()) return;
    if (player.hand.length === 0) return;
 
    queueReloadCurseEffects(player.hand);
@@ -10201,6 +10233,8 @@ function applyPoisonToEnemy(amount, options = {}) {
 }
 
 function playPlayerCard(id, options = {}) {
+   if (isRandomEventInputBlocked()) return;
+
    if (player && player.cooldown && Number(player.cooldownTimer || 0) <= 0) {
     player.cooldown = false;
     player.cooldownTimer = 0;
@@ -10211,7 +10245,7 @@ function playPlayerCard(id, options = {}) {
     return;
    }
 
-   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isBattlePausedBySettings() || !player || !cpu || player.reloading || player.cooldown || isPlayerFrozen()) return;
+   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || isBattlePausedBySettings() || !player || !cpu || player.reloading || player.cooldown || isPlayerFrozen()) return;
 
    const cardIndex = player.hand.findIndex(c => c.id === id);
    if (cardIndex === -1) return;
@@ -15346,7 +15380,7 @@ function render() {
    if (manualReloadButton) {
     const reloadQueueNumber = getQueuedReloadNumber();
     const canReloadQueueClick = canQueueActionNow() || reloadQueueNumber > 0;
-    manualReloadButton.disabled = bossRevivalInProgress || pendingPassiveChoice || player.reloading || gameOver || isPlayerFrozen() || (player.cooldown && !canReloadQueueClick);
+    manualReloadButton.disabled = bossRevivalInProgress || pendingPassiveChoice || isRandomEventInputBlocked() || player.reloading || gameOver || isPlayerFrozen() || (player.cooldown && !canReloadQueueClick);
     manualReloadButton.classList.toggle('action-queue-enabled', canReloadQueueClick);
     manualReloadButton.classList.toggle('action-queued', reloadQueueNumber > 0);
     manualReloadButton.innerHTML = `${reloadQueueNumber > 0 ? `<span class="action-queue-badge">${getActionQueueLabel(reloadQueueNumber)}</span>` : ''}リロード`;
@@ -15459,7 +15493,7 @@ const cards = document.getElementById('cards');
      const button = document.createElement('button');
      const queueNumber = getQueuedCardNumber(card.id);
      const canQueueClick = canQueueActionNow() || queueNumber > 0;
-     const inactive = bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isPlayerFrozen();
+     const inactive = bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || isPlayerFrozen();
 
      button.className = `card ${getCardVisualClass(card)} ${card.type || ''} ${card.type ? `${card.type}-card` : ''}${getCardRarityClass(card)}${(player.cooldown || inactive) ? ' disabled' : ''}${canQueueClick ? ' action-queue-enabled' : ''}${queueNumber > 0 ? ' action-queued' : ''}`;
      button.dataset.cardId = card.id;

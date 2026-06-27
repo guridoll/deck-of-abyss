@@ -427,8 +427,8 @@
     </div>
 
 
-    <div id="random-event-actions" class="random-event-modal" style="display:none;">
-      <div class="random-event-dialog">
+    <div id="random-event-actions" class="random-event-modal" style="display:none;" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation()">
+      <div class="random-event-dialog" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation()">
         <div class="random-event-kicker">RANDOM EVENT</div>
         <h2 id="random-event-title"></h2>
         <p id="random-event-description" class="random-event-description"></p>
@@ -449,8 +449,8 @@
           <button class="ui-button owned-passives-open-button" type="button" onclick="openOwnedPassivesModal()" aria-label="取得済みパッシブを開く"><span class="owned-deck-open-icon">✨</span><span>取得済みパッシブ</span></button>
         </div>
         <div id="random-event-actions-row" class="random-event-actions-row">
-          <button class="ui-button ui-button-primary" onclick="acceptRandomEvent()">受け入れる</button>
-          <button class="ui-button ui-button-secondary" onclick="declineRandomEvent()">拒否する</button>
+          <button class="ui-button ui-button-primary" onclick="acceptRandomEvent(event)">受け入れる</button>
+          <button class="ui-button ui-button-secondary" onclick="declineRandomEvent(event)">拒否する</button>
         </div>
       </div>
     </div>
