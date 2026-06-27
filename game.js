@@ -1338,6 +1338,8 @@ const PET_POOL = [
   let currentCardLibraryTab = 'all';
   let isDeckDetailOpen = false;
   let isDeckPresetPanelOpen = false;
+  let currentCustomizeSideTab = 'current';
+  let selectedDeckPresetDetailSlot = null;
   let ownedDeckModalOpen = false;
   let ownedPassivesModalOpen = false;
   let ownedPassivesModalHardClosed = false;
@@ -1424,6 +1426,7 @@ const PET_POOL = [
   let pendingRandomEventRollOutcome = null;
   let pendingRandomEventReveals = [];
   let pendingRandomEventAwaitingConfirm = false;
+  let pendingRandomEventSelectedChoice = null;
 
   function isRandomEventInputBlocked() {
    const modal = typeof document !== 'undefined' ? document.getElementById('random-event-actions') : null;
@@ -4421,6 +4424,7 @@ function executeRandomEventStep(step) {
   pendingRandomEventRollOutcome = null;
   pendingRandomEventReveals = [];
   pendingRandomEventAwaitingConfirm = false;
+  pendingRandomEventSelectedChoice = null;
   render();
 
   setTimeout(() => {
@@ -4440,11 +4444,13 @@ function executeRandomEventStep(step) {
  }
 
  if (step.type === 'cardChoice') {
+  pendingRandomEventSelectedChoice = null;
   pendingRandomEventChoices = sampleRandomItems(getRandomEventCardPool(step.pool), Math.max(1, Number(step.count || 3)));
   return false;
  }
 
  if (step.type === 'removeChoice') {
+  pendingRandomEventSelectedChoice = null;
   pendingRandomEventChoices = getRemovableDeckCards();
   if (!pendingRandomEventChoices.length) return true;
   return false;
@@ -4489,6 +4495,7 @@ function beginRandomEvent(nextLevel) {
  pendingRandomEventRollOutcome = null;
  pendingRandomEventReveals = [];
  pendingRandomEventAwaitingConfirm = false;
+ pendingRandomEventSelectedChoice = null;
  gameOver = false;
 
  stopEnemyTimer();
@@ -4510,6 +4517,7 @@ function acceptRandomEvent(event) {
  playUiSelectSound();
  if (!pendingRandomEvent || pendingRandomEventAccepted) return;
  pendingRandomEventAccepted = true;
+ pendingRandomEventSelectedChoice = null;
  recordRandomEventProgress(pendingRandomEvent.id, 'accepted');
  updateCurrentRunRandomEventOutcome(pendingRandomEvent.id, 'accepted');
  continueRandomEventSteps();
@@ -4531,8 +4539,30 @@ function confirmRandomEventResult(event) {
  pendingRandomEventAwaitingConfirm = false;
  pendingRandomEventRollOutcome = null;
  pendingRandomEventReveals = [];
+ pendingRandomEventSelectedChoice = null;
  pendingRandomEventStepIndex += 1;
  continueRandomEventSteps();
+}
+
+function selectRandomEventChoice(type, value, event) {
+ stopRandomEventUiEvent(event);
+ if (!pendingRandomEvent || !pendingRandomEventAccepted) return;
+ const step = pendingRandomEventSteps[pendingRandomEventStepIndex];
+ if (!step || step.type !== type) return;
+ pendingRandomEventSelectedChoice = { type, value };
+ playUiSelectSound();
+ render();
+}
+
+function confirmRandomEventChoice(event) {
+ stopRandomEventUiEvent(event);
+ if (!pendingRandomEvent || !pendingRandomEventAccepted || !pendingRandomEventSelectedChoice) return;
+ const { type, value } = pendingRandomEventSelectedChoice;
+ if (type === 'cardChoice') {
+  chooseRandomEventCard(value, event);
+ } else if (type === 'removeChoice') {
+  chooseRandomEventRemoveCard(value, event);
+ }
 }
 
 function chooseRandomEventCard(cardName, event) {
@@ -4541,8 +4571,10 @@ function chooseRandomEventCard(cardName, event) {
  if (!pendingRandomEvent || !pendingRandomEventAccepted) return;
  const step = pendingRandomEventSteps[pendingRandomEventStepIndex];
  if (!step || step.type !== 'cardChoice') return;
+ if (!pendingRandomEventChoices.some(card => card && card.name === cardName)) return;
  addCardToDeckByName(cardName);
  pendingRandomEventChoices = [];
+ pendingRandomEventSelectedChoice = null;
  pendingRandomEventStepIndex += 1;
  continueRandomEventSteps();
 }
@@ -4553,8 +4585,10 @@ function chooseRandomEventRemoveCard(cardName, event) {
  if (!pendingRandomEvent || !pendingRandomEventAccepted) return;
  const step = pendingRandomEventSteps[pendingRandomEventStepIndex];
  if (!step || step.type !== 'removeChoice') return;
+ if (!pendingRandomEventChoices.some(card => card && card.name === cardName)) return;
  removeCardFromDeckByName(cardName);
  pendingRandomEventChoices = [];
+ pendingRandomEventSelectedChoice = null;
  pendingRandomEventStepIndex += 1;
  continueRandomEventSteps();
 }
@@ -4571,6 +4605,7 @@ function finishRandomEvent() {
  pendingRandomEventRollOutcome = null;
  pendingRandomEventReveals = [];
  pendingRandomEventAwaitingConfirm = false;
+ pendingRandomEventSelectedChoice = null;
  if (next) {
   startNextBattleFromPendingLevel(next);
  } else {
@@ -4589,6 +4624,7 @@ function clearPendingRandomEvent() {
  pendingRandomEventRollOutcome = null;
  pendingRandomEventReveals = [];
  pendingRandomEventAwaitingConfirm = false;
+ pendingRandomEventSelectedChoice = null;
 }
 
 function getCurrentRandomEventChoiceStep() {
@@ -4613,6 +4649,19 @@ function renderRandomEventModal() {
  const step = getCurrentRandomEventChoiceStep();
  const hasReveals = pendingRandomEventReveals.length > 0;
  const awaitingConfirm = Boolean(pendingRandomEventAwaitingConfirm);
+ const isChoiceStep = Boolean(
+  pendingRandomEventAccepted
+  && !awaitingConfirm
+  && !pendingRandomEventRolling
+  && !hasReveals
+  && step
+  && ['cardChoice', 'removeChoice'].includes(step.type)
+ );
+ const hasSelectedChoice = Boolean(
+  isChoiceStep
+  && pendingRandomEventSelectedChoice
+  && pendingRandomEventSelectedChoice.type === step.type
+ );
 
  if (title) title.textContent = pendingRandomEvent.title;
  if (description) description.textContent = pendingRandomEvent.description;
@@ -4632,6 +4681,9 @@ function renderRandomEventModal() {
   } else if (awaitingConfirm) {
    actions.style.display = 'flex';
    actions.innerHTML = '<button class="ui-button ui-button-primary" onclick="confirmRandomEventResult(event)">確認</button>';
+  } else if (isChoiceStep) {
+   actions.style.display = 'flex';
+   actions.innerHTML = `<button class="ui-button ui-button-primary" onclick="confirmRandomEventChoice(event)" ${hasSelectedChoice ? '' : 'disabled'}>決定</button>`;
   } else {
    actions.style.display = 'none';
    actions.innerHTML = '';
@@ -4646,7 +4698,7 @@ function renderRandomEventModal() {
     : '<strong class="random-event-roll-fail">失敗... 深淵は沈黙しました。</strong>';
   } else {
    result.textContent = pendingRandomEventAccepted
-    ? (awaitingConfirm ? (hasReveals ? (pendingRandomEventReveals[0]?.action === 'remove' ? 'このカードが削除されます。確認してください。' : pendingRandomEventReveals[0]?.action === 'passive' ? 'このパッシブを獲得します。確認してください。' : 'このカードが追加されます。確認してください。') : '結果を確認してください。') : step?.type === 'cardChoice' ? '追加するカードを選んでください。' : step?.type === 'removeChoice' ? '削除するカードを選んでください。' : 'イベント処理中...')
+    ? (awaitingConfirm ? (hasReveals ? (pendingRandomEventReveals[0]?.action === 'remove' ? 'このカードが削除されます。確認してください。' : pendingRandomEventReveals[0]?.action === 'passive' ? 'このパッシブを獲得します。確認してください。' : 'このカードが追加されます。確認してください。') : '結果を確認してください。') : step?.type === 'cardChoice' ? '追加するカードを選び、決定を押してください。' : step?.type === 'removeChoice' ? '削除するカードを選び、決定を押してください。' : 'イベント処理中...')
     : '受け入れる前に効果を確認してください。';
   }
  }
@@ -4682,9 +4734,12 @@ function renderRandomEventModal() {
  if (step.type === 'cardChoice') {
   pendingRandomEventChoices.forEach(card => {
    const button = document.createElement('button');
-   button.className = `random-event-choice-card ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}`;
-   button.onclick = event => chooseRandomEventCard(card.name, event);
+   const selected = pendingRandomEventSelectedChoice?.type === 'cardChoice' && pendingRandomEventSelectedChoice?.value === card.name;
+   button.className = `random-event-choice-card ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}${selected ? ' selected-choice' : ''}`;
+   button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+   button.onclick = event => selectRandomEventChoice('cardChoice', card.name, event);
    button.innerHTML = `
+    ${selected ? '<div class="random-event-selected-label">選択中</div>' : ''}
     <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)}</strong></div>
     <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
     <div class="random-event-choice-note">${escapeHtml(getCardRarityDisplayName(card))} / ${escapeHtml(getCardCooldownText(card))}</div>
@@ -4696,9 +4751,12 @@ function renderRandomEventModal() {
  if (step.type === 'removeChoice') {
   pendingRandomEventChoices.forEach(card => {
    const button = document.createElement('button');
-   button.className = `random-event-choice-card remove-choice ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}`;
-   button.onclick = event => chooseRandomEventRemoveCard(card.name, event);
+   const selected = pendingRandomEventSelectedChoice?.type === 'removeChoice' && pendingRandomEventSelectedChoice?.value === card.name;
+   button.className = `random-event-choice-card remove-choice ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}${selected ? ' selected-choice' : ''}`;
+   button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+   button.onclick = event => selectRandomEventChoice('removeChoice', card.name, event);
    button.innerHTML = `
+    ${selected ? '<div class="random-event-selected-label">選択中</div>' : ''}
     <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)} ×${card.count}</strong></div>
     <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
     <div class="random-event-choice-note">このカードを1枚削除</div>
@@ -12733,9 +12791,17 @@ function toggleDeckTotalDetail() {
 
 function toggleDeckPresetPanel() {
    playUiSelectSound();
-   isDeckPresetPanelOpen = !isDeckPresetPanelOpen;
+   currentCustomizeSideTab = currentCustomizeSideTab === 'presets' ? 'current' : 'presets';
+   isDeckPresetPanelOpen = currentCustomizeSideTab === 'presets';
    renderCustomizeScreen();
   }
+
+function setCustomizeSideTab(tabId) {
+ playUiSelectSound();
+ currentCustomizeSideTab = tabId === 'presets' ? 'presets' : 'current';
+ isDeckPresetPanelOpen = currentCustomizeSideTab === 'presets';
+ renderCustomizeScreen();
+}
 
   function renderDeckTotalDetail() {
    const detail = document.getElementById('deck-total-detail');
@@ -12785,8 +12851,13 @@ function renderDeckPresetList() {
     const div = document.createElement('div');
     const total = getPresetDeckTotal(preset);
     const hasDeck = total > 0;
+    const detailOpen = selectedDeckPresetDetailSlot === slot;
+    const detailEntries = Object.entries(sanitizeDeckCustomize(preset?.deck || {}))
+     .filter(([, count]) => Number(count || 0) > 0)
+     .sort(([a], [b]) => a.localeCompare(b, 'ja'));
+    const summary = hasDeck ? getPresetDeckSummary(preset, 3) : '現在の山札を保存できます。';
 
-    div.className = `deck-preset-card${hasDeck ? '' : ' empty'}`;
+    div.className = `deck-preset-card compact-preset-card${hasDeck ? '' : ' empty'}${detailOpen ? ' detail-open' : ''}`;
     div.innerHTML = `
      <div class="deck-preset-card-top">
       <span class="deck-preset-name">${escapeHtml(preset.name)}</span>
@@ -12797,21 +12868,127 @@ function renderDeckPresetList() {
       <input id="deck-preset-name-${slot}" type="text" maxlength="16" value="${escapeHtml(hasDeck ? preset.name : `マイデッキ${slot}`)}" placeholder="例：毒ビルド">
      </label>
      <div class="deck-preset-description">
-      ${hasDeck ? escapeHtml(getPresetDeckSummary(preset, 6)) : '現在の山札を保存すると、あとからすぐ呼び出せます。'}
-     </div>
-     <div class="deck-preset-meta">
-      <span>${hasDeck ? `保存日時：${escapeHtml(formatSaveDate(preset.savedAt))}` : '保存データなし'}</span>
+      ${escapeHtml(summary)}
      </div>
      <div class="deck-preset-actions">
       <button type="button" onclick="saveCurrentDeckPreset(${slot})">現在の山札を保存</button>
+      <button type="button" ${hasDeck ? '' : 'disabled'} onclick="toggleDeckPresetDetail(${slot})">${detailOpen ? '詳細を閉じる' : '詳細'}</button>
       <button type="button" ${hasDeck ? '' : 'disabled'} onclick="applyDeckPreset(${slot})">読み込み</button>
       <button type="button" ${hasDeck ? '' : 'disabled'} onclick="deleteDeckPreset(${slot})">削除</button>
      </div>
+     ${detailOpen && hasDeck ? `
+      <div class="deck-preset-detail">
+       <div class="deck-preset-detail-meta">${escapeHtml(formatSaveDate(preset.savedAt))} / ${total}枚</div>
+       <div class="deck-preset-detail-list">
+        ${detailEntries.map(([name, count]) => `<span>${escapeHtml(name)} ×${Number(count || 0)}</span>`).join('')}
+       </div>
+      </div>
+     ` : ''}
     `;
 
     list.appendChild(div);
    });
   }
+
+function toggleDeckPresetDetail(slot) {
+ playUiSelectSound();
+ slot = Number(slot);
+ selectedDeckPresetDetailSlot = selectedDeckPresetDetailSlot === slot ? null : slot;
+ renderCustomizeScreen();
+}
+
+function getCustomizeInlineCardName(cardName) {
+ return String(cardName || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function arrangeCustomizeLayout() {
+ const headerSaveActions = document.getElementById('customize-header-save-actions');
+ const currentActions = document.getElementById('customize-current-actions');
+ const sidePresets = document.getElementById('customize-side-presets');
+ const saveButton = document.getElementById('custom-deck-save-button');
+ const clearButton = document.querySelector('.deck-clear-button');
+ const presetButton = document.getElementById('deck-preset-toggle-button');
+ const presetPanel = document.querySelector('.deck-preset-panel');
+ const currentPanel = document.getElementById('customize-current-tab-panel');
+ const presetPanelWrap = document.getElementById('customize-presets-tab-panel');
+ const currentTabButton = document.getElementById('customize-current-tab-button');
+ const presetsTabButton = document.getElementById('customize-presets-tab-button');
+
+ if (headerSaveActions && saveButton && saveButton.parentElement !== headerSaveActions) {
+  headerSaveActions.appendChild(saveButton);
+ }
+
+ if (currentActions && clearButton && clearButton.parentElement !== currentActions) {
+  currentActions.appendChild(clearButton);
+ }
+
+ if (presetButton) {
+  presetButton.style.display = 'none';
+ }
+
+ if (headerSaveActions || currentActions) {
+  if (clearButton) clearButton.textContent = '山札0枚にする';
+  if (saveButton) saveButton.textContent = '保存';
+ }
+
+ if (sidePresets && presetPanel && presetPanel.parentElement !== sidePresets) {
+  sidePresets.appendChild(presetPanel);
+ }
+
+ if (currentPanel) currentPanel.style.display = currentCustomizeSideTab === 'current' ? 'block' : 'none';
+ if (presetPanelWrap) presetPanelWrap.style.display = currentCustomizeSideTab === 'presets' ? 'block' : 'none';
+ if (currentActions) currentActions.style.display = currentCustomizeSideTab === 'current' ? 'flex' : 'none';
+ if (currentTabButton) currentTabButton.classList.toggle('active', currentCustomizeSideTab === 'current');
+ if (presetsTabButton) presetsTabButton.classList.toggle('active', currentCustomizeSideTab === 'presets');
+ isDeckPresetPanelOpen = currentCustomizeSideTab === 'presets';
+}
+
+function renderCustomizeCurrentDeck() {
+ const list = document.getElementById('customize-current-deck-list');
+ const countElement = document.getElementById('customize-current-deck-count');
+ const total = getDeckTotal();
+
+ if (countElement) {
+  countElement.textContent = `${total} / ${REQUIRED_INITIAL_DECK_TOTAL}枚`;
+  countElement.classList.toggle('valid', total === REQUIRED_INITIAL_DECK_TOTAL);
+  countElement.classList.toggle('invalid', total !== REQUIRED_INITIAL_DECK_TOTAL);
+ }
+
+ if (!list) return;
+
+ const selectedCards = CARD_POOL
+  .map(card => ({ card, count: Math.max(0, Number(deckCustomize[card.name] || 0)) }))
+  .filter(entry => entry.count > 0)
+  .sort((a, b) => a.card.name.localeCompare(b.card.name, 'ja'));
+
+ if (!selectedCards.length) {
+  list.innerHTML = '<div class="customize-current-deck-empty">現在の山札は0枚です。左側のカード一覧から追加してください。</div>';
+  return;
+ }
+
+ list.innerHTML = selectedCards.map(({ card, count }) => {
+  const cardName = getCustomizeInlineCardName(card.name);
+  const canRemove = count > 0;
+  const canAdd = total < MAX_DECK_TOTAL && count < getMaxCardCount(card.name);
+
+  return `
+   <article class="customize-current-card ${getCardVisualClass(card)} ${card.type}-card${getCardRarityClass(card)}">
+    ${hasCardRarityDisplay(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
+    <div class="customize-current-card-top">
+     <span>${getCardIcon(card.type)} ${escapeHtml(card.name)}</span>
+     <strong>×${count}</strong>
+    </div>
+    <div class="customize-current-card-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
+    <div class="customize-current-card-meta">${escapeHtml(getCardRarityDisplayName(card))} / ${escapeHtml(getCardCooldownText(card))}</div>
+    <div class="count-control customize-current-count-control">
+     <button ${canRemove ? '' : 'disabled'} onclick="changeCardCount('${cardName}', -1)">−</button>
+     <div class="count-value">${count}/${getMaxCardCount(card.name)}枚</div>
+     <button ${canAdd ? '' : 'disabled'} onclick="changeCardCount('${cardName}', 1)">＋</button>
+    </div>
+   </article>
+  `;
+ }).join('');
+}
 
 function renderCustomizeScreen() {
    const list = document.getElementById('customize-list');
@@ -12819,6 +12996,7 @@ function renderCustomizeScreen() {
 
    if (!list) return;
 
+   arrangeCustomizeLayout();
    renderDeckPresetList();
 
    if (tabs) {
@@ -12900,6 +13078,7 @@ function renderCustomizeScreen() {
    }
 
    renderDeckTotalDetail();
+   renderCustomizeCurrentDeck();
   }
 
   
@@ -15758,7 +15937,9 @@ window.saveCurrentGameDataToSlot = saveCurrentGameDataToSlot;
 window.closeHelpDetailModal = closeHelpDetailModal;
 window.acceptRandomEvent = acceptRandomEvent;
 window.confirmRandomEventResult = confirmRandomEventResult;
+window.confirmRandomEventChoice = confirmRandomEventChoice;
 window.declineRandomEvent = declineRandomEvent;
+window.selectRandomEventChoice = selectRandomEventChoice;
 window.chooseRandomEventCard = chooseRandomEventCard;
 window.chooseRandomEventRemoveCard = chooseRandomEventRemoveCard;
 window.chooseBombToCompress = chooseBombToCompress;
@@ -15767,7 +15948,9 @@ window.startBattle = startBattle;
 window.applyDeckPreset = applyDeckPreset;
 window.saveCurrentDeckPreset = saveCurrentDeckPreset;
 window.deleteDeckPreset = deleteDeckPreset;
+window.toggleDeckPresetDetail = toggleDeckPresetDetail;
 window.toggleDeckPresetPanel = toggleDeckPresetPanel;
+window.setCustomizeSideTab = setCustomizeSideTab;
 window.toggleDeckTotalDetail = toggleDeckTotalDetail;
 window.openOwnedDeckModal = openOwnedDeckModal;
 window.closeOwnedDeckModal = closeOwnedDeckModal;

@@ -283,6 +283,7 @@
         <div id="custom-deck-total-notice" class="deck-total-notice"></div>
       </div>
       <div id="deck-total-detail" class="deck-total-detail"></div>
+      <div id="customize-header-save-actions" class="customize-header-save-actions"></div>
       <div class="customize-save-actions">
         <button id="custom-deck-save-button" class="ui-button ui-button-primary" onclick="saveDeckCustomize()">山札設定を保存</button>
         <button class="ui-button ui-button-secondary deck-clear-button" onclick="clearDeckCustomize()">山札を0枚にする</button>
@@ -301,9 +302,37 @@
       <div id="deck-preset-list" class="deck-preset-list"></div>
     </div>
 
-    <div class="customize-workspace">
-      <div id="customize-tabs" class="customize-tabs"></div>
-      <div id="customize-list" class="customize-list"></div>
+    <div class="customize-layout">
+      <section class="customize-left-panel">
+        <div class="customize-panel-heading">
+          <span>カード選択</span>
+          <strong>追加可能カード一覧</strong>
+        </div>
+        <div class="customize-workspace">
+          <div id="customize-tabs" class="customize-tabs"></div>
+          <div id="customize-list" class="customize-list"></div>
+        </div>
+      </section>
+
+      <aside class="customize-right-panel">
+        <div class="customize-current-deck-header">
+          <div>
+            <span>現在の山札</span>
+            <strong id="customize-current-deck-count">0 / 20枚</strong>
+          </div>
+          <div id="customize-current-actions" class="customize-current-actions"></div>
+        </div>
+        <div class="customize-side-tabs" role="tablist" aria-label="山札表示切り替え">
+          <button id="customize-current-tab-button" class="customize-side-tab active" type="button" onclick="setCustomizeSideTab('current')">現在山札</button>
+          <button id="customize-presets-tab-button" class="customize-side-tab" type="button" onclick="setCustomizeSideTab('presets')">マイデッキ</button>
+        </div>
+        <div id="customize-current-tab-panel" class="customize-side-tab-panel">
+          <div id="customize-current-deck-list" class="customize-current-deck-list"></div>
+        </div>
+        <div id="customize-presets-tab-panel" class="customize-side-tab-panel" style="display:none;">
+          <div id="customize-side-presets"></div>
+        </div>
+      </aside>
     </div>
 
   </div>
