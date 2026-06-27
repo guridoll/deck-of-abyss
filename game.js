@@ -118,7 +118,7 @@ const RARE_CARD_COOLDOWN = 5;
    { id: 'shattered_poison_crystal', name: '砕けた毒晶', source: '3層敗北', table: 'depth3Defeat', icon: '☠', effect: '毒カード出現率+7%', description: '砕けた断面から毒気が漏れる。', effects: { poisonCardRate: 0.07 } },
    { id: 'shattered_powder_core', name: '砕けた火薬核', source: '3層敗北', table: 'depth3Defeat', icon: '💣', effect: '爆弾カード出現率+7%', description: '破片ですら爆ぜる火薬核。', effects: { bombCardRate: 0.07 } },
   ];
-  const RELIC_VICTORY_DISCOVERY_CHANCE = { 1: 0.03, 2: 0.04, 3: 0.05 };
+  const RELIC_VICTORY_DISCOVERY_CHANCE = { 1: 0.08, 2: 0.10, 3: 0.12 };
 
   
 const PET_POOL = [
@@ -4839,8 +4839,8 @@ function getCanonicalCardByName(cardName) {
 
   function getShopRarityWeight(card) {
    const rarity = getCardRarity(card);
-   let weight = 60;
-   if (rarity === 'legendary') weight = 2;
+   let weight = 56;
+   if (rarity === 'legendary') weight = 4;
    else if (rarity === 'epic') weight = 8;
    else if (rarity === 'rare') weight = 24;
    else if (rarity === 'curse') weight = 0;
@@ -4849,8 +4849,8 @@ function getCanonicalCardByName(cardName) {
 
   function getRandomCardWeight(card, options = {}) {
    const rarity = getCardRarity(card);
-   let weight = 60;
-   if (rarity === 'legendary') weight = 2;
+   let weight = 56;
+   if (rarity === 'legendary') weight = 4;
    else if (rarity === 'epic') weight = 8;
    else if (rarity === 'rare') weight = 24;
    else if (rarity === 'curse') weight = options.includeCurse ? 12 : 0;
