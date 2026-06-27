@@ -59,6 +59,7 @@
       <span>パッシブ：${summary.passiveCount}/${summary.passiveTotal}</span>
       <span>実績：${summary.achievementCount}/${summary.achievementTotal}</span>
       <span>イベント：${summary.eventCount}/${summary.eventTotal}</span>
+      <span>遺物：${summary.relicCount || 0}/${summary.relicTotal || 0}</span>
       <span>最高クリアレベル：${summary.highestClearLevel || 0}</span>
      `;
      card.appendChild(details);

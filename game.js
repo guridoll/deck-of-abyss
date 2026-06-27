@@ -78,6 +78,47 @@ const RARE_CARD_COOLDOWN = 5;
   const ACTION_QUEUE_LABELS = ['①', '②', '③', '④', '⑤'];
   const PET_EXP_REQUIREMENTS = [1, 2, 2, 3, 3, 4, 4, 5, 5];
   const MAX_PET_EXP = PET_EXP_REQUIREMENTS.reduce((sum, value) => sum + value, 0);
+  const RELIC_TABLE_LABELS = {
+   depth1Clear: '1層クリア',
+   depth1Defeat: '1層敗北',
+   depth2Clear: '2層クリア',
+   depth2Defeat: '2層敗北',
+   depth3Clear: '3層クリア',
+   depth3Defeat: '3層敗北',
+  };
+  const RELIC_DEFINITIONS = [
+   { id: 'venom_fang', name: '毒蛇の牙', source: '1層クリア', table: 'depth1Clear', icon: '☠', effect: '戦闘開始時、最初に付与する毒+1', description: '乾いた毒牙。最初の一刺しだけ、毒が深く入る。', effects: { firstPoisonBonus: 1 } },
+   { id: 'broken_powder_barrel', name: '壊れた火薬樽', source: '1層クリア', table: 'depth1Clear', icon: '💣', effect: '戦闘開始時、最初に付与する爆弾のターン数-1', description: 'ひび割れた火薬樽。導火線が妙に短い。', effects: { firstBombFuseReduce: 1 } },
+   { id: 'trainer_bell', name: '調教師の鈴', source: '1層クリア', table: 'depth1Clear', icon: '🔔', effect: '戦闘開始時ペットEXP+1', description: '小さな鈴の音が、ペットの集中を促す。', effects: { battleStartPetExp: 1 } },
+   { id: 'old_map', name: '古びた地図', source: '1層クリア', table: 'depth1Clear', icon: '🗺', effect: 'イベント発生率+5%', description: '消えかけた印が、寄り道の気配を示す。', effects: { eventChanceBonus: 0.05 } },
+   { id: 'investigator_note', name: '調査員のメモ', source: '1層クリア', table: 'depth1Clear', icon: '📝', effect: '戦闘開始時カードを1枚ドロー', description: '走り書きの戦術メモ。初手の選択肢が増える。', effects: { battleStartDraw: 1 } },
+   { id: 'cracked_fang', name: '割れた牙', source: '1層敗北', table: 'depth1Defeat', icon: '☠', effect: '毒カード出現率+3%', description: '欠けてもなお毒気を残す牙。', effects: { poisonCardRate: 0.03 } },
+   { id: 'old_powder', name: '古い火薬', source: '1層敗北', table: 'depth1Defeat', icon: '💣', effect: '爆弾カード出現率+3%', description: '湿気った火薬。まだ火はつく。', effects: { bombCardRate: 0.03 } },
+   { id: 'broken_collar', name: '壊れた首輪', source: '1層敗北', table: 'depth1Defeat', icon: '🐾', effect: 'ペットカード出現率+3%', description: '傷だらけの首輪。絆の痕跡が残っている。', effects: { petCardRate: 0.03 } },
+   { id: 'torn_map', name: '破れた地図', source: '1層敗北', table: 'depth1Defeat', icon: '🗺', effect: 'イベント発生率+2%', description: '破れても、深淵の道筋を少しだけ示す。', effects: { eventChanceBonus: 0.02 } },
+   { id: 'worn_record_book', name: '使い古された記録帳', source: '1層敗北', table: 'depth1Defeat', icon: '📘', effect: '戦闘開始時10%の確率でブロック+3', description: '敗北の記録から、守る術を思い出す。', effects: { startBlockChance: 0.10, startBlock: 3 } },
+   { id: 'abyss_poison_codex', name: '深淵の毒典', source: '2層クリア', table: 'depth2Clear', icon: '☠', effect: '毒カード出現率+10%', description: '毒の扱いを深く記した禁書。', effects: { poisonCardRate: 0.10 } },
+   { id: 'demolition_notebook', name: '爆破技師の手帳', source: '2層クリア', table: 'depth2Clear', icon: '💣', effect: '爆弾カード出現率+10%', description: '爆薬の配合と起爆手順が書かれている。', effects: { bombCardRate: 0.10 } },
+   { id: 'expert_trainer_notes', name: '熟練調教師の手帳', source: '2層クリア', table: 'depth2Clear', icon: '🐾', effect: 'ペットカード出現率+10%', description: 'ペットとの連携を高める手引き。', effects: { petCardRate: 0.10 } },
+   { id: 'abyss_key', name: '深淵の鍵', source: '2層クリア', table: 'depth2Clear', icon: '🔑', effect: 'レアカード出現率+5%', description: '希少な札へ通じる扉を開く鍵。', effects: { rareCardRate: 0.05 } },
+   { id: 'abyss_observation_log', name: '深淵観測記録', source: '2層クリア', table: 'depth2Clear', icon: '👁', effect: 'パッシブ選択肢+1', description: '深淵の傾向を読み、選択肢を増やす。', effects: { passiveChoiceBonus: 1 } },
+   { id: 'dirty_research_log', name: '汚れた研究記録', source: '2層敗北', table: 'depth2Defeat', icon: '📝', effect: 'イベント発生率+3%', description: '汚れた紙片に、奇妙な遭遇の記録が残る。', effects: { eventChanceBonus: 0.03 } },
+   { id: 'torn_poison_book', name: '破れた毒学書', source: '2層敗北', table: 'depth2Defeat', icon: '☠', effect: '毒カード出現率+5%', description: '破れた頁にも毒の理は宿る。', effects: { poisonCardRate: 0.05 } },
+   { id: 'damaged_powder_bag', name: '破損した火薬袋', source: '2層敗北', table: 'depth2Defeat', icon: '💣', effect: '爆弾カード出現率+5%', description: 'こぼれ落ちる火薬が爆破の道を示す。', effects: { bombCardRate: 0.05 } },
+   { id: 'damaged_collar', name: '破損した首輪', source: '2層敗北', table: 'depth2Defeat', icon: '🐾', effect: 'ペットカード出現率+5%', description: '欠けた金具に、共に戦う記憶が残る。', effects: { petCardRate: 0.05 } },
+   { id: 'chipped_abyss_stone', name: '欠けた深淵石', source: '2層敗北', table: 'depth2Defeat', icon: '◆', effect: 'レアカード出現率+2%', description: '欠けた石が淡く希少な光を返す。', effects: { rareCardRate: 0.02 } },
+   { id: 'poison_king_crown', name: '奈落の毒王冠', source: '3層クリア', table: 'depth3Clear', icon: '☠', effect: '毒カード出現率+15% / 毒パッシブ出現率+5%', description: '奈落の毒を統べる王冠。', effects: { poisonCardRate: 0.15, poisonPassiveRate: 0.05 } },
+   { id: 'abyss_demolition_device', name: '深淵爆破装置', source: '3層クリア', table: 'depth3Clear', icon: '💣', effect: '爆弾カード出現率+15% / 爆弾パッシブ出現率+5%', description: '深淵エネルギーで爆薬を励起する装置。', effects: { bombCardRate: 0.15, bombPassiveRate: 0.05 } },
+   { id: 'beast_king_collar', name: '獣王の首輪', source: '3層クリア', table: 'depth3Clear', icon: '🐾', effect: 'ペットカード出現率+15% / ペットパッシブ出現率+5%', description: '獣王に認められた証。', effects: { petCardRate: 0.15, petPassiveRate: 0.05 } },
+   { id: 'abyss_eye', name: '深淵の眼', source: '3層クリア', table: 'depth3Clear', icon: '👁', effect: 'レアカード出現率+5% / レアパッシブ出現率+5%', description: '希少な力の流れを見抜く眼。', effects: { rareCardRate: 0.05, rarePassiveRate: 0.05 } },
+   { id: 'abyss_compass', name: '深淵の羅針盤', source: '3層クリア', table: 'depth3Clear', icon: '🧭', effect: '戦闘開始時ランダムなノーマルカードを1枚獲得', description: '深淵で進むべき手札を指し示す。', effects: { battleStartRandomNormalCard: 1 } },
+   { id: 'abyss_fragment', name: '深淵の欠片', source: '3層敗北', table: 'depth3Defeat', icon: '◆', effect: 'イベント発生率+5%', description: '深淵から剥がれ落ちた小さな欠片。', effects: { eventChanceBonus: 0.05 } },
+   { id: 'broken_crown', name: '壊れた王冠', source: '3層敗北', table: 'depth3Defeat', icon: '♛', effect: 'レアカード出現率+3%', description: '折れた王冠にも、希少な力の名残がある。', effects: { rareCardRate: 0.03 } },
+   { id: 'forgotten_collar', name: '忘れられた首輪', source: '3層敗北', table: 'depth3Defeat', icon: '🐾', effect: 'ペットカード出現率+7%', description: '誰かを待ち続けていた首輪。', effects: { petCardRate: 0.07 } },
+   { id: 'shattered_poison_crystal', name: '砕けた毒晶', source: '3層敗北', table: 'depth3Defeat', icon: '☠', effect: '毒カード出現率+7%', description: '砕けた断面から毒気が漏れる。', effects: { poisonCardRate: 0.07 } },
+   { id: 'shattered_powder_core', name: '砕けた火薬核', source: '3層敗北', table: 'depth3Defeat', icon: '💣', effect: '爆弾カード出現率+7%', description: '破片ですら爆ぜる火薬核。', effects: { bombCardRate: 0.07 } },
+  ];
+  const RELIC_VICTORY_DISCOVERY_CHANCE = { 1: 0.03, 2: 0.04, 3: 0.05 };
 
   
 const PET_POOL = [
@@ -1072,15 +1113,20 @@ const PET_POOL = [
    'load-slot',
    'save-slot',
    'title',
+   'predeparture',
    'prepare',
+   'collection',
    'depth-select',
    'customize',
    'pet-select',
+   'pet-library',
    'card-library',
    'enemy-library',
    'passive-library',
    'achievement-library',
    'random-event-library',
+   'relic-library',
+   'relic-equip',
    'battle-history',
    'ranking',
    'help',
@@ -1393,6 +1439,12 @@ const PET_POOL = [
   let currentRunEnemyHistory = [];
   let currentRunCardPlayCounts = {};
   let currentRunRandomEvents = [];
+  let lastRelicReward = null;
+  let relicRewardHandledForRun = false;
+  let relicRewardModalShownForRun = false;
+  let setupReturnScreen = 'prepare';
+  let depthSelectMode = 'prepare';
+  const RELIC_EQUIPMENT_MAX_SLOT_COUNT = 4;
   const SAVE_DATA_STORAGE_KEY = 'cardBattleSaveDataV1';
   const SAVE_SLOT_COUNT = 3;
   const SAVE_SLOT_STORAGE_KEY_PREFIX = 'cardBattleSaveDataV1_slot';
@@ -1408,6 +1460,8 @@ const PET_POOL = [
   const BATTLE_HISTORY_STORAGE_KEY = 'cardBattleBattleHistory';
   const CUSTOM_DECK_PRESETS_STORAGE_KEY = 'cardBattleCustomDeckPresetsV1';
   const RANDOM_EVENTS_STORAGE_KEY = 'cardBattleRandomEvents';
+  const RELICS_STORAGE_KEY = 'cardBattleRelics';
+  const RELIC_EQUIPMENT_STORAGE_KEY = 'cardBattleRelicEquipment';
   const CUSTOM_DECK_PRESET_COUNT = 3;
   const MAX_BATTLE_HISTORY_COUNT = 30;
 
@@ -1426,6 +1480,8 @@ const PET_POOL = [
     battleHistory: [],
     deckPresets: getEmptyCustomDeckPresets(),
     randomEvents: {},
+    relics: {},
+    relicEquipment: normalizeRelicEquipment(),
     deckCustomize: getInitialDeckCustomize(),
     selectedPetId: 'none',
     petLevel: 1,
@@ -1525,6 +1581,11 @@ const PET_POOL = [
    return [3, 2, 1].find(depth => cleared[depth]) || 0;
   }
 
+  function getRelicUnlockedSlotCountFromDepthProgress(progress = loadDepthProgress()) {
+   const highestClearedDepth = getHighestClearedDepth(progress);
+   return Math.max(1, Math.min(RELIC_EQUIPMENT_MAX_SLOT_COUNT, highestClearedDepth + 1));
+  }
+
   function markDepthCleared(depth = currentDepth) {
    const normalized = normalizeDepth(depth);
    const progress = loadDepthProgress();
@@ -1532,11 +1593,15 @@ const PET_POOL = [
    saveDepthProgress(progress);
 
    if (isValidSaveSlot(currentSaveSlot)) {
-    const save = readSaveSlot(currentSaveSlot) || getDefaultSaveData();
-    save.depthProgress = mergeDepthProgress(save.depthProgress, progress);
-    writeSaveData(save, currentSaveSlot);
-   }
+   const save = readSaveSlot(currentSaveSlot) || getDefaultSaveData();
+   save.depthProgress = mergeDepthProgress(save.depthProgress, progress);
+   save.relicEquipment = normalizeRelicEquipment({
+    ...save.relicEquipment,
+    unlockedSlotCount: getRelicUnlockedSlotCountFromDepthProgress(save.depthProgress),
+   }, save.depthProgress);
+   writeSaveData(save, currentSaveSlot);
   }
+ }
 
   function getPlayerBaseMaxHp() {
    return Math.max(1, Number(getDepthConfig().playerMaxHp || MAX_HP));
@@ -1598,8 +1663,16 @@ const PET_POOL = [
       <span class="depth-option-title">${escapeHtml(config.label)}</span>
       <span class="depth-option-desc">${escapeHtml(unlocked ? config.description : '未解放：前の深度をLv20までクリアすると解放')}</span>
      </button>
-    `;
+   `; 
    }).join('');
+   const confirmButton = document.getElementById('depth-confirm-button');
+   if (confirmButton) {
+    confirmButton.textContent = depthSelectMode === 'dive' ? 'この深度で潜行開始' : 'この深度にする';
+   }
+   const backButton = document.getElementById('depth-back-button');
+   if (backButton) {
+    backButton.textContent = depthSelectMode === 'dive' ? '準備へ戻る' : '戻る';
+   }
   }
 
   function selectNewGameDepth(depth) {
@@ -1611,10 +1684,29 @@ const PET_POOL = [
 
   function showDepthSelectScreen() {
    playUiSelectSound();
+   depthSelectMode = 'prepare';
    selectedNewGameDepth = isDepthUnlocked(currentDepth) ? normalizeDepth(currentDepth) : getHighestUnlockedDepth();
    currentScreen = 'depth-select';
    render();
    renderDepthSelector();
+  }
+
+  function showDepthSelectForDive() {
+   playUiSelectSound();
+   depthSelectMode = 'dive';
+   selectedNewGameDepth = isDepthUnlocked(currentDepth) ? normalizeDepth(currentDepth) : getHighestUnlockedDepth();
+   currentScreen = 'depth-select';
+   render();
+   renderDepthSelector();
+  }
+
+  function backFromDepthSelect() {
+   playUiSelectSound();
+   if (depthSelectMode === 'dive') {
+    showPreDepartureScreen();
+    return;
+   }
+   showPrepareScreen();
   }
 
   function confirmDepthSelection() {
@@ -1622,12 +1714,15 @@ const PET_POOL = [
    if (!isDepthUnlocked(depth)) return;
    currentDepth = depth;
    saveCurrentGameData(false);
+   if (depthSelectMode === 'dive') {
+    beginDiveAfterDepthSelection();
+    return;
+   }
    showPrepareScreen();
   }
 
   function confirmDepthAndStartBattle() {
    confirmDepthSelection();
-   startBattle();
   }
 
   function getSaveSlotStorageKey(slot) {
@@ -1651,6 +1746,7 @@ const PET_POOL = [
    save.battleHistory = normalizeBattleHistory(save.battleHistory);
    save.deckPresets = normalizeCustomDeckPresets(save.deckPresets);
    save.randomEvents = save.randomEvents && typeof save.randomEvents === 'object' ? save.randomEvents : {};
+   save.relics = save.relics && typeof save.relics === 'object' ? save.relics : {};
    save.deckCustomize = save.deckCustomize && typeof save.deckCustomize === 'object' ? normalizeDeckCustomizeForSave(save.deckCustomize) : getInitialDeckCustomize();
    save.selectedPetId = save.selectedPetId || 'none';
    const hasPetExpField = Object.prototype.hasOwnProperty.call(save, 'petExp');
@@ -1658,6 +1754,7 @@ const PET_POOL = [
    save.petLevel = getPetLevelFromExp(save.petExp);
    save.currentDepth = normalizeDepth(hasDepthField ? save.currentDepth : 1);
    save.depthProgress = normalizeDepthProgress(save.depthProgress);
+   save.relicEquipment = normalizeRelicEquipment(save.relicEquipment, save.depthProgress);
    save.savedAt = save.savedAt || null;
    save.playerName = String(save.playerName || '').trim().replace(/\s+/g, ' ').slice(0, 16);
 
@@ -1753,6 +1850,8 @@ const PET_POOL = [
    achievementTotal: achievementDefinitions.length,
     eventCount: Object.keys(save.randomEvents || {}).filter(eventId => getRandomEventById(eventId)).length,
     eventTotal: getRandomEventDefinitions().length,
+    relicCount: Object.keys(save.relics || {}).filter(relicId => getRelicById(relicId)).length,
+    relicTotal: RELIC_DEFINITIONS.length,
     highestClearLevel: highestClearLevel || Number(save.achievementStats?.highestLevel || 0),
     currentDepth: save.currentDepth,
     currentDepthLabel: getDepthLabel(save.currentDepth),
@@ -1801,6 +1900,8 @@ const PET_POOL = [
    if (storageKey === BATTLE_HISTORY_STORAGE_KEY) return 'battleHistory';
    if (storageKey === CUSTOM_DECK_PRESETS_STORAGE_KEY) return 'deckPresets';
    if (storageKey === RANDOM_EVENTS_STORAGE_KEY) return 'randomEvents';
+   if (storageKey === RELICS_STORAGE_KEY) return 'relics';
+   if (storageKey === RELIC_EQUIPMENT_STORAGE_KEY) return 'relicEquipment';
    return null;
   }
 
@@ -1916,6 +2017,8 @@ const PET_POOL = [
    safeWriteJson(BATTLE_HISTORY_STORAGE_KEY, normalizeBattleHistory(normalized.battleHistory));
    safeWriteJson(CUSTOM_DECK_PRESETS_STORAGE_KEY, normalizeCustomDeckPresets(normalized.deckPresets));
    safeWriteJson(RANDOM_EVENTS_STORAGE_KEY, normalized.randomEvents || {});
+   safeWriteJson(RELICS_STORAGE_KEY, normalized.relics || {});
+   safeWriteJson(RELIC_EQUIPMENT_STORAGE_KEY, normalizeRelicEquipment(normalized.relicEquipment));
   }
 
   function clearRuntimeDiscoveryStorage() {
@@ -1928,6 +2031,8 @@ const PET_POOL = [
    localStorage.removeItem(BATTLE_HISTORY_STORAGE_KEY);
    localStorage.removeItem(CUSTOM_DECK_PRESETS_STORAGE_KEY);
    localStorage.removeItem(RANDOM_EVENTS_STORAGE_KEY);
+   localStorage.removeItem(RELICS_STORAGE_KEY);
+   localStorage.removeItem(RELIC_EQUIPMENT_STORAGE_KEY);
   }
 
   function startNewGameData() {
@@ -2073,6 +2178,8 @@ const PET_POOL = [
     battleHistory: loadBattleHistory(),
     deckPresets: loadCustomDeckPresets(),
     randomEvents: loadRandomEventProgress(),
+    relics: loadRelicProgress(),
+    relicEquipment: loadRelicEquipment(),
     deckCustomize: sanitizeDeckCustomize(savedDeckCustomize),
     selectedPetId,
     petLevel: getPetLevelFromExp(petExp),
@@ -3686,10 +3793,92 @@ function getPassivePoolForNextLevel(nextLevel) {
  return filterAlreadyOwnedUniquePassives(basePool);
 }
 
+function textIncludesAny(value, words) {
+ const text = String(value || '');
+ return words.some(word => text.includes(word));
+}
+
+function getCardRelicRateBonus(card) {
+ if (!card) return 0;
+ const rarity = getCardRarity(card);
+ const type = String(card.type || '');
+ const name = String(card.name || '');
+ const text = String(card.text || card.description || '');
+ let bonus = 0;
+
+ if (type.startsWith('poison') || textIncludesAny(`${name} ${text}`, ['毒', '疫病', '侵食'])) {
+  bonus += getRelicEffectTotal('poisonCardRate');
+ }
+ if (isBombCardType(type) || textIncludesAny(`${name} ${text}`, ['爆弾', '火薬', '導火線', '起爆', '爆破'])) {
+  bonus += getRelicEffectTotal('bombCardRate');
+ }
+ if (type.startsWith('pet') || textIncludesAny(`${name} ${text}`, ['ペット', '獣', '呼び鈴', '急かし', '連携', 'ご褒美', '特訓'])) {
+  bonus += getRelicEffectTotal('petCardRate');
+ }
+ if (rarity === 'rare') {
+  bonus += getRelicEffectTotal('rareCardRate');
+ }
+
+ return Math.max(0, bonus);
+}
+
+function getPassiveRelicRateBonus(passive) {
+ if (!passive) return 0;
+ const rarity = passive.rarity || 'normal';
+ const text = `${passive.name || ''} ${passive.text || passive.description || ''}`;
+ let bonus = 0;
+
+ if (textIncludesAny(text, ['毒'])) {
+  bonus += getRelicEffectTotal('poisonPassiveRate');
+ }
+ if (textIncludesAny(text, ['爆弾', '爆発', '火薬', '導火線'])) {
+  bonus += getRelicEffectTotal('bombPassiveRate');
+ }
+ if (textIncludesAny(text, ['ペット', '獣', '共鳴', '鎖行動', '群れ'])) {
+  bonus += getRelicEffectTotal('petPassiveRate');
+ }
+ if (rarity === 'rare') {
+  bonus += getRelicEffectTotal('rarePassiveRate');
+ }
+
+ return Math.max(0, bonus);
+}
+
+function pickWeightedUniqueItems(items, count, getWeight) {
+ const source = Array.isArray(items) ? [...items] : [];
+ const picked = [];
+
+ while (source.length > 0 && picked.length < count) {
+  const weighted = source.map(item => ({ item, weight: Math.max(0, Number(getWeight(item) || 0)) }));
+  const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+  if (total <= 0) {
+   picked.push(source.shift());
+   continue;
+  }
+
+  let roll = Math.random() * total;
+  let pickedIndex = weighted.length - 1;
+  for (let i = 0; i < weighted.length; i++) {
+   roll -= weighted[i].weight;
+   if (roll <= 0) {
+    pickedIndex = i;
+    break;
+   }
+  }
+  picked.push(source.splice(pickedIndex, 1)[0]);
+ }
+
+ return picked;
+}
+
+function getPassiveChoiceCount(baseCount = 3) {
+ return Math.max(1, Math.floor(Number(baseCount || 3) + getRelicEffectTotal('passiveChoiceBonus')));
+}
+
 function getRandomPassiveChoices(count = 3, options = getNormalPassiveOptions()) {
  const availableOptions = filterAlreadyOwnedUniquePassives(options);
- const shuffled = [...availableOptions].sort(() => Math.random() - 0.5);
- const choices = shuffled.slice(0, count);
+ const choiceCount = Math.min(availableOptions.length, Math.max(0, Math.floor(Number(count || 0))));
+ const choices = pickWeightedUniqueItems(availableOptions, choiceCount, passive => 100 * (1 + getPassiveRelicRateBonus(passive)));
 
  recordPassiveDiscoveries(choices);
 
@@ -3697,6 +3886,10 @@ function getRandomPassiveChoices(count = 3, options = getNormalPassiveOptions())
 }
 
 const RANDOM_EVENT_CHANCE = 1;
+
+function getCurrentRandomEventChance() {
+ return Math.max(0, Math.min(1, RANDOM_EVENT_CHANCE + getRelicEffectTotal('eventChanceBonus')));
+}
 
 function getRandomEventDefinitions() {
  return [
@@ -3757,6 +3950,223 @@ function loadRandomEventProgress() {
 
 function saveRandomEventProgress(progress) {
  saveDiscoveryMap(RANDOM_EVENTS_STORAGE_KEY, progress && typeof progress === 'object' ? progress : {});
+}
+
+function getRelicById(relicId) {
+ return RELIC_DEFINITIONS.find(relic => relic.id === relicId) || null;
+}
+
+function normalizeRelicProgress(progress) {
+ const source = progress && typeof progress === 'object' ? progress : {};
+ const normalized = {};
+
+ RELIC_DEFINITIONS.forEach(relic => {
+  const value = source[relic.id];
+  if (!value) return;
+  normalized[relic.id] = typeof value === 'object'
+   ? {
+    owned: true,
+    acquiredAt: Number(value.acquiredAt || Date.now()),
+    source: value.source || relic.source,
+   }
+   : {
+    owned: true,
+    acquiredAt: Date.now(),
+    source: relic.source,
+   };
+ });
+
+ return normalized;
+}
+
+function normalizeRelicEquipment(equipment = {}, depthProgress = loadDepthProgress()) {
+ const source = equipment && typeof equipment === 'object' ? equipment : {};
+ const rawSlots = Array.isArray(source.slots)
+  ? source.slots
+  : (source.equippedRelicId ? [source.equippedRelicId] : []);
+ const progressSlotCount = getRelicUnlockedSlotCountFromDepthProgress(depthProgress);
+ const savedSlotCount = Math.floor(Number(source.unlockedSlotCount || 0));
+ const unlockedSlotCount = Math.max(1, Math.min(RELIC_EQUIPMENT_MAX_SLOT_COUNT, Math.max(savedSlotCount, progressSlotCount)));
+ const usedRelicIds = new Set();
+ const slots = Array.from({ length: RELIC_EQUIPMENT_MAX_SLOT_COUNT }, (_, index) => {
+  const relicId = rawSlots[index];
+  if (!relicId || !getRelicById(relicId) || usedRelicIds.has(relicId)) return null;
+  usedRelicIds.add(relicId);
+  return relicId;
+ });
+
+ return { slots, unlockedSlotCount };
+}
+
+function loadRelicProgress() {
+ return normalizeRelicProgress(loadDiscoveryMap(RELICS_STORAGE_KEY));
+}
+
+function saveRelicProgress(progress) {
+ saveDiscoveryMap(RELICS_STORAGE_KEY, normalizeRelicProgress(progress));
+}
+
+function loadRelicEquipment() {
+ return normalizeRelicEquipment(loadDiscoveryMap(RELIC_EQUIPMENT_STORAGE_KEY));
+}
+
+function saveRelicEquipment(equipment) {
+ saveDiscoveryMap(RELIC_EQUIPMENT_STORAGE_KEY, normalizeRelicEquipment(equipment));
+}
+
+function hasRelic(relicId) {
+ return Boolean(loadRelicProgress()[relicId]);
+}
+
+function getOwnedRelicIds() {
+ return Object.keys(loadRelicProgress()).filter(relicId => getRelicById(relicId));
+}
+
+function getEquippedRelicIds() {
+ const progress = loadRelicProgress();
+ const equipment = normalizeRelicEquipment(loadRelicEquipment());
+ return equipment.slots
+  .slice(0, equipment.unlockedSlotCount)
+  .filter(relicId => relicId && progress[relicId] && getRelicById(relicId));
+}
+
+function getEquippedRelic(slotIndex = 0) {
+ const equipment = normalizeRelicEquipment(loadRelicEquipment());
+ if (slotIndex < 0 || slotIndex >= equipment.unlockedSlotCount) return null;
+ const relicId = equipment.slots[slotIndex] || null;
+ return relicId && hasRelic(relicId) ? getRelicById(relicId) : null;
+}
+
+function getRelicSlotLabel(slotIndex) {
+ return `装備枠${Math.max(0, Number(slotIndex || 0)) + 1}`;
+}
+
+function getRelicSlotUnlockText(slotIndex) {
+ const unlockDepth = Math.max(0, Number(slotIndex || 0));
+ return unlockDepth <= 0 ? '初期解放' : `深度${unlockDepth}クリアで解放`;
+}
+
+function findFirstEmptyRelicSlot(equipment) {
+ const normalized = normalizeRelicEquipment(equipment);
+ return normalized.slots.slice(0, normalized.unlockedSlotCount).findIndex(relicId => !relicId);
+}
+
+function getEquippedRelicSlotIndex(relicId, equipment = loadRelicEquipment()) {
+ const normalized = normalizeRelicEquipment(equipment);
+ return normalized.slots.slice(0, normalized.unlockedSlotCount).findIndex(slotRelicId => slotRelicId === relicId);
+}
+
+function equipRelic(relicId, slotIndex = null) {
+ const relic = getRelicById(relicId);
+ if (!relic || !hasRelic(relic.id)) {
+  playUiErrorSound();
+  return false;
+ }
+ const equipment = normalizeRelicEquipment(loadRelicEquipment());
+ const currentSlot = getEquippedRelicSlotIndex(relic.id, equipment);
+ if (currentSlot >= 0 && slotIndex === null) {
+  playUiSelectSound();
+  return true;
+ }
+ const requestedSlot = slotIndex === null ? findFirstEmptyRelicSlot(equipment) : Math.floor(Number(slotIndex));
+ if (!Number.isInteger(requestedSlot) || requestedSlot < 0 || requestedSlot >= equipment.unlockedSlotCount) {
+  playUiErrorSound();
+  return false;
+ }
+ const slot = Math.max(0, Math.min(equipment.unlockedSlotCount - 1, requestedSlot));
+ equipment.slots = equipment.slots.map(slotRelicId => slotRelicId === relic.id ? null : slotRelicId);
+ equipment.slots[slot] = relic.id;
+ saveRelicEquipment(equipment);
+ saveCurrentGameData(false);
+ renderRelicEquipScreen();
+ renderPreDepartureScreen();
+ playUiSelectSound();
+ return true;
+}
+
+function unequipRelic(slotIndex = 0) {
+ const equipment = normalizeRelicEquipment(loadRelicEquipment());
+ const requestedSlot = Math.floor(Number(slotIndex || 0));
+ if (!Number.isInteger(requestedSlot) || requestedSlot < 0 || requestedSlot >= equipment.unlockedSlotCount) {
+  playUiErrorSound();
+  return false;
+ }
+ const slot = Math.max(0, Math.min(equipment.unlockedSlotCount - 1, requestedSlot));
+ equipment.slots[slot] = null;
+ saveRelicEquipment(equipment);
+ saveCurrentGameData(false);
+ renderRelicEquipScreen();
+ renderPreDepartureScreen();
+ playUiSelectSound();
+ return true;
+}
+
+function getRelicEffectTotal(effectKey) {
+ const equippedIds = new Set(getEquippedRelicIds());
+ return RELIC_DEFINITIONS.reduce((sum, relic) => {
+  if (!equippedIds.has(relic.id)) return sum;
+  return sum + Number(relic.effects?.[effectKey] || 0);
+ }, 0);
+}
+
+function getRelicTableKey(depth = currentDepth, result = 'clear') {
+ const normalizedDepth = normalizeDepth(depth);
+ return `depth${normalizedDepth}${result === 'battleWin' ? 'Defeat' : 'Clear'}`;
+}
+
+function getRelicsByTable(tableKey) {
+ return RELIC_DEFINITIONS.filter(relic => relic.table === tableKey);
+}
+
+function getRelicDiscoveryChance(depth = currentDepth) {
+ return Math.max(0, Math.min(1, Number(RELIC_VICTORY_DISCOVERY_CHANCE[normalizeDepth(depth)] || 0)));
+}
+
+function rollRelicReward(result = 'clear', depth = currentDepth) {
+ const normalizedResult = result === 'battleWin' ? 'battleWin' : (result === 'clear' ? 'clear' : 'none');
+ if (normalizedResult === 'none') return null;
+ const normalizedDepth = normalizeDepth(depth);
+ const tableKey = getRelicTableKey(normalizedDepth, normalizedResult);
+
+ if (normalizedResult === 'battleWin' && Math.random() >= getRelicDiscoveryChance(normalizedDepth)) {
+  return null;
+ }
+
+ const progress = loadRelicProgress();
+ const candidates = getRelicsByTable(tableKey).filter(relic => !progress[relic.id]);
+ if (!candidates.length) return null;
+
+ const relic = candidates[Math.floor(Math.random() * candidates.length)];
+ progress[relic.id] = {
+  owned: true,
+  acquiredAt: Date.now(),
+  source: relic.source,
+ };
+ saveRelicProgress(progress);
+ saveCurrentGameData(false);
+
+ return {
+  relicId: relic.id,
+  name: relic.name,
+  effect: relic.effect,
+  source: relic.source,
+  table: tableKey,
+  result: normalizedResult,
+  depth: normalizedDepth,
+ };
+}
+
+function handleRunEndRelicReward(result) {
+ if (relicRewardHandledForRun) return lastRelicReward;
+ relicRewardHandledForRun = true;
+ lastRelicReward = rollRelicReward(result, currentDepth);
+ return lastRelicReward;
+}
+
+function handleBattleVictoryRelicReward() {
+ lastRelicReward = rollRelicReward('battleWin', currentDepth);
+ relicRewardModalShownForRun = false;
+ return lastRelicReward;
 }
 
 function recordRandomEventProgress(eventId, outcome = 'seen') {
@@ -4045,7 +4455,7 @@ function shouldOfferRandomEvent(clearedLevel, nextLevel) {
  return clearedLevel < 20
   && !shouldShowPassiveChoice(nextLevel)
   && !shouldShowShopAfterVictory(clearedLevel)
-  && Math.random() < RANDOM_EVENT_CHANCE;
+  && Math.random() < getCurrentRandomEventChance();
 }
 
 function beginRandomEvent(nextLevel) {
@@ -4409,19 +4819,22 @@ function getCanonicalCardByName(cardName) {
 
   function getShopRarityWeight(card) {
    const rarity = getCardRarity(card);
-   if (rarity === 'legendary') return 2;
-   if (rarity === 'epic') return 8;
-   if (rarity === 'rare') return 24;
-   return 60;
+   let weight = 60;
+   if (rarity === 'legendary') weight = 2;
+   else if (rarity === 'epic') weight = 8;
+   else if (rarity === 'rare') weight = 24;
+   else if (rarity === 'curse') weight = 0;
+   return Math.max(0, weight * (1 + getCardRelicRateBonus(card)));
   }
 
   function getRandomCardWeight(card, options = {}) {
    const rarity = getCardRarity(card);
-   if (rarity === 'legendary') return 2;
-   if (rarity === 'epic') return 8;
-   if (rarity === 'rare') return 24;
-   if (rarity === 'curse') return options.includeCurse ? 12 : 0;
-   return 60;
+   let weight = 60;
+   if (rarity === 'legendary') weight = 2;
+   else if (rarity === 'epic') weight = 8;
+   else if (rarity === 'rare') weight = 24;
+   else if (rarity === 'curse') weight = options.includeCurse ? 12 : 0;
+   return Math.max(0, weight * (1 + getCardRelicRateBonus(card)));
   }
 
   function pickWeightedRandomCard(options = {}) {
@@ -4903,7 +5316,13 @@ function getBombDisplayText(bomb) {
 function addBombToEnemy(kind = 'normal', options = {}) {
  if (!cpu || gameOver) return null;
  const def = getBombDefinition(kind);
- const extraAdvance = Math.max(0, Number(playerPassives.bombFuseShorten || 0)) + Math.max(0, Number(playerPassives.bombTimingReduce || 0));
+ let extraAdvance = Math.max(0, Number(playerPassives.bombFuseShorten || 0)) + Math.max(0, Number(playerPassives.bombTimingReduce || 0));
+ const relicFuseReduce = Math.max(0, Math.floor(Number(getRelicEffectTotal('firstBombFuseReduce') || 0)));
+ if (!options.ignoreRelicBonus && player?.relicFirstBombFuseReduceAvailable && relicFuseReduce > 0) {
+  extraAdvance += relicFuseReduce;
+  player.relicFirstBombFuseReduceAvailable = false;
+  addLog(`壊れた火薬樽：最初の爆弾カウント-${relicFuseReduce}`);
+ }
  const bomb = {
   id: `bomb-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   kind: def.id,
@@ -5141,11 +5560,38 @@ function chooseBombToCompress(bombId) {
 function applyBattleStartPassives() {
  if (!cpu || pendingPassiveChoice || pendingShopChoice) return;
 
- const startDrawBonus = Math.max(0, Number(playerPassives.startDrawBonus || 0));
+ const relicStartDrawBonus = Math.max(0, Math.floor(Number(getRelicEffectTotal('battleStartDraw') || 0)));
+ const startDrawBonus = Math.max(0, Number(playerPassives.startDrawBonus || 0)) + relicStartDrawBonus;
  if (startDrawBonus > 0) {
   const drawn = drawCardsToPlayerHand(startDrawBonus);
   if (drawn.length > 0) {
-   addLog(`直感：戦闘開始時に${drawn.length}ドロー`);
+   addLog(`戦闘開始時：${drawn.length}ドロー`);
+  }
+ }
+
+ const relicPetExp = Math.max(0, Math.floor(Number(getRelicEffectTotal('battleStartPetExp') || 0)));
+ if (relicPetExp > 0) {
+  addPetExp(relicPetExp, '遺物');
+ }
+
+ const startBlockChance = Math.max(0, Math.min(1, Number(getRelicEffectTotal('startBlockChance') || 0)));
+ const startBlockAmount = Math.max(0, Math.floor(Number(getRelicEffectTotal('startBlock') || 0)));
+ if (player && startBlockChance > 0 && startBlockAmount > 0 && Math.random() < startBlockChance) {
+  player.block = Math.max(0, Number(player.block || 0)) + startBlockAmount;
+  addLog(`遺物：戦闘開始時にブロック+${startBlockAmount}`);
+  showDamagePopup('player-hp-change', `防御+${startBlockAmount}`);
+ }
+
+ const randomNormalCount = Math.max(0, Math.floor(Number(getRelicEffectTotal('battleStartRandomNormalCard') || 0)));
+ for (let i = 0; i < randomNormalCount; i++) {
+  const normalPool = CARD_POOL.filter(card => getCardRarity(card) === 'normal' && !isCurseCard(card));
+  const picked = pickWeightedUniqueItems(normalPool, 1, card => getRandomCardWeight(card, { includeCurse: false }))[0];
+  if (picked && player) {
+   const temporaryCard = createTemporaryBattleCard(picked);
+   player.hand.push(temporaryCard);
+   recordCardDiscovery(picked.name);
+   addLog(`遺物：${picked.name}をこの戦闘中だけ手札に追加`);
+   triggerCardResultReveal([temporaryCard], '遺物', 'この戦闘中のみ', { delay: 420 });
   }
  }
 
@@ -5810,6 +6256,207 @@ function filterCurrentBattleExhaustedCards(cards) {
   remainingExhausted[name] -= 1;
   return false;
  });
+}
+
+function renderRelicLibraryScreen() {
+ const list = document.getElementById('relic-library-list');
+ if (!list) return;
+
+ const progress = loadRelicProgress();
+ const ownedCount = RELIC_DEFINITIONS.filter(relic => progress[relic.id]).length;
+
+ list.innerHTML = `
+  <div class="relic-library-summary">発見：${ownedCount} / ${RELIC_DEFINITIONS.length}</div>
+  <div class="relic-library-section-grid relic-library-all-grid"></div>
+ `;
+
+ const grid = list.querySelector('.relic-library-all-grid');
+ RELIC_DEFINITIONS.forEach(relic => {
+   const owned = Boolean(progress[relic.id]);
+   const card = document.createElement('button');
+   card.type = 'button';
+   card.className = `relic-library-card${owned ? '' : ' undiscovered'}`;
+   card.disabled = !owned;
+   if (owned) {
+    card.onclick = () => openRelicLibraryDetailModal(relic.id);
+   }
+   card.innerHTML = owned ? `
+    <div class="relic-library-mark">${escapeHtml(relic.icon || '◆')}</div>
+    <div class="relic-library-title">${escapeHtml(relic.name)}</div>
+    <div class="relic-library-effect">${escapeHtml(relic.effect)}</div>
+    <div class="relic-library-owned">入手済み</div>
+   ` : `
+    <div class="relic-library-mark unknown">?</div>
+    <div class="relic-library-title">？？？</div>
+    <div class="relic-library-effect">未発見の遺物です。</div>
+    <div class="relic-library-owned unknown">未発見</div>
+   `;
+   grid.appendChild(card);
+  });
+}
+
+function getRelicLibraryDetailHtml(relicId) {
+ const relic = getRelicById(relicId);
+ const progress = loadRelicProgress();
+ if (!relic || !progress[relic.id]) {
+  return `
+   <div class="relic-library-detail-main">
+    <div class="relic-library-detail-mark unknown">?</div>
+    <div class="relic-library-detail-body">
+     <div class="relic-library-detail-kicker">UNKNOWN RELIC</div>
+     <h2>？？？</h2>
+     <p>未発見の遺物です。</p>
+    </div>
+   </div>
+  `;
+ }
+
+ return `
+  <div class="relic-library-detail-main">
+   <div class="relic-library-detail-mark">${escapeHtml(relic.icon || '◆')}</div>
+   <div class="relic-library-detail-body">
+    <div class="relic-library-detail-kicker">RELIC</div>
+    <h2>${escapeHtml(relic.name)}</h2>
+    <p>${escapeHtml(relic.description || relic.effect)}</p>
+    <div class="relic-library-detail-effects">
+     <div><span>効果</span><strong>${escapeHtml(relic.effect)}</strong></div>
+    </div>
+    <div class="relic-library-detail-stats">
+     <span><strong>入手済み</strong><small>所持状況</small></span>
+    </div>
+   </div>
+  </div>
+ `;
+}
+
+function openRelicLibraryDetailModal(relicId) {
+ const relic = getRelicById(relicId);
+ if (!relic || !hasRelic(relic.id)) return;
+ const modal = document.getElementById('relic-library-detail-modal');
+ const content = document.getElementById('relic-library-detail-content');
+ if (!modal || !content) return;
+
+ playUiSelectSound();
+ content.innerHTML = getRelicLibraryDetailHtml(relic.id);
+ modal.style.display = 'flex';
+}
+
+function closeRelicLibraryDetailModal(event) {
+ if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+
+ const modal = document.getElementById('relic-library-detail-modal');
+ if (modal) modal.style.display = 'none';
+}
+
+function showRelicEquipScreen() {
+ playUiSelectSound();
+ currentScreen = 'relic-equip';
+ renderRelicEquipScreen();
+ render();
+}
+
+function renderRelicEquipScreen() {
+ const list = document.getElementById('relic-equip-list');
+ if (!list) return;
+
+ const progress = loadRelicProgress();
+ const equipment = normalizeRelicEquipment(loadRelicEquipment());
+ const ownedRelics = RELIC_DEFINITIONS.filter(relic => progress[relic.id]);
+ const equippedSummaryHtml = `
+  <section class="relic-equipped-slots">
+   <div class="relic-equipped-count">装備枠：${equipment.unlockedSlotCount} / ${RELIC_EQUIPMENT_MAX_SLOT_COUNT}</div>
+   ${equipment.slots.map((relicId, index) => {
+    const unlocked = index < equipment.unlockedSlotCount;
+    const relic = unlocked && relicId && progress[relicId] ? getRelicById(relicId) : null;
+    return `
+     <div class="relic-equipped-slot${relic ? '' : ' empty'}${unlocked ? '' : ' locked'}">
+      <span>${escapeHtml(getRelicSlotLabel(index))}</span>
+      <strong>${escapeHtml(unlocked ? (relic?.name || '未装備') : '未解放')}</strong>
+      ${relic ? `<small>${escapeHtml(relic.effect)}</small>` : `<small>${escapeHtml(unlocked ? '取得済み遺物から装備できます。' : getRelicSlotUnlockText(index))}</small>`}
+     </div>
+    `;
+   }).join('')}
+  </section>
+ `;
+
+ if (!ownedRelics.length) {
+  list.innerHTML = `${equippedSummaryHtml}<div class="relic-equip-empty">まだ遺物を発見していません。</div>`;
+  return;
+ }
+
+ list.innerHTML = `${equippedSummaryHtml}${ownedRelics.map(relic => {
+  const equippedSlot = getEquippedRelicSlotIndex(relic.id, equipment);
+  const equipped = equippedSlot >= 0;
+  const firstEmptySlot = findFirstEmptyRelicSlot(equipment);
+  const equipActions = equipped
+   ? `<button class="ui-button ui-button-secondary" onclick="unequipRelic(${equippedSlot})">解除</button>`
+   : (firstEmptySlot >= 0
+    ? `<button class="ui-button ui-button-primary" onclick="equipRelic('${escapeHtml(relic.id)}')">装備</button>`
+    : equipment.slots.slice(0, equipment.unlockedSlotCount).map((slotRelicId, index) => `<button class="ui-button ui-button-primary" onclick="equipRelic('${escapeHtml(relic.id)}', ${index})">${escapeHtml(getRelicSlotLabel(index))}へ交換</button>`).join(''));
+  return `
+   <article class="relic-equip-card${equipped ? ' equipped' : ''}">
+    <div class="relic-equip-icon">${escapeHtml(relic.icon || '◆')}</div>
+    <div class="relic-equip-body">
+     <div class="relic-equip-head">
+      <h3>${escapeHtml(relic.name)}</h3>
+      ${equipped ? `<span class="relic-equipped-badge">${escapeHtml(getRelicSlotLabel(equippedSlot))}</span>` : ''}
+     </div>
+     <p>${escapeHtml(relic.effect)}</p>
+    </div>
+    <div class="relic-equip-actions">
+     ${equipActions}
+     <button class="ui-button ui-button-secondary" onclick="openRelicEquipDetailModal('${escapeHtml(relic.id)}')">詳細</button>
+    </div>
+   </article>
+  `;
+ }).join('')}`;
+}
+
+function getRelicEquipDetailHtml(relicId) {
+ const relic = getRelicById(relicId);
+ if (!relic || !hasRelic(relic.id)) return '';
+ const equipment = normalizeRelicEquipment(loadRelicEquipment());
+ const equippedSlot = getEquippedRelicSlotIndex(relic.id, equipment);
+ const equipped = equippedSlot >= 0;
+ const firstEmptySlot = findFirstEmptyRelicSlot(equipment);
+ const actionHtml = equipped
+  ? `<button class="ui-button ui-button-secondary" onclick="unequipRelic(${equippedSlot}); closeRelicEquipDetailModal();">解除</button>`
+  : (firstEmptySlot >= 0
+   ? `<button class="ui-button ui-button-primary" onclick="equipRelic('${escapeHtml(relic.id)}'); closeRelicEquipDetailModal();">装備</button>`
+   : equipment.slots.slice(0, equipment.unlockedSlotCount).map((slotRelicId, index) => `<button class="ui-button ui-button-primary" onclick="equipRelic('${escapeHtml(relic.id)}', ${index}); closeRelicEquipDetailModal();">${escapeHtml(getRelicSlotLabel(index))}へ交換</button>`).join(''));
+ return `
+  <div class="relic-equip-detail-main">
+   <div class="relic-equip-detail-icon">${escapeHtml(relic.icon || '◆')}</div>
+   <div class="relic-equip-detail-body">
+    <div class="relic-equip-detail-kicker">${equipped ? `${escapeHtml(getRelicSlotLabel(equippedSlot))}に装備中` : '未装備'}</div>
+    <h2>${escapeHtml(relic.name)}</h2>
+    <p>${escapeHtml(relic.description || relic.effect)}</p>
+    <div class="relic-equip-detail-effect">
+     <span>効果</span>
+     <strong>${escapeHtml(relic.effect)}</strong>
+    </div>
+    <div class="relic-equip-detail-actions">
+     ${actionHtml}
+    </div>
+   </div>
+  </div>
+ `;
+}
+
+function openRelicEquipDetailModal(relicId) {
+ const modal = document.getElementById('relic-equip-detail-modal');
+ const content = document.getElementById('relic-equip-detail-content');
+ const html = getRelicEquipDetailHtml(relicId);
+ if (!modal || !content || !html) return;
+ playUiSelectSound();
+ content.innerHTML = html;
+ modal.style.display = 'flex';
+}
+
+function closeRelicEquipDetailModal(event) {
+ if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+ const modal = document.getElementById('relic-equip-detail-modal');
+ if (modal) modal.style.display = 'none';
 }
 
 function getRandomEventLibraryDetailHtml(eventId) {
@@ -6939,8 +7586,9 @@ function checkPetEvolutionTrigger() {
  triggerPetEvolutionEffect(pet);
 }
 
-function showPetSelectScreen() {
+function showPetSelectScreen(returnScreen = 'prepare') {
  playUiSelectSound();
+ setupReturnScreen = returnScreen === 'predeparture' ? 'predeparture' : 'prepare';
  stopEnemyTimer();
  stopReload();
  stopCooldown();
@@ -6966,9 +7614,14 @@ function selectPet(petId) {
  selectedPetId = petId;
  syncPetLevelFromExp();
  if (playerPassives) playerPassives.rarePetEvolutionAnnounced = false;
+ saveCurrentGameData(false);
  closePetDetailModal();
 
  renderPetSelectScreen();
+}
+
+function showPetSelectFromPreDeparture() {
+ showPetSelectScreen('predeparture');
 }
 
 
@@ -7222,7 +7875,8 @@ function renderPetSelectScreen() {
  });
 }
 
-function showCustomizeScreen() {
+function showCustomizeScreen(returnScreen = 'prepare') {
+   setupReturnScreen = returnScreen === 'predeparture' ? 'predeparture' : 'prepare';
    stopEnemyTimer();
    stopReload();
    stopCooldown();
@@ -7232,6 +7886,18 @@ function showCustomizeScreen() {
 
    render();
   }
+
+function showCustomizeFromPreDeparture() {
+ showCustomizeScreen('predeparture');
+}
+
+function returnFromSetupScreen() {
+ if (setupReturnScreen === 'predeparture') {
+  showPreDepartureScreen();
+  return;
+ }
+ showPrepareScreen();
+}
 
 function showPrepareScreen() {
  playUiSelectSound();
@@ -7243,6 +7909,7 @@ function showPrepareScreen() {
  stopCooldown();
  stopDeckReload();
  stopPlayerStatusTimer();
+ setupReturnScreen = 'prepare';
  currentScreen = 'prepare';
  render();
 }
@@ -7398,10 +8065,14 @@ function saveDeckCustomize() {
 
    addLog('山札設定を保存しました');
 
-   showPrepareScreen();
+   returnFromSetupScreen();
   }
 
   function startBattle() {
+   showPreDepartureScreen();
+  }
+
+  function beginDiveAfterDepthSelection() {
    playUiSelectSound();
    if (!isDepthUnlocked(currentDepth)) {
     currentDepth = getHighestUnlockedDepth();
@@ -7417,6 +8088,9 @@ function saveDeckCustomize() {
    currentRunEnemyHistory = [];
    currentRunCardPlayCounts = {};
    currentRunRandomEvents = [];
+   lastRelicReward = null;
+   relicRewardHandledForRun = false;
+   relicRewardModalShownForRun = false;
    playerPassives = {
     maxHp: 0,
     battleMaxHpPenalty: 0,
@@ -7487,7 +8161,7 @@ function saveDeckCustomize() {
    pendingPassiveChoice = true;
    pendingNextLevel = 1;
    pendingPreviewEnemyId = chooseEnemyIdForLevel(1, currentDepth);
-   currentPassiveChoices = getRandomPassiveChoices(3);
+   currentPassiveChoices = getRandomPassiveChoices(getPassiveChoiceCount(3));
 
    enemyTimerStarted = false;
    if (enemyTimerInterval) {
@@ -7515,7 +8189,7 @@ function saveDeckCustomize() {
     pendingPassiveChoice = true;
     pendingNextLevel = next;
     pendingPreviewEnemyId = chooseEnemyIdForLevel(next, currentDepth);
-    currentPassiveChoices = getRandomPassiveChoices(3, getPassivePoolForNextLevel(next));
+    currentPassiveChoices = getRandomPassiveChoices(getPassiveChoiceCount(3), getPassivePoolForNextLevel(next));
     gameOver = false;
 
     stopEnemyTimer();
@@ -7595,12 +8269,15 @@ function saveDeckCustomize() {
    deckReloadTimer = 0;
 
    {
-    const preferredEnemyId = pendingPreviewEnemyId || currentEnemyId;
-    currentEnemyId = sanitizeEnemyIdForLevel(preferredEnemyId, enemyLevel);
-   }
-   resetBattleResultStats();
+   const preferredEnemyId = pendingPreviewEnemyId || currentEnemyId;
+   currentEnemyId = sanitizeEnemyIdForLevel(preferredEnemyId, enemyLevel);
+  }
+  lastRelicReward = null;
+  relicRewardModalShownForRun = false;
+  closeRelicRewardModal();
+  resetBattleResultStats();
 
-   player = {
+  player = {
     hp: getPlayerMaxHp(),
     block: 0,
     hand: drawCards(INITIAL_HAND_COUNT, true),
@@ -7639,6 +8316,8 @@ function saveDeckCustomize() {
     excludedBattleCardNames: [],
     exhaustedBattleCardNames: {},
     currentPetAttackMultiplier: 1,
+    relicFirstPoisonBonusAvailable: getRelicEffectTotal('firstPoisonBonus') > 0,
+    relicFirstBombFuseReduceAvailable: getRelicEffectTotal('firstBombFuseReduce') > 0,
      bloodAwakenAttackBoostUses: 0,
      scalingAttackUses: 0,
      scalingDefenseUses: 0,
@@ -8028,9 +8707,67 @@ function playSound(type) {
    if (result === 'win' && enemyLevel >= 20) {
     markDepthCleared(currentDepth);
    }
+   if (result === 'win' && enemyLevel >= 20) {
+    handleRunEndRelicReward('clear');
+   } else if (result === 'win') {
+    handleBattleVictoryRelicReward();
+   } else {
+    lastRelicReward = null;
+   }
    recordBattleEndAchievement(result);
    recordEnemyBattleResult(result);
    recordBattleHistoryEntry(result);
+  }
+
+  function getRelicRewardHtml(reward = lastRelicReward) {
+   if (!reward || !reward.relicId) return '';
+   return `
+    <div class="relic-reward-result">
+     <div class="relic-reward-kicker">遺物発見</div>
+     <div class="relic-reward-name">${escapeHtml(reward.name || '')}</div>
+     <div class="relic-reward-effect"><span>効果</span><strong>${escapeHtml(reward.effect || '')}</strong></div>
+    </div>
+   `;
+  }
+
+  function getRelicRewardModalHtml(reward = lastRelicReward) {
+   if (!reward || !reward.relicId) return '';
+   const relic = getRelicById(reward.relicId);
+   const icon = relic?.icon || '◆';
+   return `
+    <div class="relic-reward-modal-kicker">遺物発見！</div>
+    <div class="relic-reward-modal-icon">${escapeHtml(icon)}</div>
+    <div class="relic-reward-modal-name">${escapeHtml(reward.name || relic?.name || '')}</div>
+    <div class="relic-reward-modal-effect">
+     <span>効果</span>
+     <strong>${escapeHtml(reward.effect || relic?.effect || '')}</strong>
+    </div>
+   `;
+  }
+
+  function showRelicRewardModal(reward = lastRelicReward) {
+   if (!reward || !reward.relicId) return;
+   const modal = document.getElementById('relic-reward-modal');
+   const content = document.getElementById('relic-reward-modal-content');
+   if (!modal || !content) return;
+
+   content.innerHTML = getRelicRewardModalHtml(reward);
+   modal.style.display = 'flex';
+   playSound('success');
+  }
+
+  function closeRelicRewardModal(event) {
+   if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+   const modal = document.getElementById('relic-reward-modal');
+   if (modal) modal.style.display = 'none';
+  }
+
+  function showPendingRelicRewardModalIfNeeded() {
+   if (relicRewardModalShownForRun || !lastRelicReward || !lastRelicReward.relicId) return;
+   if (!(gameOver || currentScreen === 'clear')) return;
+
+   relicRewardModalShownForRun = true;
+   setTimeout(() => showRelicRewardModal(lastRelicReward), 120);
   }
 
   function getBattleResultHtml() {
@@ -8052,6 +8789,7 @@ function playSound(type) {
       <div><span>受けたダメージ</span><strong>${battleResultStats.damageTaken}</strong></div>
       <div><span>残りHP</span><strong>${battleResultStats.remainingHp} / ${getPlayerMaxHp()}</strong></div>
      </div>
+     ${getRelicRewardHtml()}
     </div>
    `;
   }
@@ -9431,7 +10169,13 @@ function getEnemyPoisonAmount() {
 function applyPoisonToEnemy(amount, options = {}) {
  if (!cpu || gameOver) return { applied: 0, drawn: [], resisted: false };
 
- const baseAmount = Math.max(0, Math.floor(Number(amount || 0)));
+ let baseAmount = Math.max(0, Math.floor(Number(amount || 0)));
+ const relicPoisonBonus = Math.max(0, Math.floor(Number(getRelicEffectTotal('firstPoisonBonus') || 0)));
+ if (!options.ignoreRelicBonus && player?.relicFirstPoisonBonusAvailable && baseAmount > 0 && relicPoisonBonus > 0) {
+  baseAmount += relicPoisonBonus;
+  player.relicFirstPoisonBonusAvailable = false;
+  addLog(`毒蛇の牙：最初の毒付与+${relicPoisonBonus}`);
+ }
  const bonus = options.ignorePassiveBonus ? 0 : Math.max(0, Math.floor(Number(playerPassives.poisonApplyBonus || 0)));
  const resistanceMultiplier = Math.max(0, Number(getEnemyPoisonApplyMultiplier() || 1));
  const resisted = resistanceMultiplier < 1;
@@ -13242,6 +13986,224 @@ function updateShopModalVisibility() {
 
 
 
+function countOwnedDiscoveryEntries(map) {
+ if (!map || typeof map !== 'object') return 0;
+ return Object.values(map).filter(Boolean).length;
+}
+
+function getUniqueCardLibraryTotal() {
+ return new Set(CARD_POOL.map(card => card.name)).size;
+}
+
+function getUnlockedAchievementCount(definitions = getAchievementDefinitions()) {
+ const achievements = loadAchievements();
+ return definitions.filter(definition => Boolean(achievements?.[definition.id])).length;
+}
+
+function getCollectionProgressData() {
+ const cardsTotal = getUniqueCardLibraryTotal();
+ const enemiesTotal = getEnemyCatalog().length;
+ const passivesTotal = getPassiveOptions().length;
+ const eventsTotal = getRandomEventDefinitions().length;
+ const relicsTotal = RELIC_DEFINITIONS.length;
+ const pets = PET_POOL.filter(pet => pet.id !== 'none');
+ const achievements = getAchievementDefinitions();
+ const battleHistory = normalizeBattleHistory(loadBattleHistory());
+
+ const discoveredCards = loadDiscoveredCards();
+ const encounteredEnemies = loadEncounteredEnemies();
+ const discoveredPassives = loadDiscoveredPassives();
+ const eventProgress = loadRandomEventProgress();
+ const relicProgress = loadRelicProgress();
+ const unlockedPets = pets.filter(pet => isPetUnlocked(pet.id)).length;
+ const unlockedAchievements = getUnlockedAchievementCount(achievements);
+
+ return {
+  cards: { current: countOwnedDiscoveryEntries(discoveredCards), total: cardsTotal },
+  enemies: { current: countOwnedDiscoveryEntries(encounteredEnemies), total: enemiesTotal },
+  passives: { current: countOwnedDiscoveryEntries(discoveredPassives), total: passivesTotal },
+  pets: { current: unlockedPets, total: pets.length },
+  relics: { current: countOwnedDiscoveryEntries(relicProgress), total: relicsTotal },
+  events: { current: countOwnedDiscoveryEntries(eventProgress), total: eventsTotal },
+  achievements: { current: unlockedAchievements, total: achievements.length },
+  history: { current: battleHistory.length, total: null },
+ };
+}
+
+function formatCollectionProgress(progress) {
+ if (!progress) return '';
+ if (Number.isFinite(progress.total)) {
+  return `${progress.current} / ${progress.total}`;
+ }
+ return `${progress.current}件`;
+}
+
+function renderCollectionScreen() {
+ const list = document.getElementById('collection-list');
+ if (!list) return;
+
+ const progress = getCollectionProgressData();
+ const items = [
+  { title: '敵図鑑', progress: progress.enemies, description: '遭遇した敵の特徴、行動、深度情報を確認します。', action: 'showEnemyLibraryScreen()' },
+  { title: 'カード図鑑', progress: progress.cards, description: '発見済みカードと未発見カードの収集状況を確認します。', action: 'showCardLibraryScreen()' },
+  { title: 'パッシブ図鑑', progress: progress.passives, description: '取得したパッシブと効果を確認します。', action: 'showPassiveLibraryScreen()' },
+  { title: 'ペット図鑑', progress: progress.pets, description: '解放済みペットと確認済み進化情報を確認します。', action: 'showPetLibraryScreen()' },
+  { title: '遺物図鑑', progress: progress.relics, description: '発見済み遺物と効果を確認します。', action: 'showRelicLibraryScreen()' },
+  { title: 'イベント図鑑', progress: progress.events, description: '遭遇したランダムイベントの内容を確認します。', action: 'showRandomEventLibraryScreen()' },
+  { title: '実績一覧', progress: progress.achievements, description: '達成済み実績と進捗を確認します。', action: 'showAchievementLibraryScreen()' },
+ ];
+
+ list.innerHTML = items.map(item => `
+  <button class="collection-card" type="button" onclick="${item.action}">
+   <span class="collection-card-kicker">COLLECTION</span>
+   <span class="collection-card-title">${escapeHtml(item.title)}</span>
+   <span class="collection-card-progress">${escapeHtml(formatCollectionProgress(item.progress))}</span>
+   <span class="collection-card-description">${escapeHtml(item.description)}</span>
+  </button>
+ `).join('');
+}
+
+function renderPetLibraryScreen() {
+ const list = document.getElementById('pet-library-list');
+ if (!list) return;
+
+ const pets = PET_POOL.filter(pet => pet.id !== 'none');
+ const unlockedCount = pets.filter(pet => isPetUnlocked(pet.id)).length;
+
+ list.innerHTML = `
+  <div class="pet-library-summary">${unlockedCount} / ${pets.length} 解放</div>
+  ${pets.map(pet => {
+   const unlocked = isPetUnlocked(pet.id);
+   const conditionText = getPetUnlockConditionText(pet.id);
+   const evolutionDiscovered = unlocked && isPetEvolutionDiscovered(pet.id);
+   const displayName = unlocked ? pet.name : '？？？';
+   const displayDescription = unlocked ? pet.description : `解放条件：${conditionText || 'ゲームを進める'}`;
+   const imageHtml = unlocked
+    ? `<img src="${pet.image}" alt="${escapeHtml(pet.name)}" class="pet-library-img" style="${pet.image ? '' : 'display:none;'}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="pet-library-placeholder" style="${pet.image ? 'display:none;' : 'display:flex;'}">${escapeHtml(pet.placeholder || '？')}</div>`
+    : '<div class="pet-library-placeholder pet-library-locked">？</div>';
+   const evolutionHtml = evolutionDiscovered
+    ? `
+     <div class="pet-library-evolution">
+      <div class="pet-library-section-title">進化後</div>
+      <div class="pet-library-evolution-name">${escapeHtml(getPetEvolutionPreviewName(pet))}</div>
+      <div class="pet-skill-list">${getPetSkillListHtml(getPetEvolutionPreviewSkills(pet.id), '進化後の技は未設定です。')}</div>
+     </div>
+    `
+    : `<div class="pet-library-evolution-locked">${unlocked ? '進化後：未確認' : '進化後：？？？'}</div>`;
+
+   const detailHandler = unlocked
+    ? `onclick="openPetLibraryDetail('${String(pet.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"`
+    : `onclick="openPetLibraryDetail('${String(pet.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"`;
+
+   return `
+    <article class="pet-library-card ${unlocked ? '' : 'locked'}" role="button" tabindex="0" ${detailHandler} onkeydown="if(event.key==='Enter'||event.key===' '){ ${unlocked ? `openPetLibraryDetail('${String(pet.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')` : `openPetLibraryDetail('${String(pet.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')`}; event.preventDefault(); }">
+     <div class="pet-library-image-wrap">${imageHtml}</div>
+     <div class="pet-library-body">
+      <div class="pet-library-name">${escapeHtml(displayName)}</div>
+      <div class="pet-library-level">${unlocked ? `Lv.${getPetLevelFromExp(petExp)}` : '未発見'}</div>
+      <div class="pet-library-description">${escapeHtml(displayDescription)}</div>
+      <div class="pet-library-section-title">技</div>
+      <div class="pet-skill-list">${unlocked ? getPetSkillListHtml(pet.skills, '技なし') : '<div class="pet-skill-empty">未解放</div>'}</div>
+      ${evolutionHtml}
+     </div>
+    </article>
+   `;
+ }).join('')}
+ `;
+}
+
+function getPetLibraryDetailHtml(pet, unlocked) {
+ if (!pet || !unlocked) {
+  return `
+   <div class="pet-library-detail-unknown">
+    <div class="pet-library-detail-placeholder-large">？</div>
+    <h3>未発見ペット</h3>
+    <p>このペットはまだ解放されていません。</p>
+   </div>
+  `;
+ }
+
+ const evolutionDiscovered = pet.id !== 'none' && isPetEvolutionDiscovered(pet.id);
+ const evolvedName = evolutionDiscovered ? getPetEvolutionPreviewName(pet) : '';
+ const evolvedImage = evolutionDiscovered ? getPetEvolutionPreviewImage(pet) : '';
+ const evolutionHtml = evolutionDiscovered
+  ? `
+   <section class="pet-library-detail-section">
+    <h4>進化後情報</h4>
+    <div class="pet-library-detail-evolution-head">
+     <div class="pet-library-detail-image-wrap small">
+      <img src="${evolvedImage}" alt="${escapeHtml(evolvedName)}" class="pet-library-detail-img" style="${evolvedImage ? '' : 'display:none;'}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="pet-library-placeholder" style="${evolvedImage ? 'display:none;' : 'display:flex;'}">進化</div>
+     </div>
+     <div>
+      <div class="pet-library-detail-evolution-name">${escapeHtml(evolvedName)}</div>
+      <div class="pet-skill-list">${getPetSkillListHtml(getPetEvolutionPreviewSkills(pet.id), '進化後の技は未設定です。')}</div>
+     </div>
+    </div>
+   </section>
+  `
+  : '<section class="pet-library-detail-section"><h4>進化後情報</h4><p>まだ確認されていません。</p></section>';
+
+ return `
+  <div class="pet-library-detail-content">
+   <div class="pet-library-detail-main">
+    <div class="pet-library-detail-image-wrap">
+     <img src="${pet.image}" alt="${escapeHtml(pet.name)}" class="pet-library-detail-img" style="${pet.image ? '' : 'display:none;'}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+     <div class="pet-library-placeholder" style="${pet.image ? 'display:none;' : 'display:flex;'}">${escapeHtml(pet.placeholder || '？')}</div>
+    </div>
+    <div class="pet-library-detail-heading">
+     <div class="pet-library-detail-kicker">PET</div>
+     <h3>${escapeHtml(pet.name)}</h3>
+     <div class="pet-library-detail-level">Lv.${getPetLevelFromExp(petExp)}</div>
+     <p>${escapeHtml(pet.description || '')}</p>
+    </div>
+   </div>
+   <section class="pet-library-detail-section">
+    <h4>技</h4>
+    <div class="pet-skill-list">${getPetSkillListHtml(pet.skills, '技なし')}</div>
+   </section>
+   ${evolutionHtml}
+  </div>
+ `;
+}
+
+function openPetLibraryDetail(petId) {
+ const modal = document.getElementById('pet-library-detail-modal');
+ const content = document.getElementById('pet-library-detail-content');
+ if (!modal || !content) return;
+
+ const pet = PET_POOL.find(item => item.id === petId && item.id !== 'none');
+ const unlocked = Boolean(pet && isPetUnlocked(pet.id));
+ content.innerHTML = getPetLibraryDetailHtml(pet, unlocked);
+ modal.style.display = 'flex';
+}
+
+function closePetLibraryDetailModal(event) {
+ if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+ const modal = document.getElementById('pet-library-detail-modal');
+ if (modal) modal.style.display = 'none';
+}
+
+function showCollectionScreen() {
+   playUiSelectSound();
+
+   currentScreen = 'collection';
+
+   evaluateAchievements();
+   renderCollectionScreen();
+   render();
+  }
+
+function showPetLibraryScreen() {
+   playUiSelectSound();
+
+   currentScreen = 'pet-library';
+
+   renderPetLibraryScreen();
+   render();
+  }
+
 function showCardLibraryScreen() {
    playUiSelectSound();
 
@@ -13286,6 +14248,15 @@ function showCardLibraryScreen() {
    currentScreen = 'random-event-library';
 
    renderRandomEventLibraryScreen();
+   render();
+  }
+
+  function showRelicLibraryScreen() {
+   playUiSelectSound();
+
+   currentScreen = 'relic-library';
+
+   renderRelicLibraryScreen();
    render();
   }
 
@@ -13867,6 +14838,205 @@ function updateEnemyTimerText() {
    return Object.values(snapshot || {}).reduce((sum, count) => sum + Math.max(0, Number(count || 0)), 0);
   }
 
+  function getPreDepartureCardSummaryText(card) {
+   const text = String(getBaseCardDisplayText(card) || card?.text || '').trim();
+   if (!text) return '効果なし';
+   const normalized = text.replace(/\s+/g, ' ');
+   return normalized.length > 72 ? `${normalized.slice(0, 72)}…` : normalized;
+  }
+
+  function getPreDepartureCardTypeLabel(card) {
+   const category = getCardCustomizeCategory(card);
+   if (category === 'attack') return '攻撃';
+   if (category === 'defense') return '防御';
+   if (category === 'status') return '状態';
+   if (category === 'support') return '補助';
+   return '汎用';
+  }
+
+  function getPreDepartureCardRarityLabel(card) {
+   const rarity = getCardRarity(card);
+   if (rarity === 'legendary') return 'レジェンダリー';
+   if (rarity === 'epic') return 'エピック';
+   if (rarity === 'rare') return 'レア';
+   if (rarity === 'curse') return '呪い';
+   return 'ノーマル';
+  }
+
+  function getPreDepartureCardDetailHtml(card, count) {
+   if (!card) return '';
+   return `
+    <div class="predeparture-card-detail-content">
+     <div class="predeparture-card-detail-icon">${escapeHtml(getCardIcon(card.type))}</div>
+     <div class="predeparture-card-detail-body">
+      <div class="predeparture-card-detail-kicker">CARD DETAIL</div>
+      <h2>${escapeHtml(card.name)}</h2>
+      <div class="predeparture-card-detail-meta">
+       <span>レアリティ <strong>${escapeHtml(getPreDepartureCardRarityLabel(card))}</strong></span>
+       <span>種別 <strong>${escapeHtml(getPreDepartureCardTypeLabel(card))}</strong></span>
+       <span>枚数 <strong>×${Math.max(0, Number(count || 0))}</strong></span>
+      </div>
+      <div class="predeparture-card-detail-effect">
+       <span>効果</span>
+       <strong>${escapeHtml(getDynamicCardDisplayText(card))}</strong>
+      </div>
+     </div>
+    </div>
+   `;
+  }
+
+  function openPreDepartureCardDetail(cardName) {
+   const card = CARD_POOL.find(item => item.name === cardName);
+   if (!card) return;
+   const modal = document.getElementById('predeparture-card-detail-modal');
+   const content = document.getElementById('predeparture-card-detail-content');
+   if (!modal || !content) return;
+   const count = Math.max(0, Math.floor(Number(savedDeckCustomize?.[card.name] || 0)));
+   playUiSelectSound();
+   content.innerHTML = getPreDepartureCardDetailHtml(card, count);
+   modal.style.display = 'flex';
+  }
+
+  function closePreDepartureCardDetail(event) {
+   if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+   const modal = document.getElementById('predeparture-card-detail-modal');
+   if (modal) modal.style.display = 'none';
+  }
+
+  function getDeckPreviewCardsHtml(snapshot = savedDeckCustomize) {
+   const entries = CARD_POOL
+    .map(card => ({ card, count: Math.max(0, Math.floor(Number(snapshot?.[card.name] || 0))) }))
+    .filter(entry => entry.count > 0);
+
+   if (!entries.length) {
+    return '<div class="predeparture-empty">山札にカードがありません。</div>';
+   }
+
+   return entries.map(({ card, count }) => `
+    <button class="predeparture-deck-card predeparture-rarity-${escapeHtml(getCardRarity(card))} predeparture-type-${escapeHtml(getCardCustomizeCategory(card))}" type="button" onclick="openPreDepartureCardDetail('${String(card.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">
+     <div class="predeparture-deck-card-top">
+      <span class="predeparture-deck-card-icons">${escapeHtml(getCardIcon(card.type))}</span>
+      <strong>${escapeHtml(card.name)}</strong>
+      <em>×${count}</em>
+     </div>
+     <p>${escapeHtml(getPreDepartureCardSummaryText(card))}</p>
+     <div class="predeparture-deck-card-tags">
+      <span>${escapeHtml(getPreDepartureCardTypeLabel(card))}</span>
+      <span>${escapeHtml(getPreDepartureCardRarityLabel(card))}</span>
+     </div>
+    </button>
+   `).join('');
+  }
+
+  function getPreDeparturePetHtml() {
+   const pet = getPetById(selectedPetId || 'none');
+   const level = selectedPetId === 'none' ? '-' : getPetLevelFromExp(petExp);
+   const skillHtml = selectedPetId === 'none'
+    ? '<div class="pet-skill-empty">ペットが未選択です。</div>'
+    : getPetSkillListHtml(pet?.skills || [], '使用できる技はありません。');
+   const imageHtml = pet?.image
+    ? `<img src="${pet.image}" alt="${escapeHtml(pet.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><div class="predeparture-placeholder" style="display:none;">${escapeHtml(pet.placeholder || 'PET')}</div>`
+    : `<div class="predeparture-placeholder">${escapeHtml(pet?.placeholder || 'PET')}</div>`;
+
+   return `
+    <section class="predeparture-panel predeparture-pet-panel">
+     <div class="predeparture-panel-head">
+      <h2>ペット</h2>
+      <button class="ui-button ui-button-secondary" onclick="showPetSelectFromPreDeparture()">ペット変更</button>
+     </div>
+     <div class="predeparture-pet-body">
+      <div class="predeparture-pet-image">${imageHtml}</div>
+      <div>
+       <div class="predeparture-main-name">${escapeHtml(pet?.name || 'なし')}</div>
+       <div class="predeparture-meta-grid">
+        <span>レベル <strong>${escapeHtml(String(level))}</strong></span>
+       </div>
+       <div class="predeparture-pet-skills">
+        <div class="predeparture-subtitle">技一覧</div>
+        ${skillHtml}
+       </div>
+      </div>
+     </div>
+    </section>
+   `;
+  }
+
+  function getPreDepartureDeckHtml() {
+   return `
+    <section class="predeparture-panel predeparture-deck-panel">
+     <div class="predeparture-panel-head">
+      <h2>山札</h2>
+      <button class="ui-button ui-button-secondary" onclick="showCustomizeFromPreDeparture()">山札編集</button>
+     </div>
+     <div class="predeparture-deck-summary">デッキ枚数：<strong>${getDeckTotalFromCustomizeSnapshot()}枚</strong></div>
+     <div class="predeparture-deck-list">${getDeckPreviewCardsHtml()}</div>
+    </section>
+   `;
+  }
+
+  function getPreDepartureRelicHtml() {
+   const equipment = normalizeRelicEquipment(loadRelicEquipment());
+   const slotCards = equipment.slots.map((relicId, index) => {
+    const unlocked = index < equipment.unlockedSlotCount;
+    const relic = unlocked && relicId && hasRelic(relicId) ? getRelicById(relicId) : null;
+    return relic ? `
+     <div class="predeparture-relic-body">
+      <div class="predeparture-relic-icon">${escapeHtml(relic.icon || '◆')}</div>
+      <div>
+       <div class="predeparture-relic-slot-label">${escapeHtml(getRelicSlotLabel(index))}</div>
+       <div class="predeparture-main-name">${escapeHtml(relic.name)}</div>
+       <p>${escapeHtml(relic.effect)}</p>
+      </div>
+     </div>
+    ` : `
+     <div class="predeparture-relic-body empty${unlocked ? '' : ' locked'}">
+      <div class="predeparture-relic-icon">${unlocked ? '◆' : '🔒'}</div>
+      <div>
+       <div class="predeparture-relic-slot-label">${escapeHtml(getRelicSlotLabel(index))}</div>
+       <div class="predeparture-main-name">${unlocked ? '未装備' : '未解放'}</div>
+       <p>${escapeHtml(unlocked ? '取得済み遺物から装備できます。' : getRelicSlotUnlockText(index))}</p>
+      </div>
+     </div>
+    `;
+   }).join('');
+   return `
+    <section class="predeparture-panel predeparture-relic-panel">
+     <div class="predeparture-panel-head">
+      <h2>遺物</h2>
+      <button class="ui-button ui-button-secondary" onclick="showRelicEquipScreen()">遺物変更</button>
+     </div>
+     <div class="predeparture-relic-slots">${slotCards}</div>
+    </section>
+   `;
+  }
+
+  function renderPreDepartureScreen() {
+   const content = document.getElementById('predeparture-content');
+   if (!content) return;
+   content.innerHTML = `
+    <div class="predeparture-grid">
+     ${getPreDeparturePetHtml()}
+     ${getPreDepartureRelicHtml()}
+     ${getPreDepartureDeckHtml()}
+    </div>
+   `;
+  }
+
+  function showPreDepartureScreen() {
+   playUiSelectSound();
+   if (currentScreen === 'customize') {
+    deckCustomize = structuredClone(savedDeckCustomize);
+   }
+   stopEnemyTimer();
+   stopReload();
+   stopCooldown();
+   stopDeckReload();
+   stopPlayerStatusTimer();
+   currentScreen = 'predeparture';
+   renderPreDepartureScreen();
+   render();
+  }
+
   function getHighestReachedLevelForMenu() {
    const statsLevel = Number(loadAchievementStats()?.highestLevel || 0);
    const historyLevel = loadBattleHistory().reduce((max, item) => Math.max(max, Number(item.reachedLevel || 0)), 0);
@@ -13914,10 +15084,27 @@ function updateEnemyTimerText() {
    const kicker = clearScreen.querySelector('.clear-kicker');
    const title = clearScreen.querySelector('h1');
    const description = clearScreen.querySelector('.title-description');
+   const clearCard = clearScreen.querySelector('.clear-card') || clearScreen.querySelector('.title-card');
 
    if (kicker) kicker.textContent = `${depthLabel.toUpperCase()} CLEAR`;
    if (title) title.textContent = `${depthLabel}クリア！`;
    if (description) description.textContent = `${depthLabel}の最深部を踏破しました。`;
+
+   if (clearCard) {
+    let rewardElement = clearCard.querySelector('.clear-relic-reward');
+    if (!rewardElement) {
+     rewardElement = document.createElement('div');
+     rewardElement.className = 'clear-relic-reward';
+     const actions = clearCard.querySelector('.clear-actions');
+     if (actions) {
+      clearCard.insertBefore(rewardElement, actions);
+     } else {
+      clearCard.appendChild(rewardElement);
+     }
+    }
+    rewardElement.innerHTML = getRelicRewardHtml(lastRelicReward);
+    rewardElement.style.display = lastRelicReward ? 'block' : 'none';
+   }
   }
 
 
@@ -13925,6 +15112,10 @@ function render() {
 
    if (currentScreen === 'card-library') {
     renderCardLibraryScreen();
+   }
+
+   if (currentScreen === 'collection') {
+    renderCollectionScreen();
    }
 
    if (currentScreen === 'enemy-library') {
@@ -13940,6 +15131,18 @@ function render() {
    }
    if (currentScreen === 'random-event-library') {
     renderRandomEventLibraryScreen();
+   }
+
+   if (currentScreen === 'relic-library') {
+    renderRelicLibraryScreen();
+   }
+
+   if (currentScreen === 'relic-equip') {
+    renderRelicEquipScreen();
+   }
+
+   if (currentScreen === 'pet-library') {
+    renderPetLibraryScreen();
    }
 
    if (currentScreen === 'battle-history') {
@@ -13972,6 +15175,12 @@ function render() {
     prepareScreen.style.display = currentScreen === 'prepare' ? 'flex' : 'none';
    }
 
+   const predepartureScreen = document.getElementById('predeparture-screen');
+   if (predepartureScreen) {
+    predepartureScreen.style.display = currentScreen === 'predeparture' ? 'flex' : 'none';
+    if (currentScreen === 'predeparture') renderPreDepartureScreen();
+   }
+
    const loadSlotScreen = document.getElementById('load-slot-screen');
    if (loadSlotScreen) {
     loadSlotScreen.style.display = currentScreen === 'load-slot' ? 'flex' : 'none';
@@ -13986,11 +15195,15 @@ function render() {
 
    document.getElementById('title-screen').style.display = currentScreen === 'title' ? 'flex' : 'none';
    renderMenuStatusSummary();
+   document.getElementById('collection-screen').style.display = currentScreen === 'collection' ? 'flex' : 'none';
    document.getElementById('card-library-screen').style.display = currentScreen === 'card-library' ? 'flex' : 'none';
    document.getElementById('enemy-library-screen').style.display = currentScreen === 'enemy-library' ? 'flex' : 'none';
    document.getElementById('passive-library-screen').style.display = currentScreen === 'passive-library' ? 'flex' : 'none';
    document.getElementById('achievement-library-screen').style.display = currentScreen === 'achievement-library' ? 'flex' : 'none';
    document.getElementById('random-event-library-screen').style.display = currentScreen === 'random-event-library' ? 'flex' : 'none';
+   document.getElementById('relic-library-screen').style.display = currentScreen === 'relic-library' ? 'flex' : 'none';
+   document.getElementById('relic-equip-screen').style.display = currentScreen === 'relic-equip' ? 'flex' : 'none';
+   document.getElementById('pet-library-screen').style.display = currentScreen === 'pet-library' ? 'flex' : 'none';
    document.getElementById('battle-history-screen').style.display = currentScreen === 'battle-history' ? 'flex' : 'none';
    const rankingScreen = document.getElementById('ranking-screen');
    if (rankingScreen) rankingScreen.style.display = currentScreen === 'ranking' ? 'flex' : 'none';
@@ -14470,18 +15683,36 @@ const cards = document.getElementById('cards');
      victoryResult.innerHTML = '';
     }
     winner.innerHTML = '';
-    if (victoryActions) {
+   if (victoryActions) {
      victoryActions.classList.remove('defeat-result-modal');
      victoryActions.style.display = 'none';
     }
    }
+   showPendingRelicRewardModalIfNeeded();
   }
 
+  window.showCollectionScreen = showCollectionScreen;
+window.showPetLibraryScreen = showPetLibraryScreen;
   window.showCardLibraryScreen = showCardLibraryScreen;
 window.showPassiveLibraryScreen = showPassiveLibraryScreen;
 window.showAchievementLibraryScreen = showAchievementLibraryScreen;
 window.showRandomEventLibraryScreen = showRandomEventLibraryScreen;
+window.showRelicLibraryScreen = showRelicLibraryScreen;
+window.showRelicEquipScreen = showRelicEquipScreen;
+window.showPreDepartureScreen = showPreDepartureScreen;
+window.openPreDepartureCardDetail = openPreDepartureCardDetail;
+window.closePreDepartureCardDetail = closePreDepartureCardDetail;
+window.showDepthSelectForDive = showDepthSelectForDive;
+window.backFromDepthSelect = backFromDepthSelect;
+window.showCustomizeFromPreDeparture = showCustomizeFromPreDeparture;
+window.showPetSelectFromPreDeparture = showPetSelectFromPreDeparture;
+window.returnFromSetupScreen = returnFromSetupScreen;
+window.equipRelic = equipRelic;
+window.unequipRelic = unequipRelic;
 window.showEnemyLibraryScreen = showEnemyLibraryScreen;
+window.showBattleHistoryScreen = showBattleHistoryScreen;
+window.openPetLibraryDetail = openPetLibraryDetail;
+window.closePetLibraryDetailModal = closePetLibraryDetailModal;
 window.changeCardLibraryTab = changeCardLibraryTab;
 window.closeCardLibraryDetailModal = closeCardLibraryDetailModal;
 window.startNewGameData = startNewGameData;
@@ -14520,11 +15751,21 @@ window.renderPetSelectScreen = renderPetSelectScreen;
 window.togglePetEvolutionInfo = togglePetEvolutionInfo;
 window.openPetDetailModal = openPetDetailModal;
 window.closePetDetailModal = closePetDetailModal;
+window.openPetLibraryDetail = openPetLibraryDetail;
+window.closePetLibraryDetailModal = closePetLibraryDetailModal;
 window.closeCardLibraryDetailModal = closeCardLibraryDetailModal;
 window.openPassiveLibraryDetailModal = openPassiveLibraryDetailModal;
 window.closePassiveLibraryDetailModal = closePassiveLibraryDetailModal;
 window.openRandomEventLibraryDetailModal = openRandomEventLibraryDetailModal;
 window.closeRandomEventLibraryDetailModal = closeRandomEventLibraryDetailModal;
+window.closeRelicLibraryDetailModal = closeRelicLibraryDetailModal;
+window.openRelicLibraryDetailModal = openRelicLibraryDetailModal;
+window.openRelicEquipDetailModal = openRelicEquipDetailModal;
+window.closeRelicEquipDetailModal = closeRelicEquipDetailModal;
+window.closeRelicRewardModal = closeRelicRewardModal;
+window.openPreDepartureCardDetail = openPreDepartureCardDetail;
+window.closePreDepartureCardDetail = closePreDepartureCardDetail;
+window.showBattleHistoryScreen = showBattleHistoryScreen;
 window.backToTitle = backToTitle;
 window.startNewGameData = startNewGameData;
 window.showLoadSlotScreen = showLoadSlotScreen;
@@ -14555,10 +15796,15 @@ function closeBattleGuide() {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closePetDetailModal();
+    closePetLibraryDetailModal();
     closeCardLibraryDetailModal();
     closeEnemyLibraryDetailModal();
     closePassiveLibraryDetailModal();
     closeRandomEventLibraryDetailModal();
+    closeRelicLibraryDetailModal();
+    closeRelicEquipDetailModal();
+    closeRelicRewardModal();
+    closePreDepartureCardDetail();
     closeHelpDetailModal();
     closeBattleGuide();
   }

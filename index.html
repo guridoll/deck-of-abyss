@@ -72,7 +72,7 @@
       </div>
 
       <div class="controls player-name-actions">
-        <button class="ui-button ui-button-primary title-battle-button" onclick="confirmNewPlayerName()">この名前で潜行準備へ</button>
+        <button class="ui-button ui-button-primary title-battle-button" onclick="confirmNewPlayerName()">この名前で始める</button>
         <button class="ui-button ui-button-secondary" onclick="backToStartScreen()">戻る</button>
       </div>
     </div>
@@ -82,7 +82,7 @@
     <div class="title-card player-name-card">
       <div class="title-logo" aria-label="Deck of Abyss">
         <div class="title-kicker">DEPTH SELECT</div>
-        <h1>Deck of Abyss</h1>
+        <h1>深度選択</h1>
         <p class="title-subtitle">挑戦する深度を選択してください</p>
       </div>
 
@@ -92,8 +92,8 @@
       </div>
 
       <div class="controls player-name-actions">
-        <button class="ui-button ui-button-primary title-battle-button" onclick="confirmDepthSelection()">この深度にする</button>
-        <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">戻る</button>
+        <button id="depth-confirm-button" class="ui-button ui-button-primary title-battle-button" onclick="confirmDepthSelection()">この深度にする</button>
+        <button id="depth-back-button" class="ui-button ui-button-secondary" onclick="backFromDepthSelect()">戻る</button>
       </div>
     </div>
   </div>
@@ -112,20 +112,11 @@
         <button class="ui-button ui-button-primary title-battle-button menu-primary-button" onclick="startBattle()">深淵へ潜る</button>
       </div>
 
-      <div class="menu-section menu-section-play">
-        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showPrepareScreen()">準備</button>
-      </div>
-
-      <div class="menu-section-label">コレクション</div>
-      <div class="menu-section menu-section-library">
-        <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showCardLibraryScreen()">カード図鑑</button>
-        <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showEnemyLibraryScreen()">敵図鑑</button>
-        <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showPassiveLibraryScreen()">パッシブ一覧</button>
-                <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showRandomEventLibraryScreen()">イベント図鑑</button>
-<button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showAchievementLibraryScreen()">実績一覧</button>
-        <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showBattleHistoryScreen()">戦闘履歴</button>
-        <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showRankingScreen()">ランキング</button>
-        <button class="ui-button ui-button-secondary title-sub-button menu-small-button" onclick="showHelpScreen()">遊び方</button>
+      <div class="menu-section menu-section-primary-links">
+        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showCollectionScreen()">コレクション</button>
+        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showRankingScreen()">ランキング</button>
+        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showBattleHistoryScreen()">戦闘履歴</button>
+        <button class="ui-button ui-button-secondary title-sub-button menu-large-button" onclick="showHelpScreen()">遊び方</button>
       </div>
 
       <div class="menu-section menu-section-system">
@@ -155,6 +146,46 @@
 
       <div class="controls player-name-actions">
         <button class="ui-button ui-button-secondary" onclick="backToTitle()">戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="predeparture-screen" class="container title-screen predeparture-screen" style="display:none;">
+    <div class="title-card menu-card predeparture-card">
+      <div class="title-logo predeparture-title" aria-label="準備">
+        <div class="title-kicker">PREPARATION</div>
+        <h1>準備</h1>
+      </div>
+
+      <div id="predeparture-content" class="predeparture-content"></div>
+
+      <div id="predeparture-card-detail-modal" class="predeparture-card-detail-modal" style="display:none;" onclick="closePreDepartureCardDetail(event)">
+        <div class="predeparture-card-detail-dialog" onclick="event.stopPropagation()">
+          <button class="ui-button ui-button-secondary predeparture-card-detail-close" type="button" onclick="closePreDepartureCardDetail()">閉じる</button>
+          <div id="predeparture-card-detail-content"></div>
+        </div>
+      </div>
+
+      <div class="controls predeparture-actions">
+        <button class="ui-button ui-button-primary title-battle-button" onclick="showDepthSelectForDive()">深度選択へ</button>
+        <button class="ui-button ui-button-secondary" onclick="backToTitle()">戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="relic-equip-screen" class="screen library-screen relic-equip-screen" style="display:none;">
+    <div class="library-header">
+      <h2>遺物変更</h2>
+      <div class="library-header-actions">
+        <button class="ui-button ui-button-secondary" onclick="showPreDepartureScreen()">準備へ戻る</button>
+      </div>
+    </div>
+    <p class="library-description">深度クリアで装備枠が最大4枠まで解放されます。装備中の遺物のみ効果が発動します。</p>
+    <div id="relic-equip-list" class="relic-equip-list"></div>
+    <div id="relic-equip-detail-modal" class="relic-equip-detail-modal" style="display:none;" onclick="closeRelicEquipDetailModal(event)">
+      <div class="relic-equip-detail-dialog" onclick="event.stopPropagation()">
+        <button class="ui-button ui-button-secondary relic-equip-detail-close" type="button" onclick="closeRelicEquipDetailModal()">閉じる</button>
+        <div id="relic-equip-detail-content"></div>
       </div>
     </div>
   </div>
@@ -210,13 +241,20 @@
     </div>
   </div>
 
+  <div id="relic-reward-modal" class="relic-reward-modal" style="display:none;" onclick="closeRelicRewardModal(event)">
+    <div class="relic-reward-dialog" onclick="event.stopPropagation()">
+      <div id="relic-reward-modal-content"></div>
+      <button class="ui-button ui-button-primary relic-reward-ok" type="button" onclick="closeRelicRewardModal()">OK</button>
+    </div>
+  </div>
+
   <div id="pet-select-screen" class="container pet-select-screen" style="display:none;">
     <div class="pet-select-header">
       <div>
         <h1>ペット選択</h1>
         <p>一緒に戦うペットを選択してください。ペットはカードを5枚使うたびに自動で行動します。</p>
       </div>
-      <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">準備画面に戻る</button>
+      <button class="ui-button ui-button-secondary" onclick="returnFromSetupScreen()">戻る</button>
     </div>
 
     <div id="pet-select-list" class="pet-select-list"></div>
@@ -235,7 +273,7 @@
         <h1>山札カスタマイズ</h1>
         <p>1種類につき最大2枚まで、初期山札は20枚ちょうどで保存できます。</p>
       </div>
-      <button class="ui-button ui-button-secondary" onclick="showPrepareScreen()">準備画面に戻る</button>
+      <button class="ui-button ui-button-secondary" onclick="returnFromSetupScreen()">戻る</button>
     </div>
 
     <div class="customize-sticky-bar">
@@ -775,12 +813,40 @@
     </div>
   </div>
 
+  <div id="collection-screen" class="screen library-screen collection-screen" style="display:none;">
+    <div class="library-header">
+      <h2>コレクション</h2>
+      <div class="library-header-actions">
+        <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
+      </div>
+    </div>
+    <p class="library-description">発見したカード、敵、遺物などを確認できます。</p>
+    <div id="collection-list" class="collection-list"></div>
+  </div>
+
+  <div id="pet-library-screen" class="screen library-screen pet-library-screen" style="display:none;">
+    <div class="library-header">
+      <h2>ペット図鑑</h2>
+      <div class="library-header-actions">
+        <button class="ui-button ui-button-secondary" onclick="showCollectionScreen()">コレクションに戻る</button>
+      </div>
+    </div>
+    <p class="library-description">解放済みのペットと、確認済みの進化情報を閲覧できます。</p>
+    <div id="pet-library-list" class="pet-library-list"></div>
+    <div id="pet-library-detail-modal" class="pet-library-detail-modal" style="display:none;" onclick="closePetLibraryDetailModal(event)">
+      <div class="pet-library-detail-dialog" onclick="event.stopPropagation()">
+        <button class="ui-button ui-button-secondary pet-library-detail-close" type="button" onclick="closePetLibraryDetailModal()">閉じる</button>
+        <div id="pet-library-detail-content"></div>
+      </div>
+    </div>
+  </div>
+
 
   <div id="card-library-screen" class="screen library-screen" style="display:none;">
     <div class="library-header">
       <h2>カード図鑑</h2>
       <div class="library-header-actions">
-        <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
+        <button class="ui-button ui-button-secondary" onclick="showCollectionScreen()">コレクションに戻る</button>
       </div>
     </div>
     <div id="card-library-list" class="library-list"></div>
@@ -797,7 +863,7 @@
     <div class="library-header">
       <h2>敵図鑑</h2>
       <div class="library-header-actions">
-        <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
+        <button class="ui-button ui-button-secondary" onclick="showCollectionScreen()">コレクションに戻る</button>
       </div>
     </div>
     <p class="library-description">遭遇した敵の情報が記録されます。</p>
@@ -814,7 +880,7 @@
     <div class="library-header">
       <h2>パッシブ一覧</h2>
       <div class="library-header-actions">
-        <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
+        <button class="ui-button ui-button-secondary" onclick="showCollectionScreen()">コレクションに戻る</button>
       </div>
     </div>
     <div id="passive-library-list" class="passive-library-list"></div>
@@ -830,7 +896,7 @@
     <div class="library-header">
       <h2>実績一覧</h2>
       <div class="library-header-actions">
-        <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
+        <button class="ui-button ui-button-secondary" onclick="showCollectionScreen()">コレクションに戻る</button>
       </div>
     </div>
     <p class="library-description">プレイ中に達成した実績が記録されます。</p>
@@ -841,7 +907,7 @@
     <div class="library-header">
       <h2>ランダムイベント図鑑</h2>
       <div class="library-header-actions">
-        <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
+        <button class="ui-button ui-button-secondary" onclick="showCollectionScreen()">コレクションに戻る</button>
       </div>
     </div>
     <p class="library-description">遭遇したランダムイベントが記録されます。</p>
@@ -850,6 +916,23 @@
       <div class="random-event-library-detail-dialog" onclick="event.stopPropagation()">
         <button class="ui-button ui-button-secondary random-event-library-detail-close" type="button" onclick="closeRandomEventLibraryDetailModal()">閉じる</button>
         <div id="random-event-library-detail-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="relic-library-screen" class="screen library-screen" style="display:none;">
+    <div class="library-header">
+      <h2>遺物図鑑</h2>
+      <div class="library-header-actions">
+        <button class="ui-button ui-button-secondary" onclick="showCollectionScreen()">コレクションに戻る</button>
+      </div>
+    </div>
+    <p class="library-description">探索で発見した遺物を確認できます。未発見の遺物は詳細が伏せられます。</p>
+    <div id="relic-library-list" class="relic-library-list"></div>
+    <div id="relic-library-detail-modal" class="relic-library-detail-modal" style="display:none;" onclick="closeRelicLibraryDetailModal(event)">
+      <div class="relic-library-detail-dialog" onclick="event.stopPropagation()">
+        <button class="ui-button ui-button-secondary relic-library-detail-close" type="button" onclick="closeRelicLibraryDetailModal()">閉じる</button>
+        <div id="relic-library-detail-content"></div>
       </div>
     </div>
   </div>
@@ -959,6 +1042,12 @@
           <p>手札が0枚になる、または手動リロードすると3秒後に5枚ドローします。リロード中はカードを使えません。</p>
         </section>
 
+        <section class="battle-guide-card guide-action-queue">
+          <div class="battle-guide-card-title"><span class="battle-guide-icon">①</span><h3>行動予約</h3></div>
+          <p>硬直中に、次に使うカードやリロードを最大5個まで予約できます。予約順はカードやリロード左上の①〜⑤で確認できます。</p>
+          <p>硬直終了時に予約した行動が順番に自動実行されます。防御→攻撃、攻撃連打、リロード予約など、次の行動を先読みして操作できます。</p>
+        </section>
+
         <section class="battle-guide-card guide-library">
           <div class="battle-guide-card-title"><span class="battle-guide-icon">📖</span><h3>図鑑・一覧</h3></div>
           <p>敵図鑑・カード図鑑・パッシブ一覧を見ると、効果や組み合わせを確認できます。デッキの方向性を考える時に便利です。</p>
@@ -967,6 +1056,13 @@
         <section class="battle-guide-card guide-pet">
           <div class="battle-guide-card-title"><span class="battle-guide-icon">🐾</span><h3>ペット</h3></div>
           <p>選択中のペットは、戦闘中にカードを5枚使うたび自動で行動します。ペットごとに得意なサポートが違います。</p>
+        </section>
+
+        <section class="battle-guide-card guide-relics">
+          <div class="battle-guide-card-title"><span class="battle-guide-icon">◇</span><h3>遺物</h3></div>
+          <p>探索中に発見できる特殊な装備です。準備画面で装備した遺物だけが、探索中ずっと効果を発揮します。</p>
+          <p>各戦闘勝利後に低確率で発見でき、深度クリア時にはより強力な遺物を獲得できます。発見した遺物は遺物図鑑に登録されます。</p>
+          <p>装備枠は初期1枠です。深度1、2、3をクリアするごとに1枠ずつ増え、最大4枠まで装備できます。</p>
         </section>
 
         <section class="battle-guide-card guide-card-view">
