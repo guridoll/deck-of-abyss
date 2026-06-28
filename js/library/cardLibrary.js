@@ -14,6 +14,8 @@
    getCardIcon,
    getBaseCardDisplayText,
    getCardCooldownText,
+   getCardEvolutionTargetName,
+   getCardByName,
    escapeHtml,
   } = deps || {};
   const CARD_POOL = Array.isArray(cardPool) ? cardPool : [];
@@ -123,6 +125,57 @@
    return map[getCardLibraryCategory(card)] || '補助';
   }
 
+  function getCardLibraryEvolutionHtml(card, discoveredCards) {
+   if (typeof getCardEvolutionTargetName !== 'function' || typeof getCardByName !== 'function') return '';
+   const targetName = getCardEvolutionTargetName(card?.name);
+   if (!targetName) return '';
+
+   const targetCard = getCardByName(targetName);
+   if (!targetCard) return '';
+
+   if (!discoveredCards || !discoveredCards[targetCard.name]) {
+    return `
+     <section class="card-library-evolution-section card-library-evolution-unknown">
+      <div class="card-library-evolution-heading">進化先</div>
+      <div class="card-library-evolution-unknown-text">進化先：？？？</div>
+     </section>
+    `;
+   }
+
+   const renderEvolutionCard = (entry, label) => {
+    const rarityMeta = getCardLibraryRarityMeta(getCardLibraryRarity(entry));
+    const value = entry.value === undefined || entry.value === null || entry.value === '' ? '-' : String(entry.value);
+    return `
+     <article class="card-library-evolution-card ${getCardVisualClass(entry)} ${entry.type || ''}${getCardRarityClass(entry)}">
+      <div class="card-library-evolution-label">${escapeHtml(label)}</div>
+      <div class="card-library-evolution-title">
+       <span>${getCardIcon(entry.type)}</span>
+       <strong>${escapeHtml(entry.name)}</strong>
+      </div>
+      <div class="card-library-evolution-meta">
+       <span>${escapeHtml(rarityMeta.title)}</span>
+       <span>${escapeHtml(getCardLibraryCategoryLabel(entry))}</span>
+       <span>${escapeHtml(getCardCooldownText(entry))}</span>
+      </div>
+      <div class="card-library-evolution-value">${escapeHtml(value)}</div>
+      <div class="card-library-evolution-effect">${escapeHtml(getBaseCardDisplayText(entry))}</div>
+     </article>
+    `;
+   };
+
+   return `
+    <section class="card-library-evolution-section">
+     <div class="card-library-evolution-heading">進化先</div>
+     <div class="card-library-evolution-route">${escapeHtml(card.name)} → ${escapeHtml(targetCard.name)}</div>
+     <div class="card-library-evolution-compare">
+      ${renderEvolutionCard(card, '進化前')}
+      <div class="card-library-evolution-arrow">→</div>
+      ${renderEvolutionCard(targetCard, '進化後')}
+     </div>
+    </section>
+   `;
+  }
+
   function openCardLibraryDetailModal(cardName) {
    const discoveredCards = loadDiscoveredCards();
    const card = CARD_POOL.find(item => item.name === cardName);
@@ -159,6 +212,7 @@
      </div>
      <div class="library-card-note">${isRareCard(card) ? 'ショップ・報酬などで入手' : '山札カスタマイズ可'}</div>
     </div>
+    ${getCardLibraryEvolutionHtml(card, discoveredCards)}
    `;
 
    modal.style.display = 'flex';

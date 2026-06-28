@@ -90,19 +90,19 @@ const RARE_CARD_COOLDOWN = 5;
    { id: 'venom_fang', name: '毒蛇の牙', source: '1層クリア', table: 'depth1Clear', icon: '☠', effect: '戦闘開始時、最初に付与する毒+1', description: '乾いた毒牙。最初の一刺しだけ、毒が深く入る。', effects: { firstPoisonBonus: 1 } },
    { id: 'broken_powder_barrel', name: '壊れた火薬樽', source: '1層クリア', table: 'depth1Clear', icon: '💣', effect: '戦闘開始時、最初に付与する爆弾のターン数-1', description: 'ひび割れた火薬樽。導火線が妙に短い。', effects: { firstBombFuseReduce: 1 } },
    { id: 'trainer_bell', name: '調教師の鈴', source: '1層クリア', table: 'depth1Clear', icon: '🔔', effect: '戦闘開始時ペットEXP+1', description: '小さな鈴の音が、ペットの集中を促す。', effects: { battleStartPetExp: 1 } },
-   { id: 'old_map', name: '古びた地図', source: '1層クリア', table: 'depth1Clear', icon: '🗺', effect: 'イベント発生率+5%', description: '消えかけた印が、寄り道の気配を示す。', effects: { eventChanceBonus: 0.05 } },
+   { id: 'old_map', name: '古びた地図', source: '1層クリア', table: 'depth1Clear', icon: '🗺', effect: 'イベント発生時、カード獲得イベントが出現しやすくなる', description: '消えかけた印が、カードへ通じる寄り道を示す。', effects: { eventCardRewardWeightBonus: 1 } },
    { id: 'investigator_note', name: '調査員のメモ', source: '1層クリア', table: 'depth1Clear', icon: '📝', effect: '戦闘開始時カードを1枚ドロー', description: '走り書きの戦術メモ。初手の選択肢が増える。', effects: { battleStartDraw: 1 } },
    { id: 'cracked_fang', name: '割れた牙', source: '1層敗北', table: 'depth1Defeat', icon: '☠', effect: '毒カード出現率+3%', description: '欠けてもなお毒気を残す牙。', effects: { poisonCardRate: 0.03 } },
    { id: 'old_powder', name: '古い火薬', source: '1層敗北', table: 'depth1Defeat', icon: '💣', effect: '爆弾カード出現率+3%', description: '湿気った火薬。まだ火はつく。', effects: { bombCardRate: 0.03 } },
    { id: 'broken_collar', name: '壊れた首輪', source: '1層敗北', table: 'depth1Defeat', icon: '🐾', effect: 'ペットカード出現率+3%', description: '傷だらけの首輪。絆の痕跡が残っている。', effects: { petCardRate: 0.03 } },
-   { id: 'torn_map', name: '破れた地図', source: '1層敗北', table: 'depth1Defeat', icon: '🗺', effect: 'イベント発生率+2%', description: '破れても、深淵の道筋を少しだけ示す。', effects: { eventChanceBonus: 0.02 } },
+   { id: 'torn_map', name: '破れた地図', source: '1層敗北', table: 'depth1Defeat', icon: '🗺', effect: 'イベント発生時、カード削除イベントが出現しやすくなる', description: '破れた道筋が、不要な札を手放す機会へ導く。', effects: { eventCardRemoveWeightBonus: 1 } },
    { id: 'worn_record_book', name: '使い古された記録帳', source: '1層敗北', table: 'depth1Defeat', icon: '📘', effect: '戦闘開始時10%の確率でブロック+3', description: '敗北の記録から、守る術を思い出す。', effects: { startBlockChance: 0.10, startBlock: 3 } },
    { id: 'abyss_poison_codex', name: '深淵の毒典', source: '2層クリア', table: 'depth2Clear', icon: '☠', effect: '毒カード出現率+10%', description: '毒の扱いを深く記した禁書。', effects: { poisonCardRate: 0.10 } },
    { id: 'demolition_notebook', name: '爆破技師の手帳', source: '2層クリア', table: 'depth2Clear', icon: '💣', effect: '爆弾カード出現率+10%', description: '爆薬の配合と起爆手順が書かれている。', effects: { bombCardRate: 0.10 } },
    { id: 'expert_trainer_notes', name: '熟練調教師の手帳', source: '2層クリア', table: 'depth2Clear', icon: '🐾', effect: 'ペットカード出現率+10%', description: 'ペットとの連携を高める手引き。', effects: { petCardRate: 0.10 } },
    { id: 'abyss_key', name: '深淵の鍵', source: '2層クリア', table: 'depth2Clear', icon: '🔑', effect: 'レアカード出現率+5%', description: '希少な札へ通じる扉を開く鍵。', effects: { rareCardRate: 0.05 } },
    { id: 'abyss_observation_log', name: '深淵観測記録', source: '2層クリア', table: 'depth2Clear', icon: '👁', effect: 'パッシブ選択肢+1', description: '深淵の傾向を読み、選択肢を増やす。', effects: { passiveChoiceBonus: 1 } },
-   { id: 'dirty_research_log', name: '汚れた研究記録', source: '2層敗北', table: 'depth2Defeat', icon: '📝', effect: 'イベント発生率+3%', description: '汚れた紙片に、奇妙な遭遇の記録が残る。', effects: { eventChanceBonus: 0.03 } },
+   { id: 'dirty_research_log', name: '汚れた研究記録', source: '2層敗北', table: 'depth2Defeat', icon: '📝', effect: 'イベント発生時、パッシブ選択イベントが出現しやすくなる', description: '汚れた紙片に、才能へ触れる儀式の記録が残る。', effects: { eventPassiveRewardWeightBonus: 1.5 } },
    { id: 'torn_poison_book', name: '破れた毒学書', source: '2層敗北', table: 'depth2Defeat', icon: '☠', effect: '毒カード出現率+5%', description: '破れた頁にも毒の理は宿る。', effects: { poisonCardRate: 0.05 } },
    { id: 'damaged_powder_bag', name: '破損した火薬袋', source: '2層敗北', table: 'depth2Defeat', icon: '💣', effect: '爆弾カード出現率+5%', description: 'こぼれ落ちる火薬が爆破の道を示す。', effects: { bombCardRate: 0.05 } },
    { id: 'damaged_collar', name: '破損した首輪', source: '2層敗北', table: 'depth2Defeat', icon: '🐾', effect: 'ペットカード出現率+5%', description: '欠けた金具に、共に戦う記憶が残る。', effects: { petCardRate: 0.05 } },
@@ -112,7 +112,7 @@ const RARE_CARD_COOLDOWN = 5;
    { id: 'beast_king_collar', name: '獣王の首輪', source: '3層クリア', table: 'depth3Clear', icon: '🐾', effect: 'ペットカード出現率+15% / ペットパッシブ出現率+5%', description: '獣王に認められた証。', effects: { petCardRate: 0.15, petPassiveRate: 0.05 } },
    { id: 'abyss_eye', name: '深淵の眼', source: '3層クリア', table: 'depth3Clear', icon: '👁', effect: 'レアカード出現率+5% / レアパッシブ出現率+5%', description: '希少な力の流れを見抜く眼。', effects: { rareCardRate: 0.05, rarePassiveRate: 0.05 } },
    { id: 'abyss_compass', name: '深淵の羅針盤', source: '3層クリア', table: 'depth3Clear', icon: '🧭', effect: '戦闘開始時ランダムなノーマルカードを1枚獲得', description: '深淵で進むべき手札を指し示す。', effects: { battleStartRandomNormalCard: 1 } },
-   { id: 'abyss_fragment', name: '深淵の欠片', source: '3層敗北', table: 'depth3Defeat', icon: '◆', effect: 'イベント発生率+5%', description: '深淵から剥がれ落ちた小さな欠片。', effects: { eventChanceBonus: 0.05 } },
+   { id: 'abyss_fragment', name: '深淵の欠片', source: '3層敗北', table: 'depth3Defeat', icon: '◆', effect: 'イベント発生時、レア報酬系や高価値イベントが出現しやすくなる', description: '深淵から剥がれ落ちた欠片が、希少な報酬の気配を強める。', effects: { eventHighValueWeightBonus: 1.5 } },
    { id: 'broken_crown', name: '壊れた王冠', source: '3層敗北', table: 'depth3Defeat', icon: '♛', effect: 'レアカード出現率+3%', description: '折れた王冠にも、希少な力の名残がある。', effects: { rareCardRate: 0.03 } },
    { id: 'forgotten_collar', name: '忘れられた首輪', source: '3層敗北', table: 'depth3Defeat', icon: '🐾', effect: 'ペットカード出現率+7%', description: '誰かを待ち続けていた首輪。', effects: { petCardRate: 0.07 } },
    { id: 'shattered_poison_crystal', name: '砕けた毒晶', source: '3層敗北', table: 'depth3Defeat', icon: '☠', effect: '毒カード出現率+7%', description: '砕けた断面から毒気が漏れる。', effects: { poisonCardRate: 0.07 } },
@@ -218,15 +218,27 @@ const PET_POOL = [
 
   const CARD_POOL = [
    {
-    name: 'ショックブレイク',
+   name: 'ショックブレイク',
+   type: 'paralyze-bonus-attack',
+   value: 2,
+   bonus: 5,
+   text: '2ダメージ / 敵が麻痺なら追加5ダメージ',
+   },
+   {
+    name: '雷断',
     type: 'paralyze-bonus-attack',
-    value: 2,
-    text: '2ダメージ / 敵が麻痺なら追加5ダメージ',
+    value: 4,
+    bonus: 10,
+    text: '4ダメージ / 敵が麻痺なら追加10ダメージ',
+    rare: true,
    },
 
 { name: '弱攻撃', type: 'attack', value: 3, text: '3ダメージ' },
+   { name: '速撃', type: 'attack', value: 4, text: '4ダメージ' },
    { name: '攻撃', type: 'attack', value: 5, text: '5ダメージ' },
+   { name: '達人の一撃', type: 'attack', value: 7, bonus: 3, enemyHpThreshold: 0.5, text: '7ダメージ / 敵HP50%以下なら+3ダメージ', rare: true },
    { name: '強攻撃', type: 'attack', value: 8, text: '8ダメージ' },
+   { name: '渾身の一撃', type: 'attack', value: 12, text: '12ダメージ', rare: true },
    {
     name: '成長の一撃',
     type: 'scaling-attack',
@@ -244,11 +256,20 @@ const PET_POOL = [
     shopOnly: true,
    },
    {
-    name: '血裂斬',
+   name: '血裂斬',
+   type: 'blood-slash',
+   value: 10,
+   selfDamage: 2,
+   text: 'HPを2失う / 10ダメージ',
+   rare: true,
+   shopOnly: true,
+   },
+   {
+    name: '血河斬',
     type: 'blood-slash',
-    value: 10,
-    selfDamage: 2,
-    text: 'HPを2失う / 10ダメージ',
+    value: 18,
+    selfDamage: 3,
+    text: 'HPを3失う / 18ダメージ',
     rare: true,
     shopOnly: true,
    },
@@ -271,21 +292,41 @@ const PET_POOL = [
     shopOnly: true,
    },
    {
-    name: '血の奮起',
+   name: '血の奮起',
+   type: 'blood-attack-buff',
+   value: 5,
+   selfDamage: 10,
+   turns: 3,
+   text: 'HPを10失う / 3T 攻撃+5',
+   rare: true,
+   shopOnly: true,
+   },
+   {
+    name: '血の狂乱',
     type: 'blood-attack-buff',
-    value: 5,
-    selfDamage: 10,
+    value: 8,
+    selfDamage: 12,
     turns: 3,
-    text: 'HPを10失う / 3T 攻撃+5',
+    text: 'HPを12失う / 3T 攻撃+8',
     rare: true,
+    epic: true,
     shopOnly: true,
    },
    {
-    name: '瀕死の力',
+   name: '瀕死の力',
+   type: 'desperate-power',
+   value: 20,
+   text: 'HP50%以下でのみ使用可能 / 20ダメージ',
+   rare: true,
+   shopOnly: true,
+   },
+   {
+    name: '死線突破',
     type: 'desperate-power',
-    value: 20,
-    text: 'HP50%以下でのみ使用可能 / 20ダメージ',
+    value: 30,
+    text: 'HP50%以下でのみ使用可能 / 30ダメージ',
     rare: true,
+    epic: true,
     shopOnly: true,
    },
    {
@@ -296,18 +337,34 @@ const PET_POOL = [
    },
 
    {
-    name: '威嚇',
-    type: 'attack-down',
-    value: 2,
-    turns: 3,
-    text: '3T 敵攻撃力-2',
+   name: '威嚇',
+   type: 'attack-down',
+   value: 2,
+   turns: 3,
+   text: '3T 敵攻撃力-2',
    },
    {
-    name: '装甲破壊',
+    name: '雷縛',
+    type: 'attack-down',
+    value: 3,
+    turns: 4,
+    text: '4T 敵攻撃力-3',
+    rare: true,
+   },
+   {
+   name: '装甲破壊',
+   type: 'defense-down',
+   value: 2,
+   turns: 3,
+   text: '3T 敵防御力-2',
+   },
+   {
+    name: '装甲粉砕',
     type: 'defense-down',
-    value: 2,
-    turns: 3,
-    text: '3T 敵防御力-2',
+    value: 4,
+    turns: 4,
+    text: '4T 敵防御力-4',
+    rare: true,
    },
    {
     name: 'アーマーブレイク',
@@ -325,6 +382,7 @@ const PET_POOL = [
    },
 
    { name: '軽防御', type: 'defense', value: 3, text: '防御+3' },
+   { name: '守りの構え', type: 'defense', value: 5, nextTurnBlock: 1, text: '防御+5 / 次ターン防御+1', rare: true },
    { name: '防御', type: 'defense', value: 5, text: '防御+5' },
    { name: '鉄壁', type: 'defense', value: 8, text: '防御+8' },
    { name: 'ヒール', type: 'heal', value: 5, text: 'HP+5' },
@@ -344,10 +402,19 @@ const PET_POOL = [
     text: '0〜10ダメージ',
    },
    {
-    name: '連続切り',
+   name: '連続切り',
+   type: 'double-slash',
+   value: 2,
+   hits: 2,
+   text: '2 × 2ダメージ',
+   },
+   {
+    name: '乱れ斬り',
     type: 'double-slash',
     value: 2,
-    text: '2 × 2ダメージ',
+    hits: 4,
+    text: '2 × 4ダメージ',
+    rare: true,
    },
    {
     name: 'びりびり',
@@ -375,21 +442,31 @@ const PET_POOL = [
    { name: 'どくばり', type: 'poison', value: 1, turns: 5, text: '1ダメージ / 毒5T付与' },
    { name: 'ポイズンスラッシュ', type: 'poison', value: 3, turns: 3, text: '3ダメージ / 毒3T付与', shopOnly: true },
    { name: '毒刃', type: 'poison', value: 5, turns: 3, text: '5ダメージ / 毒3付与' },
+   { name: '毒蛇斬り', type: 'poison', value: 6, turns: 5, text: '6ダメージ / 毒5付与', rare: true },
+   { name: '猛毒刃', type: 'poison', value: 7, turns: 5, text: '7ダメージ / 毒5付与', rare: true },
    { name: '毒霧', type: 'poison-cloud', value: 0, turns: 5, text: '毒5付与' },
+   { name: '猛毒霧', type: 'poison-cloud', value: 0, turns: 8, text: '毒8付与', rare: true },
    { name: '蛇牙', type: 'poison-fang', value: 3, text: '3ダメージ / 敵の毒の25%分の追加ダメージ' },
+   { name: '毒龍牙', type: 'poison-fang', value: 4, poisonScale: 0.5, text: '4ダメージ / 敵の毒の50%分の追加ダメージ', rare: true },
    { name: '猛毒注入', type: 'poison-inject', value: 0, turns: 10, text: '毒10付与', rare: true },
    { name: '毒爆発', type: 'poison-burst', value: 0.75, text: '敵の毒を半分消費 / 消費毒の75%分のダメージ', rare: true },
+   { name: '腐蝕爆発', type: 'poison-burst', value: 1, consumeRatio: 1, text: '敵の毒を全消費 / 消費毒と同じダメージ', rare: true, epic: true },
    { name: '侵食', type: 'poison-vulnerability', value: 0, turns: 3, text: '毒状態の敵が受けるダメージ+50% / 3T', rare: true },
    { name: '毒吸収', type: 'poison-drain', value: 0, text: '敵の毒を全消費 / 消費毒の半分だけ回復', rare: true },
+   { name: '暴食', type: 'poison-drain', value: 0, healMultiplier: 1.5, text: '敵の毒を全消費 / 消費毒×1.5回復', rare: true, epic: true },
    { name: '毒の宴', type: 'poison-banquet', value: 0, text: '敵の毒を全消費 / 消費毒と同じダメージ / 毒耐性付与（毒付与50%減少）', rare: true, epic: true },
    { name: '疫病', type: 'poison-plague', value: 2, text: '敵の毒が毎ターン+2 / 使用後破棄', rare: true, epic: true },
    { name: '火花斬り', type: 'burn', value: 2, chance: 0.3, turns: 3, burnText: '火傷+3T', text: '2ダメージ / 30%で火傷3T付与', shopOnly: true },
    { name: '小爆弾設置', type: 'bomb-place-small', value: 0, bombKind: 'small', text: '小爆弾を付与する' },
+   { name: '改良爆弾', type: 'bomb-place-small', value: 0, bombKind: 'small', bombCount: 2, text: '小爆弾を2個付与する', rare: true },
    { name: '爆弾設置', type: 'bomb-place-normal', value: 0, bombKind: 'normal', text: '爆弾を付与する' },
+   { name: '大型爆弾設置', type: 'bomb-place-large', value: 0, bombKind: 'large', text: '大爆弾を付与する', rare: true },
    { name: '導火線', type: 'bomb-advance-one', value: 1, text: '設置中の爆弾を1進める' },
+   { name: '超導火線', type: 'bomb-advance-two', value: 2, text: '設置中の爆弾を2進める', rare: true },
    { name: '起爆装置', type: 'bomb-advance-two', value: 2, text: '設置中の爆弾を2進める' },
    { name: '火薬補充', type: 'bomb-powder-damage', value: 2, text: '設置中の爆弾1つにつき2ダメージ' },
    { name: '緊急起爆', type: 'bomb-emergency-detonate', value: 0, damageMultiplier: 0.7, text: '設置中の爆弾を即爆発させる / 爆発ダメージ30%減少' },
+   { name: '強制起爆', type: 'bomb-emergency-detonate', value: 0, damageMultiplier: 1, text: '設置中の爆弾を即爆発させる / ダメージ減少なし', rare: true, epic: true },
    { name: 'エグゼキューション', type: 'timer-execute-attack', value: 5, bonus: 10, threshold: 2, text: '5ダメージ / 敵行動タイマー残り2秒以下なら+10', rare: true, shopOnly: true },
    { name: '瞑想', type: 'rare-heal', value: 20, text: 'HP+20', rare: true },
       {
@@ -430,11 +507,20 @@ const PET_POOL = [
     shopOnly: true,
    },
    {
-    name: 'ラッキーヒット',
+   name: 'ラッキーヒット',
+   type: 'chance-attack',
+   value: 10,
+   chance: 0.5,
+   text: '50%の確率で10ダメージ',
+   shopOnly: true,
+   },
+   {
+    name: '幸運の一撃',
     type: 'chance-attack',
-    value: 10,
-    chance: 0.5,
-    text: '50%の確率で10ダメージ',
+    value: 15,
+    chance: 0.6,
+    text: '60%の確率で15ダメージ',
+    rare: true,
     shopOnly: true,
    },
    {
@@ -443,6 +529,15 @@ const PET_POOL = [
     value: 25,
     chance: 0.1,
     text: '10%の確率で25ダメージ',
+    shopOnly: true,
+   },
+   {
+    name: '必殺狙い',
+    type: 'high-risk-attack',
+    value: 30,
+    chance: 0.15,
+    text: '15%の確率で30ダメージ',
+    rare: true,
     shopOnly: true,
    },
    {
@@ -455,11 +550,20 @@ const PET_POOL = [
     shopOnly: true,
    },
    {
-    name: 'フロストブレイク',
+   name: 'フロストブレイク',
+   type: 'freeze-bonus-attack',
+   value: 5,
+   bonus: 10,
+   text: '5ダメージ / 凍結状態の相手に+10ダメージ',
+   rare: true,
+   shopOnly: true,
+   },
+   {
+    name: '氷砕き',
     type: 'freeze-bonus-attack',
-    value: 5,
-    bonus: 10,
-    text: '5ダメージ / 凍結状態の相手に+10ダメージ',
+    value: 7,
+    bonus: 15,
+    text: '7ダメージ / 凍結状態の相手に+15ダメージ',
     rare: true,
     shopOnly: true,
    },
@@ -535,6 +639,13 @@ const PET_POOL = [
    text: 'ペットEXP+1 / 使用後破棄',
   },
   {
+   name: '高級おやつ',
+   type: 'pet-exp',
+   value: 2,
+   text: 'ペットEXP+2 / 使用後破棄',
+   rare: true,
+  },
+  {
    name: '高級ペットフード',
    type: 'pet-exp',
    value: 2,
@@ -550,10 +661,26 @@ const PET_POOL = [
    rare: true,
   },
   {
+   name: '地獄の特訓',
+   type: 'pet-exp',
+   value: 5,
+   selfDamage: 3,
+   text: 'ペットEXP+5 / HPを3失う / 使用後破棄',
+   rare: true,
+   epic: true,
+  },
+  {
    name: '呼び鈴',
    type: 'pet-count-down',
    value: 1,
    text: 'ペット行動カウント-1',
+  },
+  {
+   name: '調教師の笛',
+   type: 'pet-count-down',
+   value: 2,
+   text: 'ペット行動カウント-2',
+   rare: true,
   },
   {
    name: '急かし',
@@ -567,6 +694,14 @@ const PET_POOL = [
    value: 1,
    text: '次回のペット行動を2回発動',
    rare: true,
+  },
+  {
+   name: '群れの号令',
+   type: 'pet-double-action-next',
+   value: 2,
+   text: '次回のペット行動を3回発動',
+   rare: true,
+   epic: true,
   },
   {
    name: 'ご褒美',
@@ -602,10 +737,18 @@ const PET_POOL = [
     epic: true,
    },
    {
-    name: 'クイックドロー',
+   name: 'クイックドロー',
+   type: 'draw-one',
+   value: 1,
+   text: '1枚ドロー',
+   shopOnly: true,
+   },
+   {
+    name: '早業',
     type: 'draw-one',
-    value: 1,
-    text: '1枚ドロー',
+    value: 2,
+    text: '2枚ドロー',
+    rare: true,
     shopOnly: true,
    },
    {
@@ -618,11 +761,20 @@ const PET_POOL = [
     shopOnly: true,
    },
    {
-    name: '手札補充',
+   name: '手札補充',
+   type: 'draw-to-five',
+   value: 5,
+   drawTargetSize: 6,
+   text: '使用後に手札が5枚になるようドロー',
+   rare: true,
+   shopOnly: true,
+   },
+   {
+    name: '戦術補充',
     type: 'draw-to-five',
-    value: 5,
-    drawTargetSize: 6,
-    text: '使用後に手札が5枚になるようドロー',
+    value: 6,
+    drawTargetSize: 7,
+    text: '使用後に手札が6枚になるようドロー',
     rare: true,
     shopOnly: true,
    },
@@ -635,17 +787,34 @@ const PET_POOL = [
     text: '8ダメージ / 敵HP50%以下なら+8ダメージ',
    },
    {
-    name: 'バーンブレイク',
-    type: 'burn-bonus-attack',
-    value: 5,
-    bonus: 5,
-    text: '5ダメージ / 火傷状態なら+5',
+   name: 'バーンブレイク',
+   type: 'burn-bonus-attack',
+   value: 5,
+   bonus: 5,
+   text: '5ダメージ / 火傷状態なら+5',
    },
+   {
+   name: '火炎斬り',
+   type: 'burn-bonus-attack',
+   value: 7,
+   bonus: 10,
+   chance: 0.5,
+   turns: 3,
+   text: '7ダメージ / 50%で火傷3T付与 / 火傷状態なら+10',
+   rare: true,
+  },
    {
     name: 'ピアースショット',
     type: 'pierce-attack',
     value: 5,
     text: '5ダメージ / 防御無視',
+    rare: true,
+   },
+   {
+    name: '貫通射撃',
+    type: 'pierce-attack',
+    value: 8,
+    text: '8ダメージ / 防御無視',
     rare: true,
    },
    {
@@ -665,11 +834,19 @@ const PET_POOL = [
     rare: true,
    },
    {
-    name: 'ガードチャンス',
+   name: 'ガードチャンス',
+   type: 'chance-defense',
+   value: 10,
+   chance: 0.5,
+   text: '50%の確率で防御+10',
+   },
+   {
+    name: '堅守の機会',
     type: 'chance-defense',
-    value: 10,
-    chance: 0.5,
-    text: '50%の確率で防御+10',
+    value: 15,
+    chance: 0.6,
+    text: '60%の確率で防御+15',
+    rare: true,
    },
    {
     name: 'ライフギャンブル',
@@ -723,11 +900,27 @@ const PET_POOL = [
    text: '5ダメージ / 手札が残り2枚以下なら+3ダメージ',
   },
   {
+   name: '狩人の執念',
+   type: 'pursuit-attack',
+   value: 6,
+   bonus: 8,
+   text: '6ダメージ / 手札が残り2枚以下なら+8ダメージ',
+   rare: true,
+  },
+  {
    name: '返し刃',
    type: 'counter-blade',
    value: 4,
    bonus: 4,
    text: '4ダメージ / 敵が攻撃準備中なら+4ダメージ',
+  },
+  {
+   name: '居合抜き',
+   type: 'counter-blade',
+   value: 5,
+   bonus: 8,
+   text: '5ダメージ / 敵が攻撃準備中なら+8ダメージ',
+   rare: true,
   },
   {
    name: '受け流し',
@@ -737,10 +930,26 @@ const PET_POOL = [
    text: '4ブロック / 次のリロード時間-0.2秒',
   },
   {
+   name: '達人の受け流し',
+   type: 'parry-guard',
+   value: 6,
+   reloadReduce: 0.5,
+   text: '6ブロック / 次のリロード時間-0.5秒',
+   rare: true,
+  },
+  {
    name: '備え',
    type: 'prepared-guard',
    value: 6,
    text: '6ブロック / 手札が2枚以下なら1ドロー',
+  },
+  {
+   name: '戦術準備',
+   type: 'prepared-guard',
+   value: 8,
+   handThreshold: 3,
+   text: '8ブロック / 手札が3枚以下なら1ドロー',
+   rare: true,
   },
   {
    name: '氷針',
@@ -749,6 +958,15 @@ const PET_POOL = [
    chance: 0.2,
    turns: 1,
    text: '2ダメージ / 20%で凍結',
+  },
+  {
+   name: '氷槍',
+   type: 'ice-needle',
+   value: 4,
+   chance: 0.35,
+   turns: 1,
+   text: '4ダメージ / 35%で凍結',
+   rare: true,
   },
   {
    name: '即興戦術',
@@ -812,8 +1030,11 @@ const PET_POOL = [
 
   const CARD_RARITY_OVERRIDES = {
    '弱攻撃': 'normal',
+   '速撃': 'normal',
    '攻撃': 'normal',
+   '達人の一撃': 'rare',
    '強攻撃': 'normal',
+   '渾身の一撃': 'rare',
    '軽防御': 'normal',
    '防御': 'normal',
    '鉄壁': 'normal',
@@ -822,26 +1043,47 @@ const PET_POOL = [
    'ディフェンスアップ': 'normal',
    'デイン': 'normal',
    'ショックブレイク': 'normal',
+   '雷断': 'rare',
    'ブラッドストライク': 'rare',
    'アーマーブレイク': 'rare',
    '氷牙連撃': 'rare',
    '氷封の契約': 'epic',
    '血の奮起': 'rare',
    'クイックドロー': 'normal',
+   '早業': 'rare',
    '戦術再編': 'rare',
    '手札補充': 'rare',
+   '戦術補充': 'rare',
    '威嚇': 'normal',
+   '雷縛': 'rare',
    '装甲破壊': 'normal',
+   '装甲粉砕': 'rare',
    '加速': 'rare',
    'ギャンブルアタック': 'normal',
    '連続切り': 'normal',
+   '乱れ斬り': 'rare',
+   '守りの構え': 'rare',
+   '戦術準備': 'rare',
+   '氷槍': 'rare',
    'びりびり': 'normal',
    'おにび': 'normal',
    'メラメラ': 'normal',
    'ヒョード': 'normal',
    'どくばり': 'normal',
    'ポイズンスラッシュ': 'rare',
+   '毒刃': 'normal',
+   '毒蛇斬り': 'rare',
+   '毒霧': 'normal',
+   '猛毒霧': 'rare',
+   '蛇牙': 'normal',
+   '毒龍牙': 'rare',
+   '毒爆発': 'rare',
+   '腐蝕爆発': 'epic',
+   '毒吸収': 'rare',
+   '暴食': 'epic',
    '火花斬り': 'normal',
+   '氷砕き': 'rare',
+   '火炎斬り': 'rare',
    'エグゼキューション': 'rare',
    '瞑想': 'rare',
    'ツインストライク': 'rare',
@@ -858,24 +1100,35 @@ const PET_POOL = [
    '追撃フィニッシュ': 'normal',
    'バーンブレイク': 'normal',
    'ピアースショット': 'rare',
+   '貫通射撃': 'rare',
    'ステータスガード': 'rare',
    'ガードチャンス': 'normal',
+   '堅守の機会': 'rare',
    'ライフギャンブル': 'normal',
    'シールドバッシュ': 'normal',
    'フォーチュンセット': 'rare',
    '成長の一撃': 'rare',
    '成長の守り': 'rare',
+   '幸運の一撃': 'rare',
+   '必殺狙い': 'rare',
    'ペットのおやつ': 'normal',
+   '高級おやつ': 'rare',
    '高級ペットフード': 'rare',
    '特訓': 'rare',
+   '地獄の特訓': 'epic',
    '呼び鈴': 'normal',
+   '調教師の笛': 'rare',
    '急かし': 'normal',
    '連携指示': 'rare',
+   '群れの号令': 'epic',
    'ご褒美': 'rare',
    '獣の闘志': 'rare',
    '獣の守り': 'rare',
    '血裂斬': 'rare',
+   '血河斬': 'epic',
+   '血の狂乱': 'epic',
    '瀕死の力': 'rare',
+   '死線突破': 'epic',
    '狂戦士の一撃': 'epic',
    'リフレクト': 'epic',
    '不屈': 'epic',
@@ -885,6 +1138,13 @@ const PET_POOL = [
    'リロードリンク': 'legendary',
    'カオスハンド': 'legendary',
    'エコー': 'legendary',
+   '狩人の執念': 'rare',
+   '居合抜き': 'rare',
+   '達人の受け流し': 'rare',
+   '改良爆弾': 'rare',
+   '大型爆弾設置': 'rare',
+   '超導火線': 'rare',
+   '強制起爆': 'epic',
   };
 
   function normalizeCardRarity(card) {
@@ -3048,22 +3308,32 @@ function getCardCooldownSeconds(card) {
 
  const cooldownByName = {
   '弱攻撃': 0.5,
+  '速撃': 0.3,
   '攻撃': 1,
+  '達人の一撃': 1.2,
   '強攻撃': 1.5,
+  '渾身の一撃': 1.7,
   '成長の一撃': 1,
   '成長の守り': 1,
   '血裂斬': 1,
+  '血河斬': 1.7,
   '狂戦士の一撃': 2,
   '血の覚醒': 2,
   '血の奮起': 1.5,
+  '血の狂乱': 1.8,
   '瀕死の力': 1,
+  '死線突破': 1.5,
   'ブラッドストライク': 2,
   'ショックブレイク': 1,
+  '雷断': 1.3,
   '威嚇': 0.5,
+  '雷縛': 0.8,
   '装甲破壊': 0.5,
+  '装甲粉砕': 0.8,
   'アーマーブレイク': 1,
   '加速': 0.5,
   '軽防御': 0.5,
+  '守りの構え': 0.8,
   '防御': 1,
   '鉄壁': 1.5,
   'ヒール': 1,
@@ -3071,6 +3341,7 @@ function getCardCooldownSeconds(card) {
   'ディフェンスアップ': 1,
   'ギャンブルアタック': 1.5,
   '連続切り': 1,
+  '乱れ斬り': 1.4,
   'びりびり': 1.5,
   'デイン': 1,
   'おにび': 1,
@@ -3079,15 +3350,22 @@ function getCardCooldownSeconds(card) {
   'どくばり': 0.5,
   'ポイズンスラッシュ': 1,
   '毒刃': 1,
+  '毒蛇斬り': 1.3,
+  '猛毒刃': 1.4,
   '毒霧': 1,
+  '猛毒霧': 1.3,
   '蛇牙': 1.2,
+  '毒龍牙': 1.5,
   '猛毒注入': 1.7,
   '毒爆発': 1.5,
+  '腐蝕爆発': 1.8,
   '侵食': 1.4,
   '毒吸収': 1.6,
+  '暴食': 1.9,
   '毒の宴': 2.2,
   '疫病': 2,
   '火花斬り': 1,
+  '火炎斬り': 1.4,
   'エグゼキューション': 2,
   '瞑想': 3,
   'ツインストライク': 2,
@@ -3096,9 +3374,12 @@ function getCardCooldownSeconds(card) {
   'ガードブレード': 2,
   'ドレインソード': 2,
   'ラッキーヒット': 1,
+  '幸運の一撃': 1.2,
   '一撃狙い': 0.5,
+  '必殺狙い': 0.8,
   'リフレクト': 2.5,
   'フロストブレイク': 2,
+  '氷砕き': 2.2,
   '氷牙連撃': 2,
   '氷封の契約': 2.5,
   'リスキーストライク': 1.5,
@@ -3107,16 +3388,33 @@ function getCardCooldownSeconds(card) {
   'リベンジ': 2,
   '時間歪曲': 3,
   'ペットトレーニング': 2,
+  'ペットのおやつ': 0.8,
+  '高級おやつ': 1,
+  '高級ペットフード': 1,
+  '特訓': 1.3,
+  '地獄の特訓': 1.5,
+  '呼び鈴': 0.5,
+  '調教師の笛': 0.8,
+  '急かし': 0.8,
+  '連携指示': 1.3,
+  '群れの号令': 1.7,
+  'ご褒美': 1.2,
+  '獣の闘志': 1.2,
+  '獣の守り': 1.2,
   'リロードリンク': 3.5,
   'クイックドロー': 0.5,
+  '早業': 0.5,
   '戦術再編': 1.5,
   '手札補充': 2,
+  '戦術補充': 2.3,
   '追撃フィニッシュ': 1.5,
   'バーンブレイク': 1.5,
   'ピアースショット': 1.5,
+  '貫通射撃': 1.8,
   'カオスハンド': 4,
   'ステータスガード': 2.5,
   'ガードチャンス': 1,
+  '堅守の機会': 1.3,
   'ライフギャンブル': 1,
   'シールドバッシュ': 1.5,
   'エコー': 3.5,
@@ -3124,17 +3422,26 @@ function getCardCooldownSeconds(card) {
   'アクションシフト': 3,
   '牽制斬り': 0.5,
   '深追い': 1,
+  '狩人の執念': 1.3,
   '返し刃': 1,
+  '居合抜き': 1.2,
   '受け流し': 0.5,
+  '達人の受け流し': 0.8,
   '備え': 1,
+   '戦術準備': 1.2,
    '氷針': 0.5,
+   '氷槍': 0.8,
    '即興戦術': 2,
    '小爆弾設置': 0.7,
+   '改良爆弾': 1,
    '爆弾設置': 1,
+   '大型爆弾設置': 1.8,
    '導火線': 0.5,
+   '超導火線': 1,
    '起爆装置': 1,
    '火薬補充': 0.8,
    '緊急起爆': 1.2,
+   '強制起爆': 1.5,
    '大爆弾設置': 1.8,
    '連鎖導火線': 1.2,
    '火薬圧縮': 1.4,
@@ -3150,6 +3457,9 @@ function getCardCooldownSeconds(card) {
   };
 
  const rawCooldown = card.cooldown ?? cooldownByName[card.name] ?? (card.rare ? 2 : 1);
+ if (rawCooldown < 0.5) {
+  return Math.min(5, Math.max(0.1, roundToTenthSecond(rawCooldown)));
+ }
  const rounded = roundToHalfSecond(rawCooldown);
 
  return Math.min(5, Math.max(0.5, rounded));
@@ -3167,7 +3477,8 @@ function getEffectiveCardCooldownSeconds(card, options = {}) {
  const tempReduce = canApplyTemporaryReduce ? temporaryReduceAmount : 0;
  const totalReduce = (playerPassives.cooldownReduce || 0) + tempReduce;
  const burnPenalty = player && player.burn && Number(player.burnTurns || 0) > 0 ? 0.5 : 0;
- const cooldown = Math.max(0.5, roundToTenthSecond(baseCooldown - totalReduce + burnPenalty));
+ const minimumCooldown = baseCooldown < 0.5 ? 0.1 : 0.5;
+ const cooldown = Math.max(minimumCooldown, roundToTenthSecond(baseCooldown - totalReduce + burnPenalty));
 
  if (options.consume && tempReduce > 0) {
   player.nextCardCooldownReduceUses = Math.max(0, (player.nextCardCooldownReduceUses || 0) - 1);
@@ -3906,7 +4217,76 @@ function getRandomPassiveChoices(count = 3, options = getNormalPassiveOptions())
 const RANDOM_EVENT_CHANCE = 1;
 
 function getCurrentRandomEventChance() {
- return Math.max(0, Math.min(1, RANDOM_EVENT_CHANCE + getRelicEffectTotal('eventChanceBonus')));
+ return Math.max(0, Math.min(1, RANDOM_EVENT_CHANCE));
+}
+
+const RANDOM_EVENT_CATEGORY_IDS = {
+ cardReward: new Set([
+  'traveler_luggage',
+  'blood_contract',
+  'old_chest',
+  'cursed_chest',
+  'mystery_merchant',
+  'warrior_memory',
+  'guardian_memory',
+  'grimoire_fragment',
+  'selection_ritual',
+  'ghost_smith',
+  'lucky_coin',
+  'abyss_bet',
+  'epic_bargain',
+  'chaos_reconstruction',
+ ]),
+ cardRemove: new Set([
+  'cursed_chest',
+  'dark_doctor',
+  'forgetting_fog',
+  'selection_ritual',
+  'quiet_rest',
+ ]),
+ passiveReward: new Set([
+  'desire_altar',
+  'small_altar',
+ ]),
+ highValue: new Set([
+  'blood_contract',
+  'cursed_chest',
+  'desire_altar',
+  'selection_ritual',
+  'lucky_coin',
+  'abyss_bet',
+  'epic_bargain',
+  'abyss_evolution_altar',
+ ]),
+};
+
+function getRandomEventWeight(event) {
+ const eventId = event?.id;
+ const baseWeight = Math.max(1, Number(event?.baseWeight || 100));
+ let multiplier = 1;
+
+ if (RANDOM_EVENT_CATEGORY_IDS.cardReward.has(eventId)) {
+  multiplier += getRelicEffectTotal('eventCardRewardWeightBonus');
+ }
+ if (RANDOM_EVENT_CATEGORY_IDS.cardRemove.has(eventId)) {
+  multiplier += getRelicEffectTotal('eventCardRemoveWeightBonus');
+ }
+ if (RANDOM_EVENT_CATEGORY_IDS.passiveReward.has(eventId)) {
+  multiplier += getRelicEffectTotal('eventPassiveRewardWeightBonus');
+ }
+ if (RANDOM_EVENT_CATEGORY_IDS.highValue.has(eventId)) {
+  multiplier += getRelicEffectTotal('eventHighValueWeightBonus');
+ }
+
+ return Math.max(1, baseWeight * multiplier);
+}
+
+function isRandomEventAvailable(event) {
+ if (!event) return false;
+ if (event.id === 'abyss_evolution_altar') {
+  return getEvolvableDeckCards().length > 0;
+ }
+ return true;
 }
 
 function getRandomEventDefinitions() {
@@ -3932,6 +4312,7 @@ function getRandomEventDefinitions() {
   { id: 'quiet_rest', title: '静かな休息', description: '短い休息の中で、不要な札を手放せる。少しだけ体力の器は縮む。', effect: '山札からカードを1枚選んで削除する', downside: '最大HP-1', steps: [{ type: 'maxHp', amount: -1 }, { type: 'removeChoice' }] },
   { id: 'ominous_sign', title: '不吉な気配', description: '何も得られない。ただ、呪いだけが山札へ紛れ込む。', effect: 'なし', downside: '呪いカードを1枚追加する', steps: [{ type: 'addCurseCards', count: 1 }] },
   { id: 'epic_bargain', title: '星喰いの取引', description: '星の残滓がエピックカードを囁く。代償は深く、成功率も低い。', effect: '20%の確率でエピックカードをランダムで1枚追加する', downside: '受諾時：最大HP-3 / 失敗時：呪いカード2枚追加', steps: [{ type: 'maxHp', amount: -3 }, { type: 'chance', rate: 0.2, success: [{ type: 'addRandomCards', count: 1, pool: 'epic' }], fail: [{ type: 'addCurseCards', count: 2 }] }] },
+  { id: 'abyss_evolution_altar', title: '深淵の祭壇', description: '祭壇が山札の奥に眠る札を呼び、別の姿へ押し上げようとしている。', effect: '進化可能なカード候補から1枚選び、進化後カードへ置換する', downside: 'なし', baseWeight: 70, steps: [{ type: 'evolveChoice', count: 3 }] },
   { id: 'chaos_reconstruction', title: '混沌の再構築', description: '山札の輪郭が崩れ、同じ枚数の別の札として組み直される。呪いが混ざる可能性もある。', effect: '現在の山札をすべて削除し、同じ枚数だけランダムなカードを追加する', downside: 'レアリティ抽選により、呪いカードが混ざる可能性がある', steps: [{ type: 'rebuildDeckRandom' }] },
  ];
 }
@@ -4240,6 +4621,90 @@ function getRandomCurseCardPool() {
  return CURSE_CARD_POOL.length ? CURSE_CARD_POOL : CARD_POOL.filter(card => isCurseCard(card));
 }
 
+const CARD_EVOLUTION_MAP = {
+ 'ショックブレイク': '雷断',
+ '攻撃': '達人の一撃',
+ '強攻撃': '渾身の一撃',
+ '弱攻撃': '速撃',
+ '連続切り': '乱れ斬り',
+ '深追い': '狩人の執念',
+ '返し刃': '居合抜き',
+ '軽防御': '守りの構え',
+ '防御': '鉄壁',
+ '受け流し': '達人の受け流し',
+ '備え': '戦術準備',
+ '氷針': '氷槍',
+ 'フロストブレイク': '氷砕き',
+ 'バーンブレイク': '火炎斬り',
+ '火花斬り': '火炎斬り',
+ 'クイックドロー': '早業',
+ '手札補充': '戦術補充',
+ 'ピアースショット': '貫通射撃',
+ 'ラッキーヒット': '幸運の一撃',
+ '一撃狙い': '必殺狙い',
+ 'ガードチャンス': '堅守の機会',
+ '威嚇': '雷縛',
+ '装甲破壊': '装甲粉砕',
+ '毒刃': '毒蛇斬り',
+ '蛇牙': '毒龍牙',
+ '毒霧': '猛毒霧',
+ '毒吸収': '暴食',
+ '毒爆発': '腐蝕爆発',
+ '小爆弾設置': '改良爆弾',
+ '爆弾設置': '大型爆弾設置',
+ '導火線': '超導火線',
+ '緊急起爆': '強制起爆',
+ '呼び鈴': '調教師の笛',
+ 'ペットのおやつ': '高級おやつ',
+ '特訓': '地獄の特訓',
+ '連携指示': '群れの号令',
+ '血裂斬': '血河斬',
+ '血の奮起': '血の狂乱',
+ '瀕死の力': '死線突破',
+};
+
+function getCardByName(cardName) {
+ return CARD_POOL.find(card => card.name === cardName) || null;
+}
+
+function getCardEvolutionTargetName(cardName) {
+ return CARD_EVOLUTION_MAP[String(cardName || '')] || null;
+}
+
+function getEvolvableDeckCards() {
+ return Object.entries(deckCustomize || {})
+  .map(([cardName, count]) => {
+   const sourceCard = getCardByName(cardName);
+   const targetName = getCardEvolutionTargetName(cardName);
+   const targetCard = getCardByName(targetName);
+   return {
+    name: cardName,
+    sourceCard,
+    targetName,
+    targetCard,
+    count: Math.max(0, Math.floor(Number(count || 0))),
+   };
+  })
+  .filter(entry => entry.count > 0 && entry.sourceCard && entry.targetCard && !isCurseCard(entry.sourceCard));
+}
+
+function evolveDeckCardByName(cardName) {
+ const sourceName = String(cardName || '');
+ const targetName = getCardEvolutionTargetName(sourceName);
+ const sourceCard = getCardByName(sourceName);
+ const targetCard = getCardByName(targetName);
+ if (!sourceCard || !targetCard || !deckCustomize[sourceName]) return null;
+
+ deckCustomize[sourceName] = Math.max(0, Number(deckCustomize[sourceName] || 0) - 1);
+ if (deckCustomize[sourceName] <= 0) delete deckCustomize[sourceName];
+ deckCustomize[targetCard.name] = Math.max(0, Number(deckCustomize[targetCard.name] || 0)) + 1;
+ currentRunDeckSnapshot = structuredClone(deckCustomize);
+ recordCardDiscovery(targetCard.name);
+ addLog(`イベント：${sourceCard.name}が${targetCard.name}へ進化`);
+ saveCurrentGameData(false);
+ return { sourceCard, targetCard };
+}
+
 function sampleRandomItems(items, count = 1) {
  const source = Array.isArray(items) ? [...items] : [];
  const picked = [];
@@ -4456,6 +4921,13 @@ function executeRandomEventStep(step) {
   return false;
  }
 
+ if (step.type === 'evolveChoice') {
+  pendingRandomEventSelectedChoice = null;
+  pendingRandomEventChoices = sampleRandomItems(getEvolvableDeckCards(), Math.max(1, Number(step.count || 3)));
+  if (!pendingRandomEventChoices.length) return true;
+  return false;
+ }
+
  return true;
 }
 
@@ -4480,8 +4952,8 @@ function shouldOfferRandomEvent(clearedLevel, nextLevel) {
 }
 
 function beginRandomEvent(nextLevel) {
- const events = getRandomEventDefinitions();
- pendingRandomEvent = sampleRandomItems(events, 1)[0] || null;
+ const events = getRandomEventDefinitions().filter(isRandomEventAvailable);
+ pendingRandomEvent = pickWeightedUniqueItems(events, 1, getRandomEventWeight)[0] || null;
  if (!pendingRandomEvent) {
   startNextBattleFromPendingLevel(nextLevel);
   return;
@@ -4562,6 +5034,8 @@ function confirmRandomEventChoice(event) {
   chooseRandomEventCard(value, event);
  } else if (type === 'removeChoice') {
   chooseRandomEventRemoveCard(value, event);
+ } else if (type === 'evolveChoice') {
+  chooseRandomEventEvolution(value, event);
  }
 }
 
@@ -4591,6 +5065,30 @@ function chooseRandomEventRemoveCard(cardName, event) {
  pendingRandomEventSelectedChoice = null;
  pendingRandomEventStepIndex += 1;
  continueRandomEventSteps();
+}
+
+function chooseRandomEventEvolution(cardName, event) {
+ stopRandomEventUiEvent(event);
+ playUiSelectSound();
+ if (!pendingRandomEvent || !pendingRandomEventAccepted) return;
+ const step = pendingRandomEventSteps[pendingRandomEventStepIndex];
+ if (!step || step.type !== 'evolveChoice') return;
+ if (!pendingRandomEventChoices.some(choice => choice && choice.name === cardName)) return;
+ const result = evolveDeckCardByName(cardName);
+ pendingRandomEventChoices = [];
+ pendingRandomEventSelectedChoice = null;
+ if (result) {
+  pendingRandomEventReveals = [{
+   action: 'evolve',
+   card: result.targetCard,
+   sourceCard: result.sourceCard,
+  }];
+  pendingRandomEventAwaitingConfirm = true;
+  render();
+ } else {
+  pendingRandomEventStepIndex += 1;
+  continueRandomEventSteps();
+ }
 }
 
 function finishRandomEvent() {
@@ -4632,6 +5130,31 @@ function getCurrentRandomEventChoiceStep() {
  return pendingRandomEventSteps[pendingRandomEventStepIndex] || null;
 }
 
+function getRandomEventEvolutionCompareCardHtml(card, label) {
+ if (!card) return '';
+ return `
+  <article class="random-event-evolution-card ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}">
+   <div class="random-event-evolution-label">${escapeHtml(label)}</div>
+   <div class="random-event-evolution-title">
+    <span>${escapeHtml(getCardIcon(card.type))}</span>
+    <strong>${escapeHtml(card.name)}</strong>
+   </div>
+   <div class="random-event-evolution-meta">
+    <span>${escapeHtml(getCardRarityDisplayName(card) || 'NORMAL')}</span>
+    <span>${escapeHtml(getCardCustomizeCategory(card))}</span>
+    <span>${escapeHtml(getCardCooldownText(card))}</span>
+   </div>
+   <div class="random-event-evolution-value">${escapeHtml(String(card.value ?? ''))}</div>
+   <div class="random-event-evolution-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
+  </article>
+ `;
+}
+
+function getSelectedRandomEventEvolutionChoice() {
+ if (!pendingRandomEventSelectedChoice || pendingRandomEventSelectedChoice.type !== 'evolveChoice') return null;
+ return pendingRandomEventChoices.find(choice => choice && choice.name === pendingRandomEventSelectedChoice.value) || null;
+}
+
 function renderRandomEventModal() {
  const modal = document.getElementById('random-event-actions');
  if (!modal) return;
@@ -4655,7 +5178,7 @@ function renderRandomEventModal() {
   && !pendingRandomEventRolling
   && !hasReveals
   && step
-  && ['cardChoice', 'removeChoice'].includes(step.type)
+  && ['cardChoice', 'removeChoice', 'evolveChoice'].includes(step.type)
  );
  const hasSelectedChoice = Boolean(
   isChoiceStep
@@ -4698,14 +5221,14 @@ function renderRandomEventModal() {
     : '<strong class="random-event-roll-fail">失敗... 深淵は沈黙しました。</strong>';
   } else {
    result.textContent = pendingRandomEventAccepted
-    ? (awaitingConfirm ? (hasReveals ? (pendingRandomEventReveals[0]?.action === 'remove' ? 'このカードが削除されます。確認してください。' : pendingRandomEventReveals[0]?.action === 'passive' ? 'このパッシブを獲得します。確認してください。' : 'このカードが追加されます。確認してください。') : '結果を確認してください。') : step?.type === 'cardChoice' ? '追加するカードを選び、決定を押してください。' : step?.type === 'removeChoice' ? '削除するカードを選び、決定を押してください。' : 'イベント処理中...')
+    ? (awaitingConfirm ? (hasReveals ? (pendingRandomEventReveals[0]?.action === 'remove' ? 'このカードが削除されます。確認してください。' : pendingRandomEventReveals[0]?.action === 'passive' ? 'このパッシブを獲得します。確認してください。' : pendingRandomEventReveals[0]?.action === 'evolve' ? 'このカードへ進化しました。確認してください。' : 'このカードが追加されます。確認してください。') : '結果を確認してください。') : step?.type === 'cardChoice' ? '追加するカードを選び、決定を押してください。' : step?.type === 'removeChoice' ? '削除するカードを選び、決定を押してください。' : step?.type === 'evolveChoice' ? '進化候補を選ぶと、進化前後の内容を比較できます。' : 'イベント処理中...')
     : '受け入れる前に効果を確認してください。';
   }
  }
  if (!list) return;
  list.innerHTML = '';
  if (hasReveals) {
-  pendingRandomEventReveals.forEach(({ action, card }) => {
+  pendingRandomEventReveals.forEach(({ action, card, sourceCard }) => {
    const div = document.createElement('div');
    if (action === 'passive') {
     div.className = 'random-event-choice-card random-event-reveal-card passive-reveal-card';
@@ -4718,7 +5241,13 @@ function renderRandomEventModal() {
     return;
    }
    div.className = `random-event-choice-card random-event-reveal-card ${action === 'remove' ? 'remove-choice' : ''} ${getCardVisualClass(card)} ${card.type || ''}${getCardRarityClass(card)}`;
-   const note = action === 'remove' ? 'このカードが1枚削除されます' : action === 'curse' ? '呪いカードが追加されます' : 'このカードが追加されます';
+   const note = action === 'remove'
+    ? 'このカードが1枚削除されます'
+    : action === 'curse'
+     ? '呪いカードが追加されます'
+     : action === 'evolve'
+      ? `${sourceCard?.name || 'カード'}から進化しました`
+      : 'このカードが追加されます';
    div.innerHTML = `
     <div class="random-event-choice-title"><span>${escapeHtml(getCardIcon(card.type))}</span><strong>${escapeHtml(card.name)}</strong></div>
     <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
@@ -4764,6 +5293,43 @@ function renderRandomEventModal() {
    button.querySelector('.random-event-choice-text')?.insertAdjacentHTML('afterend', `<div class="random-event-choice-note">${escapeHtml(getCardCooldownText(card))}</div>`);
    list.appendChild(button);
   });
+ }
+
+ if (step.type === 'evolveChoice') {
+  pendingRandomEventChoices.forEach(choice => {
+   const sourceCard = choice.sourceCard;
+   const targetCard = choice.targetCard;
+   const selected = pendingRandomEventSelectedChoice?.type === 'evolveChoice' && pendingRandomEventSelectedChoice?.value === choice.name;
+   const button = document.createElement('button');
+   button.className = `random-event-choice-card evolve-choice ${getCardVisualClass(targetCard)} ${targetCard.type || ''}${getCardRarityClass(targetCard)}${selected ? ' selected-choice' : ''}`;
+   button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+   button.onclick = event => selectRandomEventChoice('evolveChoice', choice.name, event);
+   button.innerHTML = `
+    ${selected ? '<div class="random-event-selected-label">選択中</div>' : ''}
+    <div class="random-event-choice-title">
+     <span>${escapeHtml(getCardIcon(sourceCard.type))}</span>
+     <strong>${escapeHtml(sourceCard.name)} → ${escapeHtml(targetCard.name)}</strong>
+    </div>
+    <div class="random-event-choice-text">${escapeHtml(getBaseCardDisplayText(targetCard))}</div>
+    <div class="random-event-choice-note">進化後：${escapeHtml(getCardRarityDisplayName(targetCard) || 'NORMAL')} / ${escapeHtml(getCardCooldownText(targetCard))}</div>
+   `;
+   list.appendChild(button);
+  });
+
+  const selectedEvolution = getSelectedRandomEventEvolutionChoice();
+  if (selectedEvolution) {
+   const compare = document.createElement('div');
+   compare.className = 'random-event-evolution-compare';
+   compare.innerHTML = `
+    <div class="random-event-evolution-compare-title">進化内容を確認</div>
+    <div class="random-event-evolution-compare-body">
+     ${getRandomEventEvolutionCompareCardHtml(selectedEvolution.sourceCard, '進化前')}
+     <div class="random-event-evolution-arrow">→</div>
+     ${getRandomEventEvolutionCompareCardHtml(selectedEvolution.targetCard, '進化後')}
+    </div>
+   `;
+   list.appendChild(compare);
+  }
  }
 }
 
@@ -10356,7 +10922,7 @@ function playPlayerCard(id, options = {}) {
     consumeAttackBoostsAfterAttack();
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
     triggerDamageShake('.cpu-img');
-    addLog(`あなた：${card.name} (${result.damage}ダメージ${lowHand ? ' / 手札少数+3' : ''})`);
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${lowHand ? ` / 手札少数+${Number(card.bonus || 3)}` : ''})`);
     playSound(result.fullyBlocked ? 'guard' : 'attack');
    }
 
@@ -10367,7 +10933,7 @@ function playPlayerCard(id, options = {}) {
     consumeAttackBoostsAfterAttack();
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
     triggerDamageShake('.cpu-img');
-    addLog(`あなた：${card.name} (${result.damage}ダメージ${preparing ? ' / 攻撃準備中+4' : ''})`);
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${preparing ? ` / 攻撃準備中+${Number(card.bonus || 4)}` : ''})`);
     playSound(result.fullyBlocked ? 'guard' : 'attack');
    }
 
@@ -10387,7 +10953,8 @@ function playPlayerCard(id, options = {}) {
    player.block += blockValue;
    consumeDefenseBoostsAfterDefense();
    recordAchievementMax('maxBlock', player.block || 0);
-    const lowHand = Math.max(0, player.hand.length - 1) <= 2;
+    const handThreshold = Math.max(0, Number(card.handThreshold ?? 2));
+    const lowHand = Math.max(0, player.hand.length - 1) <= handThreshold;
     const drawn = lowHand ? drawCardsToPlayerHand(1) : [];
     if (drawn.length > 0) triggerCardResultReveal(drawn, 'ドロー', `${drawn.length}枚引いた`, { delay: 760 });
     triggerCardVisualEffect('.player-img', 'enhance');
@@ -10454,7 +11021,7 @@ function playPlayerCard(id, options = {}) {
     );
 
     if (isEnemyParalyzed) {
-     attackValue += 5;
+     attackValue += Number(card.bonus || 5);
     }
 
     const result = applyPlayerCardDamage(attackValue);
@@ -10464,7 +11031,7 @@ function playPlayerCard(id, options = {}) {
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
     triggerDamageShake('.cpu-img');
 
-    addLog(`あなた：${card.name} (${result.damage}ダメージ${isEnemyParalyzed ? ' / 麻痺追撃+5' : ''})`);
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${isEnemyParalyzed ? ` / 麻痺追撃+${Number(card.bonus || 5)}` : ''})`);
 
     playSound(result.fullyBlocked ? 'guard' : 'attack');
    }
@@ -10774,10 +11341,12 @@ if (card.type === 'rare-double-attack') {
    }
 
    if (card.type === 'pet-double-action-next') {
-    playerPassives.petDoubleActionNext = Math.max(Number(playerPassives.petDoubleActionNext || 0), 1);
+    const extraActions = Math.max(1, Math.floor(Number(card.value || 1)));
+    playerPassives.petDoubleActionNext = Math.max(Number(playerPassives.petDoubleActionNext || 0), extraActions);
+    const totalActions = extraActions + 1;
     triggerPetMotion();
-    showDamagePopup('player-hp-change', '連携');
-    addLog(`あなた：${card.name} (次回ペット行動2回)`);
+    showDamagePopup('player-hp-change', `連携${totalActions}回`);
+    addLog(`あなた：${card.name} (次回ペット行動${totalActions}回)`);
     playSound('success');
    }
 
@@ -10820,7 +11389,8 @@ if (card.type === 'rare-double-attack') {
    }
 
    if (card.type === 'draw-one') {
-    const drawn = drawCardsToPlayerHand(1);
+    const drawCount = Math.max(1, Number(card.value || 1));
+    const drawn = drawCardsToPlayerHand(drawCount);
     if (drawn.length > 0) triggerCardResultReveal(drawn, 'ドロー', `${drawn.length}枚引いた`, { delay: 760 });
     else triggerReloadDoublePlayEffect('山札なし', card.name);
     showDamagePopup('player-hp-change', drawn.length > 0 ? `ドロー+${drawn.length}` : 'ドロー0');
@@ -10975,7 +11545,7 @@ if (card.type === 'scaling-attack') {
     }
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
 
-    addLog(`あなた：血裂斬（HP-${selfDamage} / ${result.damage}ダメージ）`);
+    addLog(`あなた：${card.name}（HP-${selfDamage} / ${result.damage}ダメージ）`);
     playSound('attack');
    }
 
@@ -11052,7 +11622,7 @@ if (card.type === 'scaling-attack') {
    if (card.type === 'desperate-power') {
     if (player.hp > Math.floor(getPlayerMaxHp() / 2)) {
      showDamagePopup('cpu-hp-change', 'MISS');
-     addLog('あなた：瀕死の力（MISS / HP50%以下でのみ成功）');
+     addLog(`あなた：${card.name}（MISS / HP50%以下でのみ成功）`);
      playSound('miss');
     } else {
      const attackValue = getEffectiveCardValue(card);
@@ -11063,13 +11633,15 @@ if (card.type === 'scaling-attack') {
      showDamagePopup('cpu-hp-change', getDamagePopupText(result));
      triggerDamageShake('.cpu-img');
 
-     addLog(`あなた：瀕死の力（${result.damage}ダメージ）`);
+     addLog(`あなた：${card.name}（${result.damage}ダメージ）`);
      playSound(result.fullyBlocked ? 'guard' : 'attack');
     }
    }
 
 if (card.type === 'attack') {
-    const attackValue = getEffectiveCardValue(card);
+    const threshold = Number(card.enemyHpThreshold || 0);
+    const thresholdActive = threshold > 0 && cpu && Number(cpu.maxHp || 0) > 0 && Number(cpu.hp || 0) <= Number(cpu.maxHp || 0) * threshold;
+    const attackValue = getEffectiveCardValue(card) + (thresholdActive ? Number(card.bonus || 0) : 0);
 
     const result = applyPlayerCardDamage(attackValue);
 
@@ -11078,7 +11650,7 @@ if (card.type === 'attack') {
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
     triggerDamageShake('.cpu-img');
 
-    addLog(`あなた：${card.name} (${result.damage}ダメージ)`);
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${thresholdActive ? ` / HP${Math.round(threshold * 100)}%以下+${Number(card.bonus || 0)}` : ''})`);
 
     if (result.fullyBlocked) {
      playSound('guard');
@@ -11091,12 +11663,16 @@ if (card.type === 'attack') {
     const defenseValue = getEffectiveCardValue(card);
 
     player.block += defenseValue;
+    const nextTurnBlock = Math.max(0, Number(card.nextTurnBlock || 0));
+    if (nextTurnBlock > 0) {
+     player.nextTurnBlockBonus = Math.max(Number(player.nextTurnBlockBonus || 0), nextTurnBlock);
+    }
 
     if (player.enhanceNextDefense) {
      player.enhanceNextDefense = false;
     }
 
-    addLog(`あなた：${card.name} (防御+${defenseValue})`);
+    addLog(`あなた：${card.name} (防御+${defenseValue}${nextTurnBlock > 0 ? ` / 次ターン防御+${nextTurnBlock}` : ''})`);
     playSound('defense');
    }
 
@@ -11231,20 +11807,22 @@ if (card.type === 'dein') {
 
    if (card.type === 'poison-fang') {
     const poisonAmount = getEnemyPoisonAmount();
-    const poisonBonus = Math.floor(poisonAmount * 0.25);
+    const poisonScale = Math.max(0, Number(card.poisonScale ?? 0.25));
+    const poisonBonus = Math.floor(poisonAmount * poisonScale);
     const attackValue = getEffectiveCardValue(card) + poisonBonus;
     const result = applyPlayerCardDamage(attackValue);
     consumeAttackBoostsAfterAttack();
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
     triggerDamageShake('.cpu-img');
     triggerPoisonEffect('.cpu-img');
-    addLog(`あなた：${card.name} (${result.damage}ダメージ / 毒25%+${poisonBonus})`);
+    addLog(`あなた：${card.name} (${result.damage}ダメージ / 毒${Math.round(poisonScale * 100)}%+${poisonBonus})`);
     playSound(result.fullyBlocked ? 'guard' : 'attack');
    }
 
    if (card.type === 'poison-burst') {
     const beforePoison = getEnemyPoisonAmount();
-    const consumed = Math.floor(beforePoison / 2);
+    const consumeRatio = Math.max(0, Math.min(1, Number(card.consumeRatio ?? 0.5)));
+    const consumed = Math.floor(beforePoison * consumeRatio);
     cpu.poisonTurns = Math.max(0, beforePoison - consumed);
     const damage = Math.floor(consumed * Math.max(0, Number(card.value || 0.75)));
     const result = applyDamage(cpu, damage);
@@ -11266,7 +11844,8 @@ if (card.type === 'dein') {
    if (card.type === 'poison-drain') {
     const consumed = getEnemyPoisonAmount();
     cpu.poisonTurns = 0;
-    const heal = Math.floor(consumed / 2);
+    const healMultiplier = Math.max(0, Number(card.healMultiplier ?? 0.5));
+    const heal = Math.floor(consumed * healMultiplier);
     const beforeHp = player.hp;
     player.hp = Math.min(getPlayerMaxHp(), Number(player.hp || 0) + heal);
     const healed = player.hp - beforeHp;
@@ -11299,30 +11878,32 @@ if (card.type === 'dein') {
    }
 
    if (card.type === 'double-slash') {
-    let attackValue = getEffectiveCardValue(card);
+    const attackValue = getEffectiveCardValue(card);
+    const hits = Math.max(1, Math.floor(Number(card.hits || 2)));
+    const actionToken = battleActionToken;
+    let totalDamage = 0;
+    let firstBlocked = false;
 
+    consumeAttackBoostsAfterAttack();
 
-    const first = applyPlayerCardDamage(attackValue);
-
-    showDamagePopup('cpu-hp-change', getDamagePopupText(first));
-    triggerDamageShake('.cpu-img');
-
-    setTimeout(() => {
-     const second = applyPlayerCardDamage(attackValue);
-
-     showDamagePopup('cpu-hp-change', getDamagePopupText(second));
-     triggerDamageShake('.cpu-img');
-
-     checkWinner();
-    }, 140);
-
-    addLog(`あなた：${card.name} (${attackValue} × 5ヒット)`);
-
-    if (first.fullyBlocked) {
-     playSound('guard');
-    } else {
-     playSound('attack');
+    for (let i = 0; i < hits; i++) {
+     setTimeout(() => {
+      if (actionToken !== battleActionToken || gameOver || !cpu) return;
+      const result = applyPlayerCardDamage(attackValue);
+      if (i === 0) firstBlocked = Boolean(result.fullyBlocked);
+      totalDamage += result.damage;
+      showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+      triggerDamageShake('.cpu-img');
+      playSound(result.fullyBlocked ? 'guard' : 'attack');
+      checkWinner();
+      if (i === hits - 1 || !cpu || cpu.hp <= 0) {
+       addLog(`あなた：${card.name} (${attackValue} × ${hits}ヒット / 合計${totalDamage}ダメージ)`);
+       render();
+      }
+     }, i * 140);
     }
+
+    if (firstBlocked) playSound('guard');
    }
 
 if (card.type === 'gamble-attack') {
@@ -11451,11 +12032,17 @@ if (card.type === 'burn') {
     }
     const result = applyPlayerCardDamage(attackValue);
     consumeAttackBoostsAfterAttack();
+    const burnChance = card.chance == null ? 0 : Math.max(0, Number(card.chance || 0));
+    const burnApplied = burnChance > 0 && Math.random() < burnChance;
+    if (burnApplied) {
+     cpu.burn = true;
+     cpu.burnTurns = Math.max(cpu.burnTurns || 0, card.turns || 3);
+    }
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
     triggerDamageShake('.cpu-img');
-    if (isEnemyBurned) triggerBurnEffect('.cpu-img');
-    addLog(`あなた：${card.name} (${result.damage}ダメージ${isEnemyBurned ? ` / 火傷特効+${card.bonus || 5}` : ''})`);
-    playSound(result.fullyBlocked ? 'guard' : (isEnemyBurned ? 'flame' : 'attack'));
+    if (isEnemyBurned || burnApplied) triggerBurnEffect('.cpu-img');
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${isEnemyBurned ? ` / 火傷特効+${card.bonus || 5}` : ''}${burnApplied ? ` / 火傷${card.turns || 3}T` : ''})`);
+    playSound(result.fullyBlocked ? 'guard' : (isEnemyBurned || burnApplied ? 'flame' : 'attack'));
    }
 
 
@@ -11665,9 +12252,14 @@ if (card.type === 'rare-attack') {
     }
 
     if (card.type === 'bomb-place-small' || card.type === 'bomb-place-normal' || card.type === 'bomb-place-large' || card.type === 'bomb-place-incendiary') {
-     const bomb = addBombToEnemy(card.bombKind || 'normal');
-     addLog(`あなた：${card.name} (${bomb ? `${bomb.name}設置` : '設置失敗'})`);
-     playSound(bomb ? 'success' : 'miss');
+     const count = Math.max(1, Math.floor(Number(card.bombCount || 1)));
+     const bombs = [];
+     for (let i = 0; i < count; i++) {
+      const bomb = addBombToEnemy(card.bombKind || 'normal');
+      if (bomb) bombs.push(bomb);
+     }
+     addLog(`あなた：${card.name} (${bombs.length > 0 ? `${bombs.map(bomb => bomb.name).join('・')}設置` : '設置失敗'})`);
+     playSound(bombs.length > 0 ? 'success' : 'miss');
     }
 
     if (card.type === 'bomb-advance-one') {
@@ -12130,6 +12722,14 @@ if (card.type === 'rare-attack') {
 
    if (player) {
     player.block = 0;
+    const nextTurnBlockBonus = Math.max(0, Number(player.nextTurnBlockBonus || 0));
+    if (nextTurnBlockBonus > 0) {
+     player.block += nextTurnBlockBonus;
+     player.nextTurnBlockBonus = 0;
+     recordAchievementMax('maxBlock', player.block || 0);
+     showDamagePopup('player-hp-change', `防御+${nextTurnBlockBonus}`);
+     addLog(`次ターン防御：防御+${nextTurnBlockBonus}`);
+    }
    }
 
    if (cpu && cpu.hand.length < 10) {
@@ -13265,20 +13865,23 @@ function getDynamicCardDisplayText(card) {
  }
 
  if (card.type === 'poison-fang') {
-  const poisonBonus = Math.floor(getEnemyPoisonAmount() * 0.25);
-  return `${getBattleCardDisplayValue(card)}ダメージ / 毒25%+${poisonBonus}`;
+  const poisonScale = Math.max(0, Number(card.poisonScale ?? 0.25));
+  const poisonBonus = Math.floor(getEnemyPoisonAmount() * poisonScale);
+  return `${getBattleCardDisplayValue(card)}ダメージ / 毒${Math.round(poisonScale * 100)}%+${poisonBonus}`;
  }
 
  if (card.type === 'poison-burst') {
   const poisonAmount = getEnemyPoisonAmount();
-  const consumed = Math.floor(poisonAmount / 2);
+  const consumeRatio = Math.max(0, Math.min(1, Number(card.consumeRatio ?? 0.5)));
+  const consumed = Math.floor(poisonAmount * consumeRatio);
   const damage = Math.floor(consumed * Math.max(0, Number(card.value || 0.75)));
   return `毒${consumed}消費 / ${damage}ダメージ`;
  }
 
  if (card.type === 'poison-drain') {
   const poisonAmount = getEnemyPoisonAmount();
-  return `毒${poisonAmount}全消費 / HP+${Math.floor(poisonAmount / 2)}`;
+  const healMultiplier = Math.max(0, Number(card.healMultiplier ?? 0.5));
+  return `毒${poisonAmount}全消費 / HP+${Math.floor(poisonAmount * healMultiplier)}`;
  }
 
  if (card.type === 'poison-banquet') {
@@ -13302,11 +13905,11 @@ function getBaseCardDisplayText(card) {
   }
 
   if (card.type === 'chance-attack') {
-  return '50%の確率で10ダメージ';
+  return `${Math.round(Number(card.chance || 0.5) * 100)}%の確率で${card.value || 10}ダメージ`;
  }
 
  if (card.type === 'high-risk-attack') {
-  return '10%の確率で25ダメージ';
+  return `${Math.round(Number(card.chance || 0.1) * 100)}%の確率で${card.value || 25}ダメージ`;
  }
 
  if (card.type === 'reflect-next-attack') {
@@ -13314,7 +13917,7 @@ function getBaseCardDisplayText(card) {
  }
 
  if (card.type === 'freeze-bonus-attack') {
-  return '5ダメージ / 凍結状態の相手に+10ダメージ';
+  return `${card.value || 5}ダメージ / 凍結状態の相手に+${card.bonus || 10}ダメージ`;
  }
 
  if (card.type === 'freeze-triple-attack') {
@@ -13386,7 +13989,8 @@ if (card.type === 'pet-attack-up') {
  }
 
  if (card.type === 'burn-bonus-attack') {
-  return `${card.value || 5}ダメージ / 火傷状態なら+${card.bonus || 5}`;
+  const burnText = card.chance != null ? ` / ${Math.round(Number(card.chance || 0) * 100)}%で火傷${card.turns || 3}T付与` : '';
+  return `${card.value || 5}ダメージ${burnText} / 火傷状態なら+${card.bonus || 5}`;
  }
 
  if (card.type === 'timer-execute-attack') {
@@ -13406,7 +14010,7 @@ if (card.type === 'pet-attack-up') {
  }
 
  if (card.type === 'chance-defense') {
-  return '50%の確率で防御+10';
+  return `${Math.round(Number(card.chance || 0.5) * 100)}%の確率で防御+${card.value || 10}`;
  }
 
  if (card.type === 'risky-heal') {
@@ -13430,7 +14034,7 @@ if (card.type === 'pet-attack-up') {
  }
 
  if (card.type === 'draw-one') {
-  return '1枚ドロー';
+  return `${card.value || 1}枚ドロー`;
  }
 
  if (card.type === 'draw-discard') {
@@ -13446,7 +14050,11 @@ if (card.type === 'pet-attack-up') {
  }
 
  if (card.type === 'defense') {
-  return `防御+${card.value}`;
+  return `防御+${card.value}${card.nextTurnBlock ? ` / 次ターン防御+${card.nextTurnBlock}` : ''}`;
+ }
+
+ if (card.type === 'prepared-guard') {
+  return `${card.value || 6}ブロック / 手札が${card.handThreshold ?? 2}枚以下なら1ドロー`;
  }
 
  if (card.type === 'heal') {
@@ -13483,7 +14091,7 @@ if (card.type === 'pet-attack-up') {
  }
 
  if (card.type === 'double-slash') {
-  return '2 × 2ダメージ';
+  return `${card.value || 2} × ${card.hits || 2}ダメージ`;
  }
 
  if (card.type === 'pure-paralysis') {
@@ -13892,7 +14500,7 @@ function getOwnedDeckCardDisplayText(card) {
 
   if (isBombCardType(card.type)) return getBaseCardDisplayText(card);
   if (card.type === 'attack' || card.type === 'rare-attack') return `${value}ダメージ`;
- if (card.type === 'defense' || card.type === 'rare-defense') return `防御+${value}`;
+ if (card.type === 'defense' || card.type === 'rare-defense') return `防御+${value}${card.nextTurnBlock ? ` / 次ターン防御+${card.nextTurnBlock}` : ''}`;
  if (card.type === 'heal' || card.type === 'rare-heal') return `${value}回復`;
  if (card.type === 'dein') return `${value}ダメージ / 30%で麻痺${card.turns || 3}T付与`;
  if (card.type === 'freeze') return `${value}ダメージ / 凍結付与`;
@@ -13904,18 +14512,21 @@ function getOwnedDeckCardDisplayText(card) {
   return `${value}ダメージ / ${chanceText}火傷${card.turns || 3}T付与`;
  }
  if (card.type === 'drain-sword') return `${value}ダメージ / 与えたダメージの1/2回復`;
- if (card.type === 'chance-attack') return `50%の確率で${value}ダメージ`;
- if (card.type === 'high-risk-attack') return `10%の確率で${value}ダメージ`;
+ if (card.type === 'chance-attack') return `${Math.round(Number(card.chance || 0.5) * 100)}%の確率で${value}ダメージ`;
+ if (card.type === 'high-risk-attack') return `${Math.round(Number(card.chance || 0.1) * 100)}%の確率で${value}ダメージ`;
  if (card.type === 'freeze-bonus-attack') return `${value}ダメージ / 凍結状態の相手に+${card.bonus || 10}ダメージ`;
  if (card.type === 'risky-self-attack') return `${value}ダメージ または 自分に${card.selfDamage || 5}ダメージ`;
  if (card.type === 'finisher-attack') return `${value}ダメージ / 敵HP50%以下なら+${card.bonus || 8}ダメージ`;
- if (card.type === 'burn-bonus-attack') return `${value}ダメージ / 火傷状態なら+${card.bonus || 5}`;
+ if (card.type === 'burn-bonus-attack') {
+  const burnText = card.chance != null ? ` / ${Math.round(Number(card.chance || 0) * 100)}%で火傷${card.turns || 3}T付与` : '';
+  return `${value}ダメージ${burnText} / 火傷状態なら+${card.bonus || 5}`;
+ }
  if (card.type === 'timer-execute-attack') return `${value}ダメージ / 敵行動タイマー残り${card.threshold || 2}秒以下なら+${card.bonus || 10}`;
  if (card.type === 'pierce-attack') return `${value}ダメージ / 防御無視`;
  if (card.type === 'attack-defense') return `${value}ダメージ / 防御+${(card.defense || 3) + Math.max(0, Number(playerPassives.defense || 0))}`;
  if (card.type === 'rare-double-attack') return `2 × ${5 + Math.max(0, Number(playerPassives.attack || 0))}ダメージ`;
- if (card.type === 'double-slash') return `2 × ${2 + Math.max(0, Number(playerPassives.attack || 0))}ダメージ`;
- if (card.type === 'paralyze-bonus-attack') return `${2 + Math.max(0, Number(playerPassives.attack || 0))}ダメージ / 敵が麻痺なら追加5ダメージ`;
+ if (card.type === 'double-slash') return `${card.value || 2} × ${card.hits || 2}ダメージ`;
+ if (card.type === 'paralyze-bonus-attack') return `${value}ダメージ / 敵が麻痺なら追加${card.bonus || 5}ダメージ`;
 
  return getBaseCardDisplayText(card);
 }
@@ -14574,6 +15185,8 @@ function showCardLibraryScreen() {
    getCardIcon,
    getBaseCardDisplayText,
    getCardCooldownText,
+   getCardEvolutionTargetName,
+   getCardByName,
    escapeHtml,
   });
 
@@ -15942,6 +16555,7 @@ window.declineRandomEvent = declineRandomEvent;
 window.selectRandomEventChoice = selectRandomEventChoice;
 window.chooseRandomEventCard = chooseRandomEventCard;
 window.chooseRandomEventRemoveCard = chooseRandomEventRemoveCard;
+window.chooseRandomEventEvolution = chooseRandomEventEvolution;
 window.chooseBombToCompress = chooseBombToCompress;
 window.saveFromTitleMenu = saveFromTitleMenu;
 window.startBattle = startBattle;
