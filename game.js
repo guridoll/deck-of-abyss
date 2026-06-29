@@ -72,6 +72,13 @@ const RARE_CARD_COOLDOWN = 5;
   const MAX_CARD_COUNT = 2;
   const MAX_DECK_TOTAL = 20;
   const REQUIRED_INITIAL_DECK_TOTAL = 20;
+  const DECK_BUILD_POINT_COST_BY_RARITY = {
+   normal: 0,
+   curse: 0,
+   rare: 1,
+   epic: 2,
+   legendary: 4,
+  };
   const CRITICAL_CHANCE = 0.05;
   const CRITICAL_DAMAGE_MULTIPLIER = 1.5;
   const ACTION_QUEUE_LIMIT = 5;
@@ -1272,18 +1279,65 @@ const PET_POOL = [
    return '';
   }
 
+  function getCardBuildPointCost(card) {
+   const rarity = getCardRarity(card);
+   return Math.max(0, Number(DECK_BUILD_POINT_COST_BY_RARITY[rarity] || 0));
+  }
+
+  function getCardBuildPointText(card) {
+   const cost = getCardBuildPointCost(card);
+   return `${cost}pt`;
+  }
+
+  function getDeckBuildPointsFromDepthProgress(progress = loadDepthProgress()) {
+   const cleared = normalizeDepthProgress(progress).clearedDepths || {};
+   return Object.keys(cleared).reduce((sum, depth) => sum + (cleared[depth] ? 1 : 0), 0);
+  }
+
+  function normalizeDeckBuildPoints(value, progress = loadDepthProgress()) {
+   const fromProgress = getDeckBuildPointsFromDepthProgress(progress);
+   const explicit = Math.max(0, Math.floor(Number(value || 0)));
+   return Math.max(fromProgress, Number.isFinite(explicit) ? explicit : 0);
+  }
+
+  function getOwnedDeckBuildPoints() {
+   if (isValidSaveSlot(currentSaveSlot)) {
+    const save = readSaveSlot(currentSaveSlot);
+    if (save) return normalizeDeckBuildPoints(save.deckBuildPoints, mergeDepthProgress(loadDepthProgress(), save.depthProgress));
+   }
+
+   return normalizeDeckBuildPoints(0, loadDepthProgress());
+  }
+
+  function getDeckBuildPointUsage(snapshot = deckCustomize) {
+   const source = snapshot && typeof snapshot === 'object' ? snapshot : {};
+   return CARD_POOL.reduce((sum, card) => {
+    const count = Math.max(0, Math.floor(Number(source[card.name] || 0)));
+    return sum + getCardBuildPointCost(card) * count;
+   }, 0);
+  }
+
+  function canAddCardWithinDeckBuildPoints(card, snapshot = deckCustomize) {
+   if (!card) return false;
+   return getDeckBuildPointUsage(snapshot) + getCardBuildPointCost(card) <= getOwnedDeckBuildPoints();
+  }
+
+  function isDeckWithinBuildPointLimit(snapshot = deckCustomize) {
+   return getDeckBuildPointUsage(snapshot) <= getOwnedDeckBuildPoints();
+  }
+
   function isNormalCard(card) {
    return Boolean(card) && getCardRarity(card) === 'normal';
   }
 
   function isCardUnlockedForDeckCustomize(card, discoveredCards = null) {
-   if (!isNormalCard(card)) return false;
+   if (!card || getCardRarity(card) === 'curse') return false;
    if (isBasicInitialCardName(card.name)) return true;
 
    const discovered = discoveredCards || loadDiscoveredCards();
    const discovery = discovered?.[card.name];
 
-   // 初期解放扱いの旧データではなく、ショップに並んだことで記録されたノーマルカードだけを解放する。
+   // 初期解放扱いの旧データではなく、ショップや報酬で記録されたカードだけを解放する。
    return Boolean(discovery && !discovery.initial);
   }
 
@@ -1594,7 +1648,9 @@ const PET_POOL = [
   document.addEventListener('keydown', unlockMenuBgmOnFirstInput);
   let selectedPetId = 'none';
   let petLevel = 1;
-  let currentCustomizeTab = 'attack';
+  let currentCustomizeTab = 'all';
+  let currentCustomizeRarityTab = 'all';
+  let currentCustomizeSearchText = '';
   let currentCardLibraryTab = 'all';
   let isDeckDetailOpen = false;
   let isDeckPresetPanelOpen = false;
@@ -1762,6 +1818,8 @@ const PET_POOL = [
     relics: {},
     relicEquipment: normalizeRelicEquipment(),
     deckCustomize: getInitialDeckCustomize(),
+    deckBuildPoints: 0,
+    deckBuildPointUsage: 0,
     selectedPetId: 'none',
     petLevel: 1,
     petExp: 0,
@@ -1812,13 +1870,17 @@ const PET_POOL = [
    const cleared = source.clearedDepths && typeof source.clearedDepths === 'object'
     ? source.clearedDepths
     : source;
+   const clearedDepths = {};
+   Object.keys(DEPTH_CONFIG).forEach(depth => {
+    clearedDepths[depth] = Boolean(cleared[depth] || cleared[String(depth)]);
+   });
+   Object.keys(cleared).forEach(depth => {
+    const numericDepth = Math.floor(Number(depth));
+    if (numericDepth > 0) clearedDepths[numericDepth] = Boolean(cleared[depth]);
+   });
 
    return {
-    clearedDepths: {
-     1: Boolean(cleared[1] || cleared['1']),
-     2: Boolean(cleared[2] || cleared['2']),
-     3: Boolean(cleared[3] || cleared['3']),
-    },
+    clearedDepths,
    };
   }
 
@@ -1833,12 +1895,17 @@ const PET_POOL = [
   function mergeDepthProgress(a, b) {
    const left = normalizeDepthProgress(a);
    const right = normalizeDepthProgress(b);
+   const depthKeys = Array.from(new Set([
+    ...Object.keys(left.clearedDepths || {}),
+    ...Object.keys(right.clearedDepths || {}),
+   ]));
+   const clearedDepths = {};
+   depthKeys.forEach(depth => {
+    clearedDepths[depth] = Boolean(left.clearedDepths[depth] || right.clearedDepths[depth]);
+   });
+
    return normalizeDepthProgress({
-    clearedDepths: {
-     1: left.clearedDepths[1] || right.clearedDepths[1],
-     2: left.clearedDepths[2] || right.clearedDepths[2],
-     3: left.clearedDepths[3] || right.clearedDepths[3],
-    },
+    clearedDepths,
    });
   }
 
@@ -1874,6 +1941,8 @@ const PET_POOL = [
    if (isValidSaveSlot(currentSaveSlot)) {
    const save = readSaveSlot(currentSaveSlot) || getDefaultSaveData();
    save.depthProgress = mergeDepthProgress(save.depthProgress, progress);
+   save.deckBuildPoints = normalizeDeckBuildPoints(save.deckBuildPoints, save.depthProgress);
+   save.deckBuildPointUsage = getDeckBuildPointUsage(save.deckCustomize);
    save.relicEquipment = normalizeRelicEquipment({
     ...save.relicEquipment,
     unlockedSlotCount: getRelicUnlockedSlotCountFromDepthProgress(save.depthProgress),
@@ -2034,6 +2103,8 @@ const PET_POOL = [
    save.petLevel = getPetLevelFromExp(save.petExp);
    save.currentDepth = normalizeDepth(hasDepthField ? save.currentDepth : 1);
    save.depthProgress = normalizeDepthProgress(save.depthProgress);
+   save.deckBuildPoints = normalizeDeckBuildPoints(save.deckBuildPoints, save.depthProgress);
+   save.deckBuildPointUsage = getDeckBuildPointUsage(save.deckCustomize);
    save.relicEquipment = normalizeRelicEquipment(save.relicEquipment, save.depthProgress);
    save.savedAt = save.savedAt || null;
    save.playerName = String(save.playerName || '').trim().replace(/\s+/g, ' ').slice(0, 16);
@@ -2464,6 +2535,8 @@ const PET_POOL = [
     relics: loadRelicProgress(),
     relicEquipment: loadRelicEquipment(),
     deckCustomize: sanitizeDeckCustomize(savedDeckCustomize),
+    deckBuildPoints: getOwnedDeckBuildPoints(),
+    deckBuildPointUsage: getDeckBuildPointUsage(savedDeckCustomize),
     selectedPetId,
     petLevel: getPetLevelFromExp(petExp),
     petExp: normalizePetExp(petExp),
@@ -3063,6 +3136,10 @@ const PET_POOL = [
    return Object.values(preset?.deck || {}).reduce((sum, count) => sum + Number(count || 0), 0);
   }
 
+  function getPresetDeckBuildPointUsage(preset) {
+   return getDeckBuildPointUsage(sanitizeDeckCustomize(preset?.deck || {}));
+  }
+
   function getPresetDeckSummary(preset, limit = 4) {
    const entries = Object.entries(sanitizeDeckCustomize(preset?.deck || {}))
     .filter(([, count]) => count > 0);
@@ -3080,9 +3157,15 @@ const PET_POOL = [
 
    const normalized = sanitizeDeckCustomize(deckCustomize);
    const total = Object.values(normalized).reduce((sum, count) => sum + count, 0);
+   const usage = getDeckBuildPointUsage(normalized);
 
    if (total <= 0) {
     alert('保存できるカードがありません');
+    return;
+   }
+
+   if (usage > getOwnedDeckBuildPoints()) {
+    alert(`編成ポイントが不足しています。使用中 ${usage} / ${getOwnedDeckBuildPoints()}pt`);
     return;
    }
 
@@ -3114,9 +3197,15 @@ const PET_POOL = [
 
    const normalized = sanitizeDeckCustomize(preset.deck);
    const total = Object.values(normalized).reduce((sum, count) => sum + count, 0);
+   const usage = getDeckBuildPointUsage(normalized);
 
    if (total <= 0) {
     alert('このマイデッキにはカードがありません');
+    return;
+   }
+
+   if (usage > getOwnedDeckBuildPoints()) {
+    alert(`このマイデッキは編成ポイントが不足しています。使用 ${usage} / 所持 ${getOwnedDeckBuildPoints()}pt`);
     return;
    }
 
@@ -3269,7 +3358,8 @@ function getPetSpiritAttackValue(card = null) {
  const growth = Math.max(0, Number(card?.growth ?? playerPassives?.petSpiritAttackGrowth ?? 3));
  const actions = Math.max(0, Number(playerPassives?.petSpiritAttackActions || 0));
  const maxValue = Math.max(1, Number(card?.maxValue ?? 40));
- return Math.min(maxValue, base + growth * actions);
+ const rawValue = Math.min(maxValue, base + growth * actions);
+ return getEffectiveCardValue({ ...(card || {}), type: 'pet-spirit-attack', value: rawValue });
 }
 
 function getPetSpiritDefenseValue(card = null) {
@@ -3277,7 +3367,8 @@ function getPetSpiritDefenseValue(card = null) {
  const growth = Math.max(0, Number(card?.growth ?? playerPassives?.petSpiritDefenseGrowth ?? 3));
  const actions = Math.max(0, Number(playerPassives?.petSpiritDefenseActions || 0));
  const maxValue = Math.max(1, Number(card?.maxValue ?? 40));
- return Math.min(maxValue, base + growth * actions);
+ const rawValue = Math.min(maxValue, base + growth * actions);
+ return getEffectiveCardValue({ ...(card || {}), type: 'pet-spirit-defense', value: rawValue });
 }
 
 
@@ -3541,7 +3632,8 @@ function isAttackCardType(type) {
   || type === 'attack-defense'
   || type === 'pursuit-attack'
   || type === 'counter-blade'
-  || type === 'ice-needle';
+  || type === 'ice-needle'
+  || type === 'pet-spirit-attack';
 }
 
 function isDefenseCardType(type) {
@@ -3551,7 +3643,8 @@ function isDefenseCardType(type) {
   || type === 'endure-next-attack'
   || type === 'chance-defense'
   || type === 'parry-guard'
-  || type === 'prepared-guard';
+  || type === 'prepared-guard'
+  || type === 'pet-spirit-defense';
 }
 
 function getEffectiveCardValue(card) {
@@ -6127,14 +6220,19 @@ function getDeckTotal() {
   }
 
   function getDisplayEnemyLevel() {
-   return pendingPassiveChoice && pendingNextLevel ? pendingNextLevel : enemyLevel;
+   return (pendingPassiveChoice || pendingShopChoice) && pendingNextLevel ? pendingNextLevel : enemyLevel;
+  }
+
+  function getEnemyCatalogEntryById(enemyId) {
+   const catalog = getEnemyCatalog();
+   return catalog.find(enemy => enemy.id === enemyId) || null;
   }
 
   function getCurrentEnemyCatalogEntry() {
    const catalog = getEnemyCatalog();
    const displayLevel = getDisplayEnemyLevel();
    const levelCandidates = getEnemyCandidatesForLevel(displayLevel);
-   const preferredId = pendingPassiveChoice && pendingNextLevel ? pendingPreviewEnemyId : currentEnemyId;
+   const preferredId = (pendingPassiveChoice || pendingShopChoice) && pendingNextLevel ? pendingPreviewEnemyId : currentEnemyId;
    const selectedId = levelCandidates.includes(preferredId)
     ? preferredId
     : sanitizeEnemyIdForLevel(currentEnemyId, displayLevel);
@@ -6796,16 +6894,17 @@ function tryApplyEnemyFreeze(turns = 1, chance = 1) {
  return true;
 }
 
-  function getEnemyImageSrc() {
+  function getEnemyImageSrc(enemyIdOverride = null) {
    const displayLevel = getDisplayEnemyLevel();
-   const enemyId = getCurrentEnemyCatalogEntry()?.id || currentEnemyId;
+   const entry = enemyIdOverride ? getEnemyCatalogEntryById(enemyIdOverride) : getCurrentEnemyCatalogEntry();
+   const enemyId = entry?.id || currentEnemyId;
    if (enemyId === 'obsidian_overlord') return 'assets/enemies/obsidian_overlord.png';
    if (enemyId === 'abyss_beast_king') return 'assets/enemies/abyss_beast_king.png';
    if (displayLevel >= 20 && isVoidBossEnemyId(enemyId)) {
     return cpu && cpu.phase === 2 ? GAME_IMAGES.void_phase2 : GAME_IMAGES.img_009;
    }
 
-   return getCurrentEnemyCatalogEntry()?.image || GAME_IMAGES.img_014;
+   return entry?.image || GAME_IMAGES.img_014;
   }
 
   function drawCpuCards(count) {
@@ -9010,11 +9109,16 @@ function showPrepareScreen() {
 
   function changeCardCount(cardName, diff) {
    playUiSelectSound();
+   const card = CARD_POOL.find(c => c.name === cardName);
    const current = deckCustomize[cardName] || 0;
    const maxCount = getMaxCardCount(cardName);
    const total = getDeckTotal();
 
    if (diff > 0 && total >= MAX_DECK_TOTAL) {
+    return;
+   }
+
+   if (diff > 0 && !canAddCardWithinDeckBuildPoints(card)) {
     return;
    }
 
@@ -9036,6 +9140,14 @@ function saveDeckCustomize() {
      ? `初期山札は${REQUIRED_INITIAL_DECK_TOTAL}枚ちょうど必要です。あと${diff}枚追加してください。`
      : `初期山札は${REQUIRED_INITIAL_DECK_TOTAL}枚ちょうど必要です。${Math.abs(diff)}枚減らしてください。`;
 
+    alert(message);
+    addLog(message);
+   renderCustomizeScreen();
+   return;
+  }
+
+   if (!isDeckWithinBuildPointLimit(deckCustomize)) {
+    const message = `編成ポイントが不足しています。使用中 ${getDeckBuildPointUsage(deckCustomize)} / ${getOwnedDeckBuildPoints()}pt`;
     alert(message);
     addLog(message);
     renderCustomizeScreen();
@@ -11688,11 +11800,12 @@ if (card.type === 'rare-double-attack') {
    if (card.type === 'pet-spirit-attack') {
     const attackValue = getPetSpiritAttackValue(card);
     const result = applyPlayerCardDamage(attackValue);
-    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
-    triggerDamageShake('.cpu-img');
-    triggerPetMotion();
-    addLog(`あなた：${card.name} (${result.damage}ダメージ / ペット行動${playerPassives.petSpiritAttackActions || 0}回)`);
-    playSound(result.fullyBlocked ? 'guard' : 'attack');
+   showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+   triggerDamageShake('.cpu-img');
+   triggerPetMotion();
+   addLog(`あなた：${card.name} (${result.damage}ダメージ / ペット行動${playerPassives.petSpiritAttackActions || 0}回)`);
+   playSound(result.fullyBlocked ? 'guard' : 'attack');
+   consumeAttackBoostsAfterAttack();
    }
 
    if (card.type === 'pet-spirit-defense') {
@@ -11704,6 +11817,7 @@ if (card.type === 'rare-double-attack') {
     triggerCardVisualEffect('.player-img', 'guard');
     addLog(`あなた：${card.name} (防御+${guard} / ペット行動${playerPassives.petSpiritDefenseActions || 0}回)`);
     playSound('defense');
+    consumeDefenseBoostsAfterDefense();
    }
 
    if (card.type === 'reload-double-next') {
@@ -13700,11 +13814,21 @@ function triggerBurnEffect(selector) {
   
 function getCustomizeTabs() {
    return [
+    { id: 'all', name: 'すべて' },
     { id: 'attack', name: '攻撃' },
     { id: 'defense', name: '防御' },
     { id: 'status', name: '状態異常' },
     { id: 'support', name: '補助' },
+   ];
+  }
+
+  function getCustomizeRarityTabs() {
+   return [
     { id: 'all', name: 'すべて' },
+    { id: 'normal', name: 'ノーマル' },
+    { id: 'rare', name: 'レア' },
+    { id: 'epic', name: 'エピック' },
+    { id: 'legendary', name: 'レジェンダリー' },
    ];
   }
 
@@ -13767,6 +13891,24 @@ function getCustomizeTabs() {
    playUiSelectSound();
 
    currentCustomizeTab = tabId;
+
+   renderCustomizeScreen();
+  }
+
+  function changeCustomizeRarityTab(tabId) {
+   playUiSelectSound();
+   currentCustomizeRarityTab = getCustomizeRarityTabs().some(tab => tab.id === tabId) ? tabId : 'all';
+   renderCustomizeScreen();
+  }
+
+  function setCustomizeFilter(filterType, value) {
+   if (filterType === 'rarity') {
+    currentCustomizeRarityTab = getCustomizeRarityTabs().some(tab => tab.id === value) ? value : 'all';
+   } else if (filterType === 'category') {
+    currentCustomizeTab = getCustomizeTabs().some(tab => tab.id === value) ? value : 'all';
+   } else if (filterType === 'search') {
+    currentCustomizeSearchText = String(value || '').trim();
+   }
 
    renderCustomizeScreen();
   }
@@ -13846,7 +13988,10 @@ function renderDeckPresetList() {
     const slot = Number(preset.slot);
     const div = document.createElement('div');
     const total = getPresetDeckTotal(preset);
+    const pointUsage = getPresetDeckBuildPointUsage(preset);
+    const pointLimit = getOwnedDeckBuildPoints();
     const hasDeck = total > 0;
+    const pointAllowed = pointUsage <= pointLimit;
     const detailOpen = selectedDeckPresetDetailSlot === slot;
     const detailEntries = Object.entries(sanitizeDeckCustomize(preset?.deck || {}))
      .filter(([, count]) => Number(count || 0) > 0)
@@ -13857,7 +14002,7 @@ function renderDeckPresetList() {
     div.innerHTML = `
      <div class="deck-preset-card-top">
       <span class="deck-preset-name">${escapeHtml(preset.name)}</span>
-      <span class="deck-preset-tag">${hasDeck ? `${total}/${MAX_DECK_TOTAL}枚` : '未保存'}</span>
+      <span class="deck-preset-tag">${hasDeck ? `${total}/${MAX_DECK_TOTAL}枚 / ${pointUsage}/${pointLimit}pt` : '未保存'}</span>
      </div>
      <label class="deck-preset-name-field">
       <span>保存名</span>
@@ -13869,7 +14014,7 @@ function renderDeckPresetList() {
      <div class="deck-preset-actions">
       <button type="button" onclick="saveCurrentDeckPreset(${slot})">現在の山札を保存</button>
       <button type="button" ${hasDeck ? '' : 'disabled'} onclick="toggleDeckPresetDetail(${slot})">${detailOpen ? '詳細を閉じる' : '詳細'}</button>
-      <button type="button" ${hasDeck ? '' : 'disabled'} onclick="applyDeckPreset(${slot})">読み込み</button>
+      <button type="button" ${hasDeck && pointAllowed ? '' : 'disabled'} onclick="applyDeckPreset(${slot})">${hasDeck && !pointAllowed ? 'pt不足' : '読み込み'}</button>
       <button type="button" ${hasDeck ? '' : 'disabled'} onclick="deleteDeckPreset(${slot})">削除</button>
      </div>
      ${detailOpen && hasDeck ? `
@@ -13898,6 +14043,11 @@ function getCustomizeInlineCardName(cardName) {
 }
 
 function arrangeCustomizeLayout() {
+ const layout = document.querySelector('.customize-layout');
+ const leftPanel = document.querySelector('.customize-left-panel');
+ const rightPanel = document.querySelector('.customize-right-panel');
+ const list = document.getElementById('customize-list');
+ const tabs = document.getElementById('customize-tabs');
  const headerSaveActions = document.getElementById('customize-header-save-actions');
  const currentActions = document.getElementById('customize-current-actions');
  const sidePresets = document.getElementById('customize-side-presets');
@@ -13910,8 +14060,82 @@ function arrangeCustomizeLayout() {
  const currentTabButton = document.getElementById('customize-current-tab-button');
  const presetsTabButton = document.getElementById('customize-presets-tab-button');
 
- if (headerSaveActions && saveButton && saveButton.parentElement !== headerSaveActions) {
-  headerSaveActions.appendChild(saveButton);
+ if (layout && leftPanel && rightPanel && list) {
+  let browserPanel = document.getElementById('customize-card-browser-panel');
+  if (!browserPanel) {
+   browserPanel = document.createElement('section');
+   browserPanel.id = 'customize-card-browser-panel';
+   browserPanel.className = 'customize-card-browser-panel';
+   browserPanel.innerHTML = `
+    <div class="customize-browser-heading">
+     <span>カード一覧</span>
+     <strong>追加可能カード</strong>
+    </div>
+    <div class="customize-browser-scroll"></div>
+   `;
+   layout.insertBefore(browserPanel, rightPanel);
+  }
+
+  const browserScroll = browserPanel.querySelector('.customize-browser-scroll');
+  if (browserScroll && list.parentElement !== browserScroll) {
+   browserScroll.appendChild(list);
+  }
+ }
+
+ if (leftPanel) {
+  const heading = leftPanel.querySelector('.customize-panel-heading');
+  if (heading) {
+   heading.innerHTML = '<strong>カード検索・フィルター</strong>';
+  }
+
+  let filterPanel = document.getElementById('customize-filter-panel');
+  if (!filterPanel) {
+   filterPanel = document.createElement('div');
+   filterPanel.id = 'customize-filter-panel';
+   filterPanel.className = 'customize-filter-panel';
+   filterPanel.innerHTML = `
+    <label class="customize-filter-field">
+     <span>レアリティ</span>
+     <select id="customize-rarity-filter"></select>
+    </label>
+    <label class="customize-filter-field">
+     <span>カード種類</span>
+     <select id="customize-category-filter"></select>
+    </label>
+    <label class="customize-filter-field">
+     <span>カード名検索</span>
+     <input id="customize-name-search" type="search" placeholder="カード名を入力">
+    </label>
+    <div id="customize-filter-result" class="customize-filter-result"></div>
+   `;
+   const workspace = leftPanel.querySelector('.customize-workspace');
+   leftPanel.insertBefore(filterPanel, workspace || null);
+  }
+
+  const raritySelect = document.getElementById('customize-rarity-filter');
+  const categorySelect = document.getElementById('customize-category-filter');
+  const searchInput = document.getElementById('customize-name-search');
+
+  if (raritySelect && !raritySelect.dataset.initialized) {
+   raritySelect.innerHTML = getCustomizeRarityTabs().map(tab => `<option value="${escapeHtml(tab.id)}">${escapeHtml(tab.name)}</option>`).join('');
+   raritySelect.addEventListener('change', event => setCustomizeFilter('rarity', event.target.value));
+   raritySelect.dataset.initialized = '1';
+  }
+
+  if (categorySelect && !categorySelect.dataset.initialized) {
+   categorySelect.innerHTML = getCustomizeTabs().map(tab => `<option value="${escapeHtml(tab.id)}">${escapeHtml(tab.name)}</option>`).join('');
+   categorySelect.addEventListener('change', event => setCustomizeFilter('category', event.target.value));
+   categorySelect.dataset.initialized = '1';
+  }
+
+  if (searchInput && !searchInput.dataset.initialized) {
+   searchInput.addEventListener('input', event => setCustomizeFilter('search', event.target.value));
+   searchInput.dataset.initialized = '1';
+  }
+ }
+
+ if (currentActions && saveButton && saveButton.parentElement !== currentActions) {
+  currentActions.appendChild(saveButton);
  }
 
  if (currentActions && clearButton && clearButton.parentElement !== currentActions) {
@@ -13933,7 +14157,7 @@ function arrangeCustomizeLayout() {
 
  if (currentPanel) currentPanel.style.display = currentCustomizeSideTab === 'current' ? 'block' : 'none';
  if (presetPanelWrap) presetPanelWrap.style.display = currentCustomizeSideTab === 'presets' ? 'block' : 'none';
- if (currentActions) currentActions.style.display = currentCustomizeSideTab === 'current' ? 'flex' : 'none';
+ if (currentActions) currentActions.style.display = 'flex';
  if (currentTabButton) currentTabButton.classList.toggle('active', currentCustomizeSideTab === 'current');
  if (presetsTabButton) presetsTabButton.classList.toggle('active', currentCustomizeSideTab === 'presets');
  isDeckPresetPanelOpen = currentCustomizeSideTab === 'presets';
@@ -13943,11 +14167,25 @@ function renderCustomizeCurrentDeck() {
  const list = document.getElementById('customize-current-deck-list');
  const countElement = document.getElementById('customize-current-deck-count');
  const total = getDeckTotal();
+ const pointUsage = getDeckBuildPointUsage(deckCustomize);
+ const pointLimit = getOwnedDeckBuildPoints();
 
  if (countElement) {
   countElement.textContent = `${total} / ${REQUIRED_INITIAL_DECK_TOTAL}枚`;
-  countElement.classList.toggle('valid', total === REQUIRED_INITIAL_DECK_TOTAL);
-  countElement.classList.toggle('invalid', total !== REQUIRED_INITIAL_DECK_TOTAL);
+  countElement.classList.toggle('valid', total === REQUIRED_INITIAL_DECK_TOTAL && pointUsage <= pointLimit);
+  countElement.classList.toggle('invalid', total !== REQUIRED_INITIAL_DECK_TOTAL || pointUsage > pointLimit);
+  const headerBody = countElement.parentElement;
+  if (headerBody) {
+   let pointSummary = document.getElementById('customize-side-point-summary');
+   if (!pointSummary) {
+    pointSummary = document.createElement('div');
+    pointSummary.id = 'customize-side-point-summary';
+    pointSummary.className = 'customize-side-point-summary';
+    headerBody.appendChild(pointSummary);
+   }
+   pointSummary.innerHTML = `<span>編成ポイント</span><strong>${pointUsage} / ${pointLimit}pt</strong>`;
+   pointSummary.classList.toggle('invalid', pointUsage > pointLimit);
+  }
  }
 
  if (!list) return;
@@ -13965,7 +14203,8 @@ function renderCustomizeCurrentDeck() {
  list.innerHTML = selectedCards.map(({ card, count }) => {
   const cardName = getCustomizeInlineCardName(card.name);
   const canRemove = count > 0;
-  const canAdd = total < MAX_DECK_TOTAL && count < getMaxCardCount(card.name);
+  const pointCost = getCardBuildPointCost(card);
+  const canAdd = total < MAX_DECK_TOTAL && count < getMaxCardCount(card.name) && canAddCardWithinDeckBuildPoints(card);
 
   return `
    <article class="customize-current-card ${getCardVisualClass(card)} ${card.type}-card${getCardRarityClass(card)}">
@@ -13975,11 +14214,10 @@ function renderCustomizeCurrentDeck() {
      <strong>×${count}</strong>
     </div>
     <div class="customize-current-card-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
-    <div class="customize-current-card-meta">${escapeHtml(getCardRarityDisplayName(card))} / ${escapeHtml(getCardCooldownText(card))}</div>
+    <div class="customize-current-card-meta">${escapeHtml(getCardRarityDisplayName(card) || 'NORMAL')} / ${escapeHtml(getCardCooldownText(card))} / ${pointCost}pt</div>
     <div class="count-control customize-current-count-control">
      <button ${canRemove ? '' : 'disabled'} onclick="changeCardCount('${cardName}', -1)">−</button>
      <div class="count-value">${count}/${getMaxCardCount(card.name)}枚</div>
-     <button ${canAdd ? '' : 'disabled'} onclick="changeCardCount('${cardName}', 1)">＋</button>
     </div>
    </article>
   `;
@@ -13994,44 +14232,87 @@ function renderCustomizeScreen() {
 
    arrangeCustomizeLayout();
    renderDeckPresetList();
-
-   if (tabs) {
-    tabs.innerHTML = '';
-
-    getCustomizeTabs().forEach(tab => {
-     const button = document.createElement('button');
-
-     button.className = `customize-tab${currentCustomizeTab === tab.id ? ' active' : ''}`;
-     button.textContent = tab.name;
-     button.onclick = () => changeCustomizeTab(tab.id);
-
-     tabs.appendChild(button);
-    });
+   const pointUsage = getDeckBuildPointUsage(deckCustomize);
+   const pointLimit = getOwnedDeckBuildPoints();
+   const raritySelect = document.getElementById('customize-rarity-filter');
+   const categorySelect = document.getElementById('customize-category-filter');
+   const searchInput = document.getElementById('customize-name-search');
+   const filterResult = document.getElementById('customize-filter-result');
+   if (raritySelect) raritySelect.value = currentCustomizeRarityTab;
+   if (categorySelect) categorySelect.value = currentCustomizeTab;
+   if (searchInput && document.activeElement !== searchInput) searchInput.value = currentCustomizeSearchText;
+   let pointElement = document.getElementById('custom-deck-build-points');
+   const totalBlock = document.querySelector('.customize-total-block');
+   if (!pointElement && totalBlock) {
+    pointElement = document.createElement('div');
+    pointElement.id = 'custom-deck-build-points';
+    pointElement.className = 'custom-deck-build-points';
+    totalBlock.appendChild(pointElement);
    }
+   if (pointElement) {
+    pointElement.textContent = `編成ポイント：使用中 ${pointUsage} / ${pointLimit}`;
+    pointElement.classList.toggle('invalid', pointUsage > pointLimit);
+   }
+
+   if (tabs) tabs.innerHTML = '';
 
    list.innerHTML = '';
 
    const discoveredCardsForCustomize = loadDiscoveredCards();
-
-   CARD_POOL
+   const searchText = String(currentCustomizeSearchText || '').trim().toLocaleLowerCase('ja');
+   const visibleCards = CARD_POOL
     .filter(card => isCardUnlockedForDeckCustomize(card, discoveredCardsForCustomize))
+    .filter(card => currentCustomizeRarityTab === 'all' || getCardRarity(card) === currentCustomizeRarityTab)
     .filter(card => currentCustomizeTab === 'all' || getCardCustomizeCategory(card) === currentCustomizeTab)
+    .filter(card => !searchText || String(card.name || '').toLocaleLowerCase('ja').includes(searchText));
+   const browserHeading = document.querySelector('.customize-browser-heading strong');
+   if (browserHeading) {
+    browserHeading.textContent = `追加可能カード ${visibleCards.length}枚`;
+   }
+   if (filterResult) {
+    const rarityName = getCustomizeRarityTabs().find(tab => tab.id === currentCustomizeRarityTab)?.name || 'すべて';
+    const categoryName = getCustomizeTabs().find(tab => tab.id === currentCustomizeTab)?.name || 'すべて';
+    filterResult.textContent = `表示中：${visibleCards.length}枚 / ${rarityName} / ${categoryName}${currentCustomizeSearchText ? ` / 「${currentCustomizeSearchText}」` : ''}`;
+   }
+
+   visibleCards
     .forEach(card => {
      const div = document.createElement('div');
-     div.className = `customize-card ${getCardVisualClass(card)} ${card.type}-card${getCardRarityClass(card)}`;
+     const currentCount = deckCustomize[card.name] || 0;
+     const maxCount = getMaxCardCount(card.name);
+     const pointCost = getCardBuildPointCost(card);
+     const total = getDeckTotal();
+     const isDeckFull = total >= MAX_DECK_TOTAL;
+     const isMaxCountReached = currentCount >= maxCount;
+     const hasBuildPoints = canAddCardWithinDeckBuildPoints(card);
+     const canAdd = !isDeckFull && !isMaxCountReached && hasBuildPoints;
+     const lockReason = canAdd
+      ? ''
+      : isDeckFull
+       ? '山札上限'
+       : isMaxCountReached
+        ? '枚数上限'
+        : !hasBuildPoints
+         ? 'pt不足'
+         : '追加不可';
+     div.className = `customize-card ${getCardVisualClass(card)} ${card.type}-card${getCardRarityClass(card)}${canAdd ? '' : ' customize-add-locked'}`;
+     if (!canAdd) div.dataset.lockReason = lockReason;
 
      div.innerHTML = `
-      ${hasCardRarityDisplay(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
-      <div class="customize-card-header">
-       <span>${getCardIcon(card.type)} ${card.name}</span>
-       <span>${hasCardRarityDisplay(card) ? getCardRarityDisplayName(card) : card.value}</span>
+      <div class="customize-card-badges">
+       <span class="customize-mini-badge rarity-${escapeHtml(getCardRarity(card))}">${escapeHtml(getCardRarityBadge(card) || 'N')}</span>
+       <span class="customize-mini-badge point">${pointCost}pt</span>
+       <span class="customize-mini-badge count">${currentCount}/${maxCount}枚</span>
       </div>
-      <div class="customize-card-text">${getBaseCardDisplayText(card)}</div>
+      <div class="customize-card-header">
+       <span>${getCardIcon(card.type)} ${escapeHtml(card.name)}</span>
+       <span>${escapeHtml(getPreDepartureCardTypeLabel(card))}</span>
+      </div>
+      <div class="customize-card-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
       <div class="card-cooldown">${getCardCooldownText(card)}</div>
-      <div class="count-control">
-       <button ${(deckCustomize[card.name] || 0) <= 0 ? 'disabled' : ''} onclick="changeCardCount('${card.name}', -1)">−</button>
-       <div class="count-value">${deckCustomize[card.name] || 0}/${getMaxCardCount(card.name)}枚</div>
-       <button ${getDeckTotal() >= MAX_DECK_TOTAL || (deckCustomize[card.name] || 0) >= getMaxCardCount(card.name) ? 'disabled' : ''} onclick="changeCardCount('${card.name}', 1)">＋</button>
+      <div class="count-control customize-add-control">
+       <div class="count-value">${currentCount}/${maxCount}枚</div>
+       <button ${canAdd ? '' : 'disabled'} title="${canAdd ? '山札へ追加します' : lockReason}" onclick="changeCardCount('${getCustomizeInlineCardName(card.name)}', 1)">＋</button>
       </div>
      `;
 
@@ -14047,6 +14328,7 @@ function renderCustomizeScreen() {
    const noticeElement = document.getElementById('custom-deck-total-notice');
    const total = getDeckTotal();
    const isValidDeckTotal = total === REQUIRED_INITIAL_DECK_TOTAL;
+   const isValidBuildPoints = pointUsage <= pointLimit;
 
    totalElement.textContent = `${total} / ${REQUIRED_INITIAL_DECK_TOTAL}枚`;
    totalElement.classList.toggle('valid', isValidDeckTotal);
@@ -14054,14 +14336,19 @@ function renderCustomizeScreen() {
    totalElement.onclick = null;
 
    if (saveButton) {
-    saveButton.disabled = !isValidDeckTotal;
-    saveButton.title = isValidDeckTotal
+    saveButton.disabled = !isValidDeckTotal || !isValidBuildPoints;
+    saveButton.title = isValidDeckTotal && isValidBuildPoints
      ? 'この山札を保存します'
-     : `初期山札は${REQUIRED_INITIAL_DECK_TOTAL}枚ちょうどで保存できます`;
+     : !isValidBuildPoints
+      ? `編成ポイントが不足しています`
+      : `初期山札は${REQUIRED_INITIAL_DECK_TOTAL}枚ちょうどで保存できます`;
    }
 
    if (noticeElement) {
-    if (isValidDeckTotal) {
+    if (!isValidBuildPoints) {
+     noticeElement.textContent = `編成ポイントが${pointUsage - pointLimit}pt不足しています。`;
+     noticeElement.className = 'deck-total-notice invalid';
+    } else if (isValidDeckTotal) {
      noticeElement.textContent = '20枚ちょうどです。保存できます。';
      noticeElement.className = 'deck-total-notice valid';
     } else if (total < REQUIRED_INITIAL_DECK_TOTAL) {
@@ -16097,6 +16384,7 @@ function updateEnemyTimerText() {
        <span>レアリティ <strong>${escapeHtml(getPreDepartureCardRarityLabel(card))}</strong></span>
        <span>種別 <strong>${escapeHtml(getPreDepartureCardTypeLabel(card))}</strong></span>
        <span>枚数 <strong>×${Math.max(0, Number(count || 0))}</strong></span>
+       <span>編成pt <strong>${getCardBuildPointCost(card)}pt</strong></span>
       </div>
       <div class="predeparture-card-detail-effect">
        <span>効果</span>
@@ -16184,13 +16472,15 @@ function updateEnemyTimerText() {
   }
 
   function getPreDepartureDeckHtml() {
+   const pointUsage = getDeckBuildPointUsage(savedDeckCustomize);
+   const pointLimit = getOwnedDeckBuildPoints();
    return `
     <section class="predeparture-panel predeparture-deck-panel">
      <div class="predeparture-panel-head">
       <h2>山札</h2>
       <button class="ui-button ui-button-secondary" onclick="showCustomizeFromPreDeparture()">山札編集</button>
      </div>
-     <div class="predeparture-deck-summary">デッキ枚数：<strong>${getDeckTotalFromCustomizeSnapshot()}枚</strong></div>
+     <div class="predeparture-deck-summary">デッキ枚数：<strong>${getDeckTotalFromCustomizeSnapshot()}枚</strong><span>編成ポイント：<strong>${pointUsage} / ${pointLimit}</strong></span></div>
      <div class="predeparture-deck-list">${getDeckPreviewCardsHtml()}</div>
     </section>
    `;
@@ -16961,6 +17251,7 @@ window.deleteDeckPreset = deleteDeckPreset;
 window.toggleDeckPresetDetail = toggleDeckPresetDetail;
 window.toggleDeckPresetPanel = toggleDeckPresetPanel;
 window.setCustomizeSideTab = setCustomizeSideTab;
+window.changeCustomizeRarityTab = changeCustomizeRarityTab;
 window.toggleDeckTotalDetail = toggleDeckTotalDetail;
 window.openOwnedDeckModal = openOwnedDeckModal;
 window.closeOwnedDeckModal = closeOwnedDeckModal;

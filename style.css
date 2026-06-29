@@ -13979,16 +13979,19 @@ body.battle-defeat-slowmo .battle-area {
 .bomb-choice-modal {
   position: fixed;
   inset: 0;
-  z-index: 1300;
+  z-index: 10080;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   background: rgba(10, 12, 18, 0.72);
   backdrop-filter: blur(5px);
+  pointer-events: auto;
 }
 
 .bomb-choice-dialog {
+  position: relative;
+  z-index: 1;
   width: min(660px, 100%);
   max-height: min(86vh, 680px);
   overflow: auto;
@@ -15562,6 +15565,10 @@ body.battle-defeat-slowmo .battle-area {
 }
 
 .predeparture-deck-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
   margin-bottom: 12px;
   color: #c7d2fe;
   font-weight: 900;
@@ -16705,7 +16712,7 @@ body.battle-defeat-slowmo .battle-area {
 }
 
 #customize-screen .customize-sticky-bar {
-  grid-template-columns: minmax(220px, 300px) 1fr auto !important;
+  grid-template-columns: minmax(260px, 360px) 1fr auto !important;
 }
 
 #customize-screen .customize-sticky-bar > .customize-save-actions {
@@ -16796,6 +16803,23 @@ body.battle-defeat-slowmo .battle-area {
   min-width: 110px;
   min-height: 38px;
   padding: 8px 18px;
+}
+
+.custom-deck-build-points {
+  margin-top: 6px;
+  padding: 5px 9px;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.62);
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.custom-deck-build-points.invalid {
+  border-color: rgba(248, 113, 113, 0.52);
+  color: #fecaca;
 }
 
 .customize-current-actions {
@@ -16929,6 +16953,42 @@ body.battle-defeat-slowmo .battle-area {
   font-weight: 900;
 }
 
+.build-point-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 44px;
+  z-index: 2;
+  padding: 3px 7px;
+  border: 1px solid rgba(253, 230, 138, 0.38);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #fde68a;
+  font-size: 10px;
+  font-weight: 1000;
+  box-shadow: 0 6px 14px rgba(2, 6, 23, 0.24);
+}
+
+.customize-card.build-point-locked {
+  filter: grayscale(0.82);
+  opacity: 0.58;
+}
+
+.customize-card.build-point-locked::after {
+  content: "pt不足";
+  position: absolute;
+  inset: auto 10px 44px 10px;
+  display: grid;
+  place-items: center;
+  min-height: 24px;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.86);
+  color: #fecaca;
+  font-size: 11px;
+  font-weight: 1000;
+  pointer-events: none;
+}
+
 .customize-current-count-control {
   margin-top: 8px !important;
 }
@@ -17051,14 +17111,360 @@ body.battle-defeat-slowmo .battle-area {
   font-weight: 800;
 }
 
+/* Redesigned deck customization layout for build points. */
+#customize-screen.customize-screen {
+  max-width: 1760px !important;
+  padding-inline: 18px;
+}
+
+#customize-screen .customize-header {
+  max-width: 1760px;
+  margin-inline: auto;
+}
+
+#customize-screen .customize-sticky-bar {
+  display: none !important;
+}
+
+.customize-layout {
+  grid-template-columns: 230px minmax(620px, 1fr) minmax(380px, 430px) !important;
+  gap: 18px !important;
+  align-items: stretch !important;
+}
+
+.customize-left-panel,
+.customize-card-browser-panel,
+.customize-right-panel {
+  min-width: 0;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.76));
+  box-shadow: 0 18px 44px rgba(2, 6, 23, 0.28);
+}
+
+.customize-left-panel {
+  position: sticky;
+  top: 18px;
+  align-self: start;
+  padding: 14px !important;
+}
+
+.customize-card-browser-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 160px);
+  padding: 14px;
+}
+
+.customize-browser-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.customize-browser-heading span {
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.customize-browser-heading strong {
+  color: #f8fafc;
+  font-size: 20px;
+  font-weight: 1000;
+}
+
+.customize-browser-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 2px 8px 2px 2px;
+}
+
+.customize-workspace {
+  display: grid;
+  gap: 16px;
+}
+
+.customize-rarity-tabs,
+.customize-workspace .customize-tabs {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 !important;
+}
+
+.customize-rarity-tabs::before,
+.customize-workspace .customize-tabs::before {
+  flex: 0 0 100%;
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.customize-rarity-tabs::before {
+  content: "レアリティ";
+}
+
+.customize-workspace .customize-tabs::before {
+  content: "カテゴリ";
+}
+
+.customize-rarity-tab,
+.customize-workspace .customize-tab {
+  flex: 1 1 calc(50% - 4px);
+  min-height: 36px;
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.customize-rarity-tab:hover,
+.customize-workspace .customize-tab:hover {
+  border-color: rgba(147, 197, 253, 0.62);
+  color: #f8fafc;
+}
+
+.customize-rarity-tab.active,
+.customize-workspace .customize-tab.active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.9), rgba(124, 58, 237, 0.84));
+  border-color: rgba(191, 219, 254, 0.72);
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.customize-browser-scroll .customize-list {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)) !important;
+  gap: 14px !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
+.customize-browser-scroll .customize-card {
+  min-height: 238px !important;
+  padding: 14px !important;
+  border-radius: 14px !important;
+  display: grid !important;
+  grid-template-rows: auto 44px minmax(54px, 1fr) auto 42px;
+  gap: 9px;
+}
+
+.customize-browser-scroll .customize-card .rare-badge {
+  display: none !important;
+}
+
+.customize-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.customize-mini-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  background: rgba(15, 23, 42, 0.74);
+  color: #dbeafe;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.customize-mini-badge.rarity-rare {
+  border-color: rgba(96, 165, 250, 0.58);
+  color: #bfdbfe;
+}
+
+.customize-mini-badge.rarity-epic {
+  border-color: rgba(192, 132, 252, 0.62);
+  color: #e9d5ff;
+}
+
+.customize-mini-badge.rarity-legendary {
+  border-color: rgba(250, 204, 21, 0.7);
+  color: #fef3c7;
+}
+
+.customize-mini-badge.point {
+  border-color: rgba(253, 230, 138, 0.45);
+  color: #fde68a;
+}
+
+.customize-mini-badge.count {
+  margin-left: auto;
+  color: #bbf7d0;
+}
+
+.customize-browser-scroll .customize-card-header {
+  min-height: 44px !important;
+  align-items: start !important;
+  gap: 8px !important;
+}
+
+.customize-browser-scroll .customize-card-header span:first-child {
+  font-size: 15px !important;
+  line-height: 1.25 !important;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.customize-browser-scroll .customize-card-header span:last-child {
+  flex: none;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #bfdbfe !important;
+  font-size: 10px !important;
+}
+
+.customize-browser-scroll .customize-card-text {
+  min-height: 54px !important;
+  max-height: none !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden !important;
+  font-size: 12px !important;
+  line-height: 1.42 !important;
+}
+
+.customize-browser-scroll .customize-card .card-cooldown {
+  position: static !important;
+  justify-self: start;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.customize-browser-scroll .customize-card .count-control {
+  align-self: end;
+  margin: 0 !important;
+}
+
+.customize-browser-scroll .customize-card.build-point-locked {
+  filter: grayscale(0.88);
+  opacity: 0.52;
+}
+
+.customize-browser-scroll .customize-card.build-point-locked::after {
+  inset: auto 14px 55px 14px;
+}
+
+.customize-browser-scroll .build-point-badge {
+  display: none !important;
+}
+
+.customize-right-panel {
+  top: 18px !important;
+  max-height: calc(100vh - 36px) !important;
+  padding: 14px !important;
+}
+
+.customize-current-deck-header {
+  align-items: start !important;
+  margin-bottom: 4px !important;
+}
+
+.customize-current-deck-header > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.customize-current-deck-header strong {
+  font-size: 18px !important;
+}
+
+.customize-side-point-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.customize-side-point-summary strong {
+  color: #fde68a;
+  font-size: 16px !important;
+}
+
+.customize-side-point-summary.invalid strong {
+  color: #fecaca;
+}
+
+.customize-current-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, auto));
+  gap: 8px;
+  justify-content: end;
+}
+
+.customize-current-actions .ui-button,
+.customize-current-actions .deck-clear-button {
+  min-height: 36px !important;
+  padding: 7px 12px !important;
+  font-size: 12px !important;
+}
+
+.customize-side-tab-panel {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.customize-current-deck-list {
+  grid-template-columns: 1fr !important;
+  max-height: none !important;
+  height: calc(100vh - 245px);
+  overflow: auto !important;
+  padding-right: 6px !important;
+}
+
+.customize-current-card {
+  min-height: 132px !important;
+  padding: 11px !important;
+}
+
+.customize-current-card-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+#customize-screen .deck-preset-panel {
+  max-height: calc(100vh - 245px) !important;
+  overflow: auto !important;
+}
+
+#customize-screen .deck-preset-card.compact-preset-card {
+  min-height: 142px;
+}
+
 @media (max-width: 1100px) {
   .customize-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 
+  .customize-left-panel,
   .customize-right-panel {
     position: static;
     max-height: none;
+  }
+
+  .customize-card-browser-panel {
+    min-height: auto;
   }
 
   .customize-side-actions {
@@ -17066,6 +17472,8 @@ body.battle-defeat-slowmo .battle-area {
   }
 
   .customize-current-deck-list {
+    height: auto;
+    max-height: 460px !important;
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   }
 }
@@ -17173,4 +17581,98 @@ body.battle-defeat-slowmo .battle-area {
 #battle-screen #cards.cards.paralyzed-hand .card:hover {
   transform: none !important;
   z-index: 1;
+}
+
+/* Deck customize: unified filter/search controls */
+#customize-screen .customize-rarity-tabs,
+#customize-screen .customize-workspace .customize-tabs {
+  display: none !important;
+}
+
+#customize-screen .customize-filter-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(147, 197, 253, 0.16);
+}
+
+#customize-screen .customize-filter-field {
+  display: grid;
+  gap: 6px;
+}
+
+#customize-screen .customize-filter-field span {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+#customize-screen .customize-filter-field select,
+#customize-screen .customize-filter-field input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid rgba(147, 197, 253, 0.32);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 950;
+  padding: 8px 10px;
+  outline: none;
+}
+
+#customize-screen .customize-filter-field select:focus,
+#customize-screen .customize-filter-field input:focus {
+  border-color: rgba(147, 197, 253, 0.78);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+#customize-screen .customize-filter-result {
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.36);
+  border: 1px solid rgba(147, 197, 253, 0.18);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.5;
+}
+
+#customize-screen .customize-add-control {
+  grid-template-columns: 1fr auto !important;
+}
+
+#customize-screen .customize-add-control button {
+  min-width: 42px !important;
+}
+
+#customize-screen .customize-current-count-control {
+  grid-template-columns: auto 1fr !important;
+}
+
+#customize-screen .customize-current-count-control .count-value {
+  justify-self: end;
+}
+
+#customize-screen .customize-card.customize-add-locked {
+  filter: grayscale(0.9);
+  opacity: 0.52;
+}
+
+#customize-screen .customize-card.customize-add-locked::after {
+  content: attr(data-lock-reason);
+  position: absolute;
+  inset: auto 14px 55px 14px;
+  display: grid;
+  place-items: center;
+  min-height: 24px;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #fecaca;
+  font-size: 11px;
+  font-weight: 1000;
+  pointer-events: none;
 }
