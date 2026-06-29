@@ -1458,6 +1458,7 @@
 
 
 .pet-panel {
+  position: relative;
   margin-top: 14px;
   padding: 12px;
   border-radius: 18px;
@@ -9396,6 +9397,279 @@ button.passive-skip-button:hover {
     0 0 22px rgba(249, 115, 22, 0.9),
     0 3px 6px rgba(0, 0, 0, 0.65);
   animation: criticalDamagePopupFloat 1.08s cubic-bezier(.2,1.45,.35,1) forwards;
+}
+
+.damage-popup-item.damage-medium-popup {
+  font-size: 30px;
+  color: #fed7aa;
+  text-shadow:
+    0 0 10px rgba(251, 146, 60, 0.95),
+    0 2px 5px rgba(0, 0, 0, 0.62);
+}
+
+.damage-popup-item.damage-large-popup {
+  font-size: 38px;
+  color: #fef08a;
+  letter-spacing: 0.04em;
+  text-shadow:
+    0 0 12px rgba(250, 204, 21, 1),
+    0 0 24px rgba(248, 113, 113, 0.85),
+    0 4px 8px rgba(0, 0, 0, 0.72);
+  animation: criticalDamagePopupFloat 1.02s cubic-bezier(.2,1.3,.25,1) forwards;
+}
+
+.damage-popup-item.damage-ultra-popup {
+  font-size: 46px;
+  color: #fff7ed;
+  letter-spacing: 0.08em;
+  text-shadow:
+    0 0 12px rgba(255, 237, 213, 1),
+    0 0 28px rgba(239, 68, 68, 1),
+    0 0 44px rgba(250, 204, 21, 0.85),
+    0 5px 10px rgba(0, 0, 0, 0.82);
+  animation: ultraDamagePopupFloat 1.08s cubic-bezier(.18,1.45,.24,1) forwards;
+}
+
+.damage-popup-item.damage-bomb-popup {
+  font-size: 36px;
+  color: #ffedd5;
+  text-shadow:
+    0 0 10px rgba(251, 146, 60, 1),
+    0 0 28px rgba(239, 68, 68, 0.95),
+    0 4px 8px rgba(0, 0, 0, 0.75);
+  animation: bombDamagePopupFloat 0.98s cubic-bezier(.22,1.25,.3,1) forwards;
+}
+
+.damage-popup-item.damage-poison-popup {
+  color: #e9d5ff;
+  text-shadow:
+    0 0 12px rgba(192, 132, 252, 1),
+    0 0 24px rgba(88, 28, 135, 0.9),
+    0 3px 7px rgba(0, 0, 0, 0.65);
+}
+
+.damage-popup-item.damage-burn-popup {
+  color: #fed7aa;
+  text-shadow:
+    0 0 12px rgba(251, 146, 60, 1),
+    0 0 24px rgba(220, 38, 38, 0.85),
+    0 3px 7px rgba(0, 0, 0, 0.65);
+}
+
+.damage-popup-item.damage-freeze-popup {
+  color: #cffafe;
+  text-shadow:
+    0 0 12px rgba(103, 232, 249, 1),
+    0 0 24px rgba(59, 130, 246, 0.9),
+    0 3px 7px rgba(0, 0, 0, 0.65);
+}
+
+@keyframes ultraDamagePopupFloat {
+  0% { opacity: 0; transform: translate(-50%, 12px) scale(0.45) rotate(-5deg); }
+  16% { opacity: 1; transform: translate(-50%, -12px) scale(1.68) rotate(3deg); }
+  38% { opacity: 1; transform: translate(-50%, -22px) scale(1.18) rotate(-1deg); }
+  100% { opacity: 0; transform: translate(-50%, -78px) scale(0.96) rotate(0deg); }
+}
+
+@keyframes bombDamagePopupFloat {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(0.55); filter: blur(1px); }
+  18% { opacity: 1; transform: translate(-50%, -8px) scale(1.5); filter: blur(0); }
+  45% { opacity: 1; transform: translate(-50%, -18px) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -66px) scale(0.95); }
+}
+
+.battle-impact-shake {
+  animation: battleImpactShake 0.36s ease;
+}
+
+.battle-impact-shake-heavy {
+  animation: battleImpactShakeHeavy 0.52s ease;
+}
+
+@keyframes battleImpactShake {
+  0%, 100% { transform: translate(0, 0); }
+  18% { transform: translate(-4px, 2px); }
+  38% { transform: translate(5px, -2px); }
+  58% { transform: translate(-3px, -1px); }
+  78% { transform: translate(3px, 1px); }
+}
+
+@keyframes battleImpactShakeHeavy {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(-8px, 4px); }
+  30% { transform: translate(9px, -4px); }
+  48% { transform: translate(-7px, -2px); }
+  66% { transform: translate(6px, 3px); }
+  84% { transform: translate(-3px, 1px); }
+}
+
+.bomb-count-burst {
+  position: absolute;
+  left: 50%;
+  top: 18%;
+  z-index: 16;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 146, 60, 0.82);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(127, 29, 29, 0.84));
+  color: #ffedd5;
+  font-size: 18px;
+  font-weight: 1000;
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.58), inset 0 0 18px rgba(254, 215, 170, 0.12);
+  pointer-events: none;
+  animation: bombCountBurst 0.78s ease-out forwards;
+}
+
+.bomb-count-burst strong {
+  color: #fef08a;
+  font-size: 1.22em;
+  letter-spacing: 0.04em;
+}
+
+@keyframes bombCountBurst {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.72); }
+  20% { opacity: 1; transform: translate(-50%, -8px) scale(1.18); }
+  68% { opacity: 1; transform: translate(-50%, -16px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -34px) scale(0.86); }
+}
+
+.bomb-explosion-effect {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  z-index: 18;
+  pointer-events: none;
+}
+
+.bomb-explosion-effect::before {
+  content: "";
+  position: absolute;
+  inset: -36px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(254, 240, 138, 0.95) 0 14%, rgba(251, 146, 60, 0.76) 18% 32%, rgba(239, 68, 68, 0.42) 36% 54%, transparent 68%);
+  animation: bombExplosionCore 0.72s ease-out forwards;
+}
+
+.bomb-explosion-effect span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 42px;
+  border-radius: 999px;
+  transform-origin: center bottom;
+  background: linear-gradient(180deg, rgba(254, 240, 138, 0.95), rgba(239, 68, 68, 0.12));
+  filter: blur(0.2px);
+  animation: bombExplosionRay 0.82s ease-out forwards;
+}
+
+.bomb-explosion-effect span:nth-child(1) { transform: translate(-50%, -100%) rotate(0deg); }
+.bomb-explosion-effect span:nth-child(2) { transform: translate(-50%, -100%) rotate(60deg); }
+.bomb-explosion-effect span:nth-child(3) { transform: translate(-50%, -100%) rotate(-60deg); }
+
+@keyframes bombExplosionCore {
+  0% { opacity: 0; transform: scale(0.2); filter: blur(0); }
+  22% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.75); filter: blur(2px); }
+}
+
+@keyframes bombExplosionRay {
+  0% { opacity: 0; height: 18px; }
+  18% { opacity: 1; height: 58px; }
+  100% { opacity: 0; height: 76px; }
+}
+
+.pet-action-burst {
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  z-index: 20;
+  transform: translate(-50%, -50%);
+  min-width: 150px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  text-align: center;
+  color: #ecfeff;
+  background: radial-gradient(circle at 50% 0%, rgba(125, 211, 252, 0.38), rgba(15, 23, 42, 0.92) 62%);
+  border: 1px solid rgba(125, 211, 252, 0.72);
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.45), inset 0 0 18px rgba(255,255,255,0.1);
+  pointer-events: none;
+  animation: petActionBurst 0.98s cubic-bezier(.2,1.22,.25,1) forwards;
+}
+
+.pet-action-burst div {
+  font-size: 13px;
+  font-weight: 1000;
+  letter-spacing: 0.14em;
+  color: #bae6fd;
+}
+
+.pet-action-burst strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 18px;
+  color: #fef9c3;
+  text-shadow: 0 0 14px rgba(250, 204, 21, 0.8);
+}
+
+@keyframes petActionBurst {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.65); }
+  16% { opacity: 1; transform: translate(-50%, -8px) scale(1.1); }
+  68% { opacity: 1; transform: translate(-50%, -18px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -40px) scale(0.92); }
+}
+
+.enemy-defeat-red-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at 72% 45%, rgba(248, 113, 113, 0.48), rgba(127, 29, 29, 0.16) 38%, transparent 68%);
+  animation: enemyDefeatFlash 0.68s ease-out forwards;
+}
+
+.enemy-defeat-impact {
+  animation: enemyDefeatImpact 1.15s cubic-bezier(.18,1.15,.28,1) forwards !important;
+}
+
+@keyframes enemyDefeatFlash {
+  0% { opacity: 0; }
+  16% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes enemyDefeatImpact {
+  0% { transform: translateX(0) scale(1); filter: brightness(1); opacity: 1; }
+  18% { transform: translateX(18px) scale(1.04); filter: brightness(1.8) saturate(1.35); }
+  42% { transform: translateX(-10px) scale(0.98); filter: brightness(1.2) saturate(1.1); }
+  78% { transform: translateX(26px) scale(0.92); opacity: 0.56; filter: brightness(0.75) blur(0.5px); }
+  100% { transform: translateX(34px) scale(0.72); opacity: 0; filter: brightness(0.55) blur(2px); }
+}
+
+.bomb-badge strong {
+  color: #fef08a;
+  font-size: 1.12em;
+  text-shadow: 0 0 10px rgba(250, 204, 21, 0.75);
+}
+
+.poison-hit-effect {
+  filter: drop-shadow(0 0 16px rgba(192, 132, 252, 0.82)) saturate(1.18);
+}
+
+.burn-effect {
+  filter: drop-shadow(0 0 16px rgba(251, 146, 60, 0.85)) saturate(1.18);
+}
+
+.freeze-effect {
+  filter: drop-shadow(0 0 16px rgba(103, 232, 249, 0.86)) saturate(1.08);
 }
 
 @keyframes criticalDamagePopupFloat {
