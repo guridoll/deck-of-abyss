@@ -14204,20 +14204,24 @@ function renderCustomizeCurrentDeck() {
   const cardName = getCustomizeInlineCardName(card.name);
   const canRemove = count > 0;
   const pointCost = getCardBuildPointCost(card);
-  const canAdd = total < MAX_DECK_TOTAL && count < getMaxCardCount(card.name) && canAddCardWithinDeckBuildPoints(card);
+  const rarityBadge = getCardRarityBadge(card) || 'N';
+  const rarityName = getCardRarityDisplayName(card) || 'NORMAL';
 
   return `
-   <article class="customize-current-card ${getCardVisualClass(card)} ${card.type}-card${getCardRarityClass(card)}">
-    ${hasCardRarityDisplay(card) ? `<div class="rare-badge">${getCardRarityBadge(card)}</div>` : ''}
+   <article class="customize-current-card current-rarity-${escapeHtml(getCardRarity(card))}" title="${escapeHtml(card.name)}">
+    <div class="customize-current-card-badges">
+     <span>${escapeHtml(rarityBadge)}</span>
+     <span>${pointCost}pt</span>
+    </div>
     <div class="customize-current-card-top">
      <span>${getCardIcon(card.type)} ${escapeHtml(card.name)}</span>
      <strong>×${count}</strong>
     </div>
     <div class="customize-current-card-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
-    <div class="customize-current-card-meta">${escapeHtml(getCardRarityDisplayName(card) || 'NORMAL')} / ${escapeHtml(getCardCooldownText(card))} / ${pointCost}pt</div>
+    <div class="customize-current-card-meta">${escapeHtml(rarityName)} / ${escapeHtml(getCardCooldownText(card))} / ${escapeHtml(getPreDepartureCardTypeLabel(card))}</div>
     <div class="count-control customize-current-count-control">
-     <button ${canRemove ? '' : 'disabled'} onclick="changeCardCount('${cardName}', -1)">−</button>
      <div class="count-value">${count}/${getMaxCardCount(card.name)}枚</div>
+     <button ${canRemove ? '' : 'disabled'} onclick="changeCardCount('${cardName}', -1)" title="山札から外す">−</button>
     </div>
    </article>
   `;

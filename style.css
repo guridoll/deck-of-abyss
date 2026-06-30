@@ -16990,17 +16990,36 @@ body.battle-defeat-slowmo .battle-area {
 }
 
 .customize-current-count-control {
-  margin-top: 8px !important;
+  margin-top: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 38px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 8px !important;
+  overflow: visible !important;
 }
 
 .customize-current-count-control button {
-  min-width: 28px !important;
-  min-height: 28px !important;
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  justify-self: end !important;
+  border-radius: 11px !important;
+  font-size: 22px !important;
+  line-height: 1 !important;
+  flex: none !important;
 }
 
 .customize-current-count-control .count-value {
-  min-width: 46px;
+  min-width: 0;
+  justify-self: stretch;
+  overflow: hidden;
+  text-align: right;
   font-size: 11px;
+  white-space: nowrap;
 }
 
 #customize-screen .deck-preset-panel {
@@ -17424,16 +17443,94 @@ body.battle-defeat-slowmo .battle-area {
 }
 
 .customize-current-deck-list {
-  grid-template-columns: 1fr !important;
+  grid-template-columns: 320px !important;
+  grid-auto-rows: max-content;
+  align-content: start;
+  justify-content: start;
   max-height: none !important;
   height: calc(100vh - 245px);
-  overflow: auto !important;
-  padding-right: 6px !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  padding-right: 10px !important;
+  padding-bottom: 14px !important;
 }
 
 .customize-current-card {
+  width: 320px !important;
+  min-width: 320px !important;
+  max-width: 320px !important;
+  box-sizing: border-box !important;
   min-height: 132px !important;
   padding: 11px !important;
+  gap: 7px;
+  overflow: hidden;
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.98), rgba(20, 31, 49, 0.94)) !important;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.16) !important;
+}
+
+.customize-current-card .rare-badge {
+  display: none !important;
+}
+
+.customize-current-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  min-height: 22px;
+}
+
+.customize-current-card-badges span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 20px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(147, 197, 253, 0.22);
+  background: rgba(15, 23, 42, 0.74);
+  color: #dbeafe;
+  font-size: 10px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.customize-current-card.current-rarity-rare .customize-current-card-badges span:first-child {
+  border-color: rgba(96, 165, 250, 0.58);
+  color: #bfdbfe;
+}
+
+.customize-current-card.current-rarity-epic .customize-current-card-badges span:first-child {
+  border-color: rgba(192, 132, 252, 0.62);
+  color: #e9d5ff;
+}
+
+.customize-current-card.current-rarity-legendary .customize-current-card-badges span:first-child {
+  border-color: rgba(250, 204, 21, 0.72);
+  color: #fef3c7;
+}
+
+.customize-current-card-top {
+  min-height: 38px !important;
+  margin-bottom: 0 !important;
+  padding-right: 0 !important;
+  align-items: start !important;
+}
+
+.customize-current-card-top span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-width: 0;
+  line-height: 1.25;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.customize-current-card-top strong {
+  flex: none;
+  padding-left: 4px;
 }
 
 .customize-current-card-text {
@@ -17441,6 +17538,15 @@ body.battle-defeat-slowmo .battle-area {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  flex: 0 0 auto !important;
+  min-height: 31px;
+}
+
+.customize-current-card-meta {
+  margin-top: 0 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #customize-screen .deck-preset-panel {
@@ -17649,11 +17755,26 @@ body.battle-defeat-slowmo .battle-area {
 }
 
 #customize-screen .customize-current-count-control {
-  grid-template-columns: auto 1fr !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  grid-template-columns: minmax(0, 1fr) 38px !important;
+  overflow: visible !important;
 }
 
 #customize-screen .customize-current-count-control .count-value {
-  justify-self: end;
+  justify-self: stretch;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+
+#customize-screen .customize-current-count-control button {
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  flex: 0 0 38px !important;
 }
 
 #customize-screen .customize-card.customize-add-locked {
