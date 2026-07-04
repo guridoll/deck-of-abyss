@@ -17586,21 +17586,31 @@ body.battle-defeat-slowmo .battle-area {
 
 /* Battle hand hover: enlarge the hovered card without changing grid layout. */
 #battle-screen #cards.cards {
+  --battle-hand-card-width: 190px;
+  --battle-hand-card-gap: 12px;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: center !important;
   align-items: end;
-  overflow: visible;
+  gap: 0 !important;
+  overflow: visible !important;
   isolation: isolate;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  grid-auto-rows: 220px;
+  grid-template-columns: none !important;
+  grid-auto-rows: unset !important;
+  max-width: 100%;
 }
 
 #battle-screen #cards.cards .card {
-  width: 100%;
-  height: 220px;
-  min-height: 220px !important;
-  max-height: 220px;
+  flex: 0 0 var(--battle-hand-card-width) !important;
+  width: var(--battle-hand-card-width) !important;
+  min-width: var(--battle-hand-card-width) !important;
+  max-width: var(--battle-hand-card-width) !important;
+  height: 232px;
+  min-height: 232px !important;
+  max-height: 232px;
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: 48px 58px minmax(0, 1fr);
+  grid-template-rows: 48px 54px 42px;
   gap: 8px;
   padding: 14px 14px 42px !important;
   transform-origin: center bottom !important;
@@ -17611,6 +17621,34 @@ body.battle-defeat-slowmo .battle-area {
     filter 0.14s ease !important;
   will-change: transform;
   z-index: 1;
+}
+
+#battle-screen #cards.cards .card + .card {
+  margin-left: var(--battle-hand-card-gap);
+}
+
+#battle-screen #cards.cards[data-hand-count="6"] {
+  --battle-hand-card-gap: -8px;
+}
+
+#battle-screen #cards.cards[data-hand-count="7"] {
+  --battle-hand-card-gap: -40px;
+}
+
+#battle-screen #cards.cards[data-hand-count="8"] {
+  --battle-hand-card-gap: -60px;
+}
+
+#battle-screen #cards.cards[data-hand-count="9"] {
+  --battle-hand-card-gap: -80px;
+}
+
+#battle-screen #cards.cards[data-hand-count="10"] {
+  --battle-hand-card-gap: -92px;
+}
+
+#battle-screen #cards.cards.crowded-hand:not([data-hand-count="6"]):not([data-hand-count="7"]):not([data-hand-count="8"]):not([data-hand-count="9"]):not([data-hand-count="10"]) {
+  --battle-hand-card-gap: -98px;
 }
 
 #battle-screen #cards.cards .card .card-top {
@@ -17643,7 +17681,7 @@ body.battle-defeat-slowmo .battle-area {
 #battle-screen #cards.cards .card .value {
   align-self: center;
   margin: 0 !important;
-  min-height: 58px;
+  min-height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17652,18 +17690,18 @@ body.battle-defeat-slowmo .battle-area {
 }
 
 #battle-screen #cards.cards .card .card-text {
-  min-height: 0 !important;
-  max-height: none !important;
-  height: 100%;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  height: 42px !important;
   margin: 0 !important;
-  padding: 8px 9px !important;
+  padding: 6px 9px !important;
   display: -webkit-box !important;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden !important;
   align-self: stretch;
   font-size: 12px !important;
-  line-height: 1.35 !important;
+  line-height: 1.25 !important;
 }
 
 #battle-screen #cards.cards .card .card-cooldown {

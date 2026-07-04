@@ -2094,7 +2094,7 @@ const PET_POOL = [
    save.battleHistory = normalizeBattleHistory(save.battleHistory);
    save.deckPresets = normalizeCustomDeckPresets(save.deckPresets);
    save.randomEvents = save.randomEvents && typeof save.randomEvents === 'object' ? save.randomEvents : {};
-   save.deletedCardHistory = normalizeDeletedCardHistory(save.deletedCardHistory);
+   save.deletedCardHistory = {};
    save.relics = save.relics && typeof save.relics === 'object' ? save.relics : {};
    save.deckCustomize = save.deckCustomize && typeof save.deckCustomize === 'object' ? normalizeDeckCustomizeForSave(save.deckCustomize) : getInitialDeckCustomize();
    save.selectedPetId = save.selectedPetId || 'none';
@@ -2353,7 +2353,7 @@ const PET_POOL = [
 
    savedDeckCustomize = normalizeDeckCustomizeForSave(normalized.deckCustomize);
    deckCustomize = structuredClone(savedDeckCustomize);
-   deletedCardHistory = normalizeDeletedCardHistory(normalized.deletedCardHistory);
+   deletedCardHistory = {};
    selectedPetId = normalized.selectedPetId || 'none';
    resetPetProgressForDive();
    currentDepth = normalizeDepth(normalized.currentDepth || currentDepth);
@@ -2494,6 +2494,7 @@ const PET_POOL = [
 
   function resetRunProgressForNextDive() {
    enemyLevel = 1;
+   deletedCardHistory = {};
    resetPetProgressForDive();
    pendingNextLevel = null;
    pendingPreviewEnemyId = null;
@@ -2531,7 +2532,7 @@ const PET_POOL = [
     battleHistory: loadBattleHistory(),
     deckPresets: loadCustomDeckPresets(),
     randomEvents: loadRandomEventProgress(),
-    deletedCardHistory,
+    deletedCardHistory: {},
     relics: loadRelicProgress(),
     relicEquipment: loadRelicEquipment(),
     deckCustomize: sanitizeDeckCustomize(savedDeckCustomize),
@@ -4464,7 +4465,7 @@ function getRandomEventDefinitions() {
   { id: 'powder_storehouse_event', icon: '💣', title: '爆薬庫', description: '火薬の匂いが濃い。準備して起爆するための札が並んでいる。', effect: '爆弾カード候補3枚から1枚選んで追加する', downside: 'なし', baseWeight: 80, steps: [{ type: 'cardChoice', count: 3, pool: 'bomb' }] },
   { id: 'beast_training_ground', icon: '🐾', title: '獣使いの訓練所', description: '獣使いの道具と訓練記録が、ペットとの連携を教えてくれる。', effect: 'ペットカード候補3枚から1枚選んで追加する', downside: 'なし', baseWeight: 80, steps: [{ type: 'cardChoice', count: 3, pool: 'pet' }] },
   { id: 'berserker_gravestone', icon: '🩸', title: '狂戦士の墓標', description: '墓標には、血を燃やして戦った者の技が刻まれている。', effect: '自傷カード候補3枚から1枚選んで追加する', downside: 'なし', baseWeight: 75, steps: [{ type: 'cardChoice', count: 3, pool: 'blood' }] },
-  { id: 'memory_spring', icon: '💧', title: '記憶の泉', description: '泉の水面に、過去に手放したカードの影が揺れている。', effect: '削除済みカードから1枚選んで山札へ戻す', downside: 'なし', baseWeight: 45, steps: [{ type: 'restoreChoice' }] },
+  { id: 'memory_spring', icon: '💧', title: '記憶の泉', description: '泉の水面に、この潜行で手放したカードの影が揺れている。', effect: '今回の潜行で削除したカードから1枚選んで山札へ戻す', downside: 'なし', baseWeight: 45, steps: [{ type: 'restoreChoice' }] },
   { id: 'mimic_mirror', icon: '🪞', title: '模倣の鏡', description: '鏡面が山札の札を映し、同じ一枚をもうひとつ形にする。', effect: '山札から1枚選び、同じカードを1枚追加する', downside: 'なし', baseWeight: 55, steps: [{ type: 'duplicateChoice' }] },
   { id: 'abyss_library', icon: '📚', title: '深淵の書庫', description: '書庫には、これまで見出したカードの写本が静かに並んでいる。', effect: '図鑑登録済みカードから1枚選んで追加する', downside: 'なし', baseWeight: 18, steps: [{ type: 'cardChoice', count: 999, pool: 'discovered' }] },
   { id: 'time_distortion', icon: '⌛', title: '時の歪み', description: '歪んだ時間が、札を進化させる道と忘れ去る道を同時に示す。', effect: 'カード進化またはカード削除を選択する', downside: 'なし', baseWeight: 35, steps: [{ type: 'optionChoice', options: [
@@ -4979,6 +4980,12 @@ function removeCardFromDeckByName(cardName, source = 'イベント') {
 function rebuildDeckWithRandomCards() {
  const removedCount = Math.max(1, Object.values(deckCustomize || {}).reduce((sum, count) => sum + Math.max(0, Number(count || 0)), 0));
  const addedCards = [];
+ Object.entries(deckCustomize || {}).forEach(([cardName, count]) => {
+  const safeCount = Math.max(0, Math.floor(Number(count || 0)));
+  for (let i = 0; i < safeCount; i += 1) {
+   recordDeletedCard(cardName);
+  }
+ });
  deckCustomize = {};
 
  for (let i = 0; i < removedCount; i += 1) {
@@ -7304,6 +7311,7 @@ function drawCardsToPlayerHand(count) {
  const drawn = drawCards(count, true);
  if (drawn.length > 0) {
   player.hand.push(...drawn);
+  checkBattleCardZoneIntegrity('drawCardsToPlayerHand');
  }
  return drawn;
 }
@@ -7325,6 +7333,70 @@ function filterCurrentBattleExhaustedCards(cards) {
   remainingExhausted[name] -= 1;
   return false;
  });
+}
+
+function filterCurrentBattleHeldCards(cards) {
+ if (!Array.isArray(cards)) return cards;
+ const handCounts = {};
+ (player?.hand || []).forEach(card => {
+  if (!card?.name || card.temporaryBattleCard || card.generatedBattleCard) return;
+  handCounts[card.name] = Math.max(0, Number(handCounts[card.name] || 0)) + 1;
+ });
+
+ if (Object.keys(handCounts).length <= 0) return cards;
+
+ return cards.filter(card => {
+  const name = card?.name;
+  if (!name || !handCounts[name]) return true;
+  handCounts[name] -= 1;
+  return false;
+ });
+}
+
+function getBattleBaseCardZoneCounts() {
+ const counts = {};
+ const add = (card, zone) => {
+  if (!card?.name || card.temporaryBattleCard || card.generatedBattleCard) return;
+  if (!counts[card.name]) counts[card.name] = { deck: 0, hand: 0, exhausted: 0, total: 0 };
+  counts[card.name][zone] += 1;
+  counts[card.name].total += 1;
+ };
+
+ (Array.isArray(playerDeck) ? playerDeck : []).forEach(card => add(card, 'deck'));
+ (Array.isArray(player?.hand) ? player.hand : []).forEach(card => add(card, 'hand'));
+ Object.entries(player?.exhaustedBattleCardNames || {}).forEach(([name, count]) => {
+  const safeCount = Math.max(0, Math.floor(Number(count || 0)));
+  if (!name || safeCount <= 0) return;
+  if (!counts[name]) counts[name] = { deck: 0, hand: 0, exhausted: 0, total: 0 };
+  counts[name].exhausted += safeCount;
+  counts[name].total += safeCount;
+ });
+ return counts;
+}
+
+function checkBattleCardZoneIntegrity(context = '') {
+ if (!player || currentScreen !== 'battle') return true;
+ const counts = getBattleBaseCardZoneCounts();
+ const violations = Object.entries(counts)
+  .map(([name, zone]) => {
+   const expected = Math.max(0, Number(deckCustomize?.[name] || 0));
+   return zone.total > expected ? { name, expected, ...zone } : null;
+  })
+  .filter(Boolean);
+
+ if (violations.length > 0) {
+  console.warn('[DeckIntegrity] 山札/手札/使用済み枚数が編成枚数を超えています', {
+   context,
+   deck: Array.isArray(playerDeck) ? playerDeck.length : 0,
+   hand: Array.isArray(player.hand) ? player.hand.length : 0,
+   exhausted: Object.values(player.exhaustedBattleCardNames || {}).reduce((sum, count) => sum + Math.max(0, Number(count || 0)), 0),
+   violations,
+   counts,
+  });
+  return false;
+ }
+
+ return true;
 }
 
 function renderRelicLibraryScreen() {
@@ -7593,7 +7665,8 @@ function filterCurrentBattleExcludedCards(cards, excludeCardId = null, options =
  const filtered = (!excludedTypes.size && !excludedNames.size)
   ? cards
   : cards.filter(card => card.id === excludeCardId || (!excludedTypes.has(card.type) && !excludedNames.has(card.name)));
- return options.includeExhausted ? filterCurrentBattleExhaustedCards(filtered) : filtered;
+ const withoutExhausted = options.includeExhausted ? filterCurrentBattleExhaustedCards(filtered) : filtered;
+ return options.includeHand ? filterCurrentBattleHeldCards(withoutExhausted) : withoutExhausted;
 }
 
 function discardPlayedCardForCurrentBattle(cardOrId) {
@@ -7602,7 +7675,7 @@ function discardPlayedCardForCurrentBattle(cardOrId) {
  const cardId = typeof cardOrId === 'object' ? cardOrId.id : cardOrId;
  const cardName = card?.name || null;
 
- if (cardName) {
+ if (cardName && !card?.temporaryBattleCard && !card?.generatedBattleCard) {
   if (!player.exhaustedBattleCardNames || typeof player.exhaustedBattleCardNames !== 'object') {
    player.exhaustedBattleCardNames = {};
   }
@@ -7612,6 +7685,7 @@ function discardPlayedCardForCurrentBattle(cardOrId) {
  player.hand = Array.isArray(player.hand) ? player.hand.filter(item => item.id !== cardId) : [];
  actionQueue = getActionQueue().filter(action => !(action && action.type === 'card' && action.cardId === cardId));
  deckCount = playerDeck.length;
+ checkBattleCardZoneIntegrity('discardPlayedCardForCurrentBattle');
 }
 
 function excludeCardTypeForCurrentBattle(type, excludeCardId = null) {
@@ -8179,8 +8253,9 @@ function processQueuedActions() {
       allowOverMaxTotal: getDeckTotal() > MAX_DECK_TOTAL,
       enforceMaxCardCount: false,
      });
-     playerDeck = filterCurrentBattleExcludedCards(playerDeck, null, { includeExhausted: true });
+     playerDeck = filterCurrentBattleExcludedCards(playerDeck, null, { includeExhausted: true, includeHand: true });
      deckCount = playerDeck.length;
+     checkBattleCardZoneIntegrity('deckReloadComplete');
 
      deckReloading = false;
      deckReloadTimer = 0;
@@ -8270,6 +8345,7 @@ function startReload() {
      const newCards = drawCards(drawCount, true);
 
      player.hand.push(...newCards);
+     checkBattleCardZoneIntegrity('reloadComplete');
      if (player.pendingReloadDoublePlay) {
       player.pendingReloadDoublePlay = false;
       player.doublePlayNextCard = true;
@@ -9172,6 +9248,7 @@ function saveDeckCustomize() {
     currentDepth = getHighestUnlockedDepth();
    }
    resetPetProgressForDive();
+   deletedCardHistory = {};
    saveCurrentGameData(false);
 
    deckCustomize = structuredClone(savedDeckCustomize);
@@ -9473,6 +9550,7 @@ function saveDeckCustomize() {
 
    setCpuNextAction();
    applyBattleStartPassives();
+   checkBattleCardZoneIntegrity('resetGame');
 
    if (keepTimer) 
 
@@ -12631,6 +12709,8 @@ if (card.type === 'burn') {
      const copiedCard = {
       ...sourceCard,
       id: `echo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      generatedBattleCard: true,
+      generatedBattleSource: 'エコー',
      };
 
      triggerReloadDoublePlayEffect(sourceCard.name, 'エコー発動');
@@ -12805,9 +12885,11 @@ if (card.type === 'rare-attack') {
    }
 
    if (shouldDoublePlayThisCard && !gameOver && player && cpu) {
-    const replayCard = {
+   const replayCard = {
      ...card,
      id: `replay-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+     generatedBattleCard: true,
+     generatedBattleSource: 'リロードリンク',
     };
 
     countPetCardUse();
@@ -16961,14 +17043,18 @@ const cards = document.getElementById('cards');
    }
 
    if (cards && player) {
-    cards.classList.toggle('paralyzed-hand', Boolean(player.paralyzed && player.paralysisTimer > 0));
-    cards.classList.toggle('frozen-hand', isPlayerFrozen());
+   cards.classList.toggle('paralyzed-hand', Boolean(player.paralyzed && player.paralysisTimer > 0));
+   cards.classList.toggle('frozen-hand', isPlayerFrozen());
+   cards.dataset.handCount = String(Array.isArray(player.hand) ? player.hand.length : 0);
+   cards.classList.toggle('crowded-hand', Array.isArray(player.hand) && player.hand.length > 5);
    }
 
 
    cards.innerHTML = '';
 
    if (player.reloading) {
+    cards.dataset.handCount = '0';
+    cards.classList.remove('crowded-hand');
     cards.innerHTML = `<div class="reload-panel">リロード中... ${Math.max(0, Number(player.reloadTimer || 0)).toFixed(1)}秒</div>`;
    } else {
     player.hand.forEach(card => {
