@@ -1359,6 +1359,11 @@ const PET_POOL = [
   let lastClearedDepth = 1;
   let selectedNewGameDepth = 1;
   let petExp = 0;
+  let tutorialState = {
+   active: false,
+   step: '',
+   completed: {},
+  };
 
   const DEFAULT_MENU_BGM_VOLUME = 0.10;
   const DEFAULT_BATTLE_BGM_VOLUME = 0.065;
@@ -1439,6 +1444,7 @@ const PET_POOL = [
    'passive-library',
    'achievement-library',
    'random-event-library',
+   'field-effect-library',
    'relic-library',
    'relic-equip',
    'battle-history',
@@ -1554,6 +1560,21 @@ const PET_POOL = [
 
   function isBattlePausedBySettings() {
    return currentScreen === 'battle' && isSoundSettingsOpen();
+  }
+
+  function isBattleTimePausedByTutorial() {
+   if (!isTutorialActive() || currentScreen !== 'battle') return false;
+   return [
+    'battle-timer',
+    'battle-passives',
+    'battle-enemy-preview',
+    'battle-pet',
+    'battle-cooldown',
+    'battle-queue',
+    'battle-defense',
+    'battle-defense-resolve',
+    'battle-finish',
+   ].includes(tutorialState.step);
   }
 
   function getUploadedSoundBase(type) {
@@ -1776,6 +1797,8 @@ const PET_POOL = [
   let lastRelicReward = null;
   let relicRewardHandledForRun = false;
   let relicRewardModalShownForRun = false;
+  let currentFieldEffectId = null;
+  let lastFieldEffectToastId = null;
   let setupReturnScreen = 'prepare';
   let depthSelectMode = 'prepare';
   const RELIC_EQUIPMENT_MAX_SLOT_COUNT = 4;
@@ -1794,10 +1817,206 @@ const PET_POOL = [
   const BATTLE_HISTORY_STORAGE_KEY = 'cardBattleBattleHistory';
   const CUSTOM_DECK_PRESETS_STORAGE_KEY = 'cardBattleCustomDeckPresetsV1';
   const RANDOM_EVENTS_STORAGE_KEY = 'cardBattleRandomEvents';
+  const FIELD_EFFECTS_STORAGE_KEY = 'cardBattleFieldEffects';
   const RELICS_STORAGE_KEY = 'cardBattleRelics';
   const RELIC_EQUIPMENT_STORAGE_KEY = 'cardBattleRelicEquipment';
   const CUSTOM_DECK_PRESET_COUNT = 3;
   const MAX_BATTLE_HISTORY_COUNT = 30;
+
+  const FIELD_EFFECT_DEFINITIONS = {
+   abyss_fog: {
+    id: 'abyss_fog',
+    name: '深淵の霧',
+    icon: '🌫',
+    className: 'field-abyss-fog',
+    summary: '敵行動予測の数値が隠れる',
+    detail: '敵の次行動予測で、ダメージ量や防御量などの数値が「?」で表示されます。',
+   },
+   mana_storm: {
+    id: 'mana_storm',
+    name: '魔力嵐',
+    icon: '🌀',
+    className: 'field-mana-storm',
+    summary: '毒+1 / 火傷+1T / デバフ+1T',
+    detail: 'プレイヤーが敵へ付与する状態異常が少し強化されます。毒付与+1、火傷+1T、攻撃低下・防御低下・麻痺などのデバフ+1T。凍結は変化しません。',
+   },
+   gravity_pressure: {
+    id: 'gravity_pressure',
+    name: '重圧',
+    icon: '◆',
+    className: 'field-gravity-pressure',
+    summary: 'カード硬直+0.2秒 / 敵行動時間+0.5秒',
+    detail: '深淵の重みで行動が鈍ります。カード硬直+0.2秒、敵行動時間+0.5秒。',
+   },
+   gunpowder_scent: {
+    id: 'gunpowder_scent',
+    name: '火薬の匂い',
+    icon: '💣',
+    className: 'field-gunpowder-scent',
+    summary: '爆弾ダメージ+20% / 爆弾設置時カウント-1',
+    detail: '火薬が濃く漂います。敵に設置する爆弾のダメージ+20%、爆弾設置時のカウント-1。',
+   },
+   toxic_rain: {
+    id: 'toxic_rain',
+    name: '腐毒の雨',
+    icon: '☠',
+    className: 'field-toxic-rain',
+    summary: '毒付与量+2',
+    detail: '腐った雨が毒を深く染み込ませます。プレイヤーが敵へ付与する毒量+2。',
+   },
+   freezing_air: {
+    id: 'freezing_air',
+    name: '凍てつく空気',
+    icon: '❄',
+    className: 'field-freezing-air',
+    summary: '凍結中の敵へのダメージ+10% / 被凍結解除+5クリック',
+    detail: '冷気が刃を鋭くします。凍結中の敵が受けるダメージ+10%。ただしプレイヤーが凍結した時、解除に必要なクリック数+5。',
+   },
+  };
+
+  const FIELD_EFFECT_DEPTH_TABLE = {
+   1: [
+    { id: 'abyss_fog', weight: 3 },
+    { id: 'mana_storm', weight: 3 },
+    { id: 'gravity_pressure', weight: 3 },
+    { id: 'gunpowder_scent', weight: 2 },
+    { id: 'toxic_rain', weight: 2 },
+    { id: 'freezing_air', weight: 2 },
+    { id: null, weight: 85 },
+   ],
+   2: [
+    { id: 'abyss_fog', weight: 4 },
+    { id: 'mana_storm', weight: 4 },
+    { id: 'gravity_pressure', weight: 4 },
+    { id: 'gunpowder_scent', weight: 5 },
+    { id: 'toxic_rain', weight: 4 },
+    { id: 'freezing_air', weight: 4 },
+    { id: null, weight: 75 },
+   ],
+   3: [
+    { id: 'abyss_fog', weight: 5 },
+    { id: 'mana_storm', weight: 5 },
+    { id: 'gravity_pressure', weight: 5 },
+    { id: 'gunpowder_scent', weight: 7 },
+    { id: 'toxic_rain', weight: 6 },
+    { id: 'freezing_air', weight: 7 },
+    { id: null, weight: 65 },
+   ],
+  };
+
+  function getCurrentFieldEffect() {
+   return currentFieldEffectId ? FIELD_EFFECT_DEFINITIONS[currentFieldEffectId] || null : null;
+  }
+
+  function isFieldEffectActive(id) {
+   return currentFieldEffectId === id;
+  }
+
+  function rollFieldEffectForBattle(depth = currentDepth) {
+   if (isTutorialActive()) return null;
+   const table = FIELD_EFFECT_DEPTH_TABLE[normalizeDepth(depth)] || FIELD_EFFECT_DEPTH_TABLE[1];
+   const totalWeight = table.reduce((sum, item) => sum + Math.max(0, Number(item.weight || 0)), 0);
+   if (totalWeight <= 0) return null;
+   let roll = Math.random() * totalWeight;
+   for (const item of table) {
+    roll -= Math.max(0, Number(item.weight || 0));
+    if (roll <= 0) return item.id || null;
+   }
+   return null;
+  }
+
+  function initializeFieldEffectForBattle() {
+   currentFieldEffectId = (!pendingPassiveChoice && !pendingShopChoice) ? rollFieldEffectForBattle(currentDepth) : null;
+   const field = getCurrentFieldEffect();
+   if (!field) return;
+   markFieldEffectEncountered(field.id);
+   lastFieldEffectToastId = `${field.id}-${Date.now()}`;
+   addLog(`深淵環境：${field.name} (${field.summary})`);
+   setTimeout(() => showFieldEffectToast(field), 180);
+  }
+
+  function showFieldEffectToast(field = getCurrentFieldEffect()) {
+   if (!field || currentScreen !== 'battle') return;
+   const overlay = document.getElementById('battle-effect-overlay') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'battle-effect-overlay' }));
+   const toast = document.createElement('div');
+   toast.className = `field-effect-toast ${field.className}`;
+   toast.innerHTML = `
+    <div class="field-effect-toast-kicker">深淵環境 発生</div>
+    <div class="field-effect-toast-name">${escapeHtml(field.icon)} ${escapeHtml(field.name)}</div>
+    <div class="field-effect-toast-summary">${escapeHtml(field.summary)}</div>
+   `;
+   overlay.appendChild(toast);
+   setTimeout(() => toast.remove(), 1600);
+  }
+
+  function getFieldEffectTooltip(field = getCurrentFieldEffect()) {
+   return field ? `${field.name}\n${field.detail}` : '';
+  }
+
+  function getFieldEffectDefinitions() {
+   return Object.values(FIELD_EFFECT_DEFINITIONS);
+  }
+
+  function getFieldEffectDepthChances(fieldId) {
+   return Object.entries(FIELD_EFFECT_DEPTH_TABLE).map(([depth, table]) => {
+    const totalWeight = table.reduce((sum, item) => sum + Math.max(0, Number(item.weight || 0)), 0);
+    const fieldWeight = table
+     .filter(item => item.id === fieldId)
+     .reduce((sum, item) => sum + Math.max(0, Number(item.weight || 0)), 0);
+    const chance = totalWeight > 0 ? Math.round((fieldWeight / totalWeight) * 100) : 0;
+    return { depth: Number(depth), chance };
+   }).sort((a, b) => a.depth - b.depth);
+  }
+
+  function formatFieldEffectDepthChances(fieldId) {
+   return getFieldEffectDepthChances(fieldId)
+    .map(item => `深度${item.depth}: ${item.chance}%`)
+    .join(' / ');
+  }
+
+  function maskFieldEffectPredictionValue(text) {
+   if (!isFieldEffectActive('abyss_fog')) return text;
+   return String(text || '').replace(/\d+(?:\.\d+)?/g, '?');
+  }
+
+  function getFieldEffectCooldownBonus() {
+   return isFieldEffectActive('gravity_pressure') ? 0.2 : 0;
+  }
+
+  function getFieldEffectEnemyTimerBonus() {
+   return isFieldEffectActive('gravity_pressure') ? 0.5 : 0;
+  }
+
+  function getFieldEffectPoisonBonus() {
+   let bonus = 0;
+   if (isFieldEffectActive('mana_storm')) bonus += 1;
+   if (isFieldEffectActive('toxic_rain')) bonus += 2;
+   return bonus;
+  }
+
+  function getFieldEffectDebuffTurnBonus() {
+   return isFieldEffectActive('mana_storm') ? 1 : 0;
+  }
+
+  function getFieldEffectBurnTurnBonus() {
+   return isFieldEffectActive('mana_storm') ? 1 : 0;
+  }
+
+  function getFieldEffectBombFuseReduce() {
+   return isFieldEffectActive('gunpowder_scent') ? 1 : 0;
+  }
+
+  function getFieldEffectBombDamageMultiplier() {
+   return isFieldEffectActive('gunpowder_scent') ? 1.2 : 1;
+  }
+
+  function getFieldEffectFrozenDamageBonus() {
+   return isFieldEffectActive('freezing_air') ? 0.1 : 0;
+  }
+
+  function getFieldEffectPlayerFreezeClickBonus() {
+   return isFieldEffectActive('freezing_air') ? 5 : 0;
+  }
 
 
   function getDefaultSaveData() {
@@ -1814,6 +2033,7 @@ const PET_POOL = [
     battleHistory: [],
     deckPresets: getEmptyCustomDeckPresets(),
     randomEvents: {},
+    fieldEffects: {},
     deletedCardHistory: {},
     relics: {},
     relicEquipment: normalizeRelicEquipment(),
@@ -2040,12 +2260,16 @@ const PET_POOL = [
   }
 
   function showDepthSelectForDive() {
+   if (isTutorialActive() && tutorialState.step !== 'prep-depth') return;
    playUiSelectSound();
    depthSelectMode = 'dive';
    selectedNewGameDepth = isDepthUnlocked(currentDepth) ? normalizeDepth(currentDepth) : getHighestUnlockedDepth();
    currentScreen = 'depth-select';
    render();
    renderDepthSelector();
+   if (tutorialState.step === 'prep-depth') {
+    setTutorialStep('depth-start');
+   }
   }
 
   function backFromDepthSelect() {
@@ -2058,12 +2282,18 @@ const PET_POOL = [
   }
 
   function confirmDepthSelection() {
+   if (isTutorialActive() && tutorialState.step !== 'depth-start') return;
    const depth = normalizeDepth(selectedNewGameDepth);
    if (!isDepthUnlocked(depth)) return;
    currentDepth = depth;
-   saveCurrentGameData(false);
+   if (!isTutorialActive()) {
+    saveCurrentGameData(false);
+   }
    if (depthSelectMode === 'dive') {
     beginDiveAfterDepthSelection();
+    if (tutorialState.step === 'depth-start') {
+     setTutorialStep('battle-timer');
+    }
     return;
    }
    showPrepareScreen();
@@ -2094,6 +2324,7 @@ const PET_POOL = [
    save.battleHistory = normalizeBattleHistory(save.battleHistory);
    save.deckPresets = normalizeCustomDeckPresets(save.deckPresets);
    save.randomEvents = save.randomEvents && typeof save.randomEvents === 'object' ? save.randomEvents : {};
+   save.fieldEffects = save.fieldEffects && typeof save.fieldEffects === 'object' ? save.fieldEffects : {};
    save.deletedCardHistory = {};
    save.relics = save.relics && typeof save.relics === 'object' ? save.relics : {};
    save.deckCustomize = save.deckCustomize && typeof save.deckCustomize === 'object' ? normalizeDeckCustomizeForSave(save.deckCustomize) : getInitialDeckCustomize();
@@ -2251,6 +2482,7 @@ const PET_POOL = [
    if (storageKey === BATTLE_HISTORY_STORAGE_KEY) return 'battleHistory';
    if (storageKey === CUSTOM_DECK_PRESETS_STORAGE_KEY) return 'deckPresets';
    if (storageKey === RANDOM_EVENTS_STORAGE_KEY) return 'randomEvents';
+   if (storageKey === FIELD_EFFECTS_STORAGE_KEY) return 'fieldEffects';
    if (storageKey === RELICS_STORAGE_KEY) return 'relics';
    if (storageKey === RELIC_EQUIPMENT_STORAGE_KEY) return 'relicEquipment';
    return null;
@@ -2369,6 +2601,7 @@ const PET_POOL = [
    safeWriteJson(BATTLE_HISTORY_STORAGE_KEY, normalizeBattleHistory(normalized.battleHistory));
    safeWriteJson(CUSTOM_DECK_PRESETS_STORAGE_KEY, normalizeCustomDeckPresets(normalized.deckPresets));
    safeWriteJson(RANDOM_EVENTS_STORAGE_KEY, normalized.randomEvents || {});
+   safeWriteJson(FIELD_EFFECTS_STORAGE_KEY, normalized.fieldEffects || {});
    safeWriteJson(RELICS_STORAGE_KEY, normalized.relics || {});
    safeWriteJson(RELIC_EQUIPMENT_STORAGE_KEY, normalizeRelicEquipment(normalized.relicEquipment));
   }
@@ -2383,6 +2616,7 @@ const PET_POOL = [
    localStorage.removeItem(BATTLE_HISTORY_STORAGE_KEY);
    localStorage.removeItem(CUSTOM_DECK_PRESETS_STORAGE_KEY);
    localStorage.removeItem(RANDOM_EVENTS_STORAGE_KEY);
+   localStorage.removeItem(FIELD_EFFECTS_STORAGE_KEY);
    localStorage.removeItem(RELICS_STORAGE_KEY);
    localStorage.removeItem(RELIC_EQUIPMENT_STORAGE_KEY);
   }
@@ -2532,6 +2766,7 @@ const PET_POOL = [
     battleHistory: loadBattleHistory(),
     deckPresets: loadCustomDeckPresets(),
     randomEvents: loadRandomEventProgress(),
+    fieldEffects: loadFieldEffectProgress(),
     deletedCardHistory: {},
     relics: loadRelicProgress(),
     relicEquipment: loadRelicEquipment(),
@@ -3575,8 +3810,9 @@ function getEffectiveCardCooldownSeconds(card, options = {}) {
  const tempReduce = canApplyTemporaryReduce ? temporaryReduceAmount : 0;
  const totalReduce = (playerPassives.cooldownReduce || 0) + tempReduce;
  const burnPenalty = player && player.burn && Number(player.burnTurns || 0) > 0 ? 0.5 : 0;
+ const fieldPenalty = getFieldEffectCooldownBonus();
  const minimumCooldown = baseCooldown < 0.5 ? 0.1 : 0.5;
- const cooldown = Math.max(minimumCooldown, roundToTenthSecond(baseCooldown - totalReduce + burnPenalty));
+ const cooldown = Math.max(minimumCooldown, roundToTenthSecond(baseCooldown - totalReduce + burnPenalty + fieldPenalty));
 
  if (options.consume && tempReduce > 0) {
   player.nextCardCooldownReduceUses = Math.max(0, (player.nextCardCooldownReduceUses || 0) - 1);
@@ -4509,6 +4745,47 @@ function loadRandomEventProgress() {
 
 function saveRandomEventProgress(progress) {
  saveDiscoveryMap(RANDOM_EVENTS_STORAGE_KEY, progress && typeof progress === 'object' ? progress : {});
+}
+
+function loadFieldEffectProgress() {
+ const source = loadDiscoveryMap(FIELD_EFFECTS_STORAGE_KEY);
+ const normalized = {};
+ getFieldEffectDefinitions().forEach(field => {
+  const value = source?.[field.id];
+  if (!value) return;
+  normalized[field.id] = typeof value === 'object'
+   ? {
+    encountered: true,
+    count: Math.max(1, Math.floor(Number(value.count || 1))),
+    lastSeenAt: Number(value.lastSeenAt || Date.now()),
+   }
+   : {
+    encountered: true,
+    count: 1,
+    lastSeenAt: Date.now(),
+   };
+ });
+ return normalized;
+}
+
+function saveFieldEffectProgress(progress) {
+ saveDiscoveryMap(FIELD_EFFECTS_STORAGE_KEY, progress && typeof progress === 'object' ? progress : {});
+}
+
+function isFieldEffectDiscovered(fieldId) {
+ return Boolean(loadFieldEffectProgress()[fieldId]);
+}
+
+function markFieldEffectEncountered(fieldId) {
+ if (!FIELD_EFFECT_DEFINITIONS[fieldId]) return;
+ const progress = loadFieldEffectProgress();
+ const current = progress[fieldId];
+ progress[fieldId] = {
+  encountered: true,
+  count: Math.max(0, Number(current?.count || 0)) + 1,
+  lastSeenAt: Date.now(),
+ };
+ saveFieldEffectProgress(progress);
 }
 
 function getRelicById(relicId) {
@@ -6384,7 +6661,9 @@ function getBombDisplayText(bomb) {
 function addBombToEnemy(kind = 'normal', options = {}) {
  if (!cpu || gameOver) return null;
  const def = getBombDefinition(kind);
- let extraAdvance = Math.max(0, Number(playerPassives.bombFuseShorten || 0)) + Math.max(0, Number(playerPassives.bombTimingReduce || 0));
+ let extraAdvance = Math.max(0, Number(playerPassives.bombFuseShorten || 0))
+  + Math.max(0, Number(playerPassives.bombTimingReduce || 0))
+  + Math.max(0, Number(getFieldEffectBombFuseReduce() || 0));
  const relicFuseReduce = Math.max(0, Math.floor(Number(getRelicEffectTotal('firstBombFuseReduce') || 0)));
  if (!options.ignoreRelicBonus && player?.relicFirstBombFuseReduceAvailable && relicFuseReduce > 0) {
   extraAdvance += relicFuseReduce;
@@ -6525,7 +6804,8 @@ function detonateBombs(bombs, options = {}) {
   const multiplier = Number(bomb.damageMultiplier || 1)
    * Math.max(0, Number(options.damageMultiplier || 1))
    * getEnemyBombDamageMultiplier()
-   * (1 + Math.max(0, Number(playerPassives.bombDamageBonusMultiplier || 0)));
+   * (1 + Math.max(0, Number(playerPassives.bombDamageBonusMultiplier || 0)))
+   * getFieldEffectBombDamageMultiplier();
   const damage = Math.max(0, Math.round(Number(bomb.damage || 0) * multiplier));
   const result = applyDamage(cpu, damage);
   exploded += 1;
@@ -6542,10 +6822,11 @@ function detonateBombs(bombs, options = {}) {
     addLog(`爆弾：${bomb.name}の火傷は無効化された`);
    } else {
     cpu.burn = true;
-    cpu.burnTurns = (cpu.burnTurns || 0) + Math.max(1, Number(bomb.burnTurns || 0));
+    const burnTurns = Math.max(1, Number(bomb.burnTurns || 0) + getFieldEffectBurnTurnBonus());
+    cpu.burnTurns = (cpu.burnTurns || 0) + burnTurns;
     recordAchievementStat('burnApplications');
     addEnemyActionDelayFromBurnPassive();
-    addLog(`爆弾：${bomb.name}で火傷+${bomb.burnTurns}T`);
+    addLog(`爆弾：${bomb.name}で火傷+${burnTurns}T`);
    }
   }
 
@@ -6875,7 +7156,7 @@ function tryApplyEnemyParalysis(turns = 3) {
   return false;
  }
 
- cpu.paralysis = (cpu.paralysis || 0) + Math.max(1, Number(turns || 3));
+ cpu.paralysis = (cpu.paralysis || 0) + Math.max(1, Number(turns || 3) + getFieldEffectDebuffTurnBonus());
  triggerParalysisEffect('.cpu-img');
  playSound('paralysis');
  return true;
@@ -7314,6 +7595,45 @@ function drawCardsToPlayerHand(count) {
   checkBattleCardZoneIntegrity('drawCardsToPlayerHand');
  }
  return drawn;
+}
+
+function createBattleCardInstance(card) {
+ return card ? {
+  ...card,
+  id: Math.random().toString(36).slice(2),
+ } : null;
+}
+
+function takeTutorialCardForHand(name, fallbackCategory = '') {
+ const handIndex = player?.hand?.findIndex(card => card.name === name) ?? -1;
+ if (handIndex >= 0) {
+  const [card] = player.hand.splice(handIndex, 1);
+  return card;
+ }
+
+ const deckIndex = playerDeck.findIndex(card => card.name === name);
+ if (deckIndex >= 0) {
+  const [card] = playerDeck.splice(deckIndex, 1);
+  deckCount = playerDeck.length;
+  return createBattleCardInstance(card);
+ }
+
+ const poolCard = CARD_POOL.find(card => card.name === name)
+  || CARD_POOL.find(card => fallbackCategory && getCardCustomizeCategory(card) === fallbackCategory);
+ return createBattleCardInstance(poolCard);
+}
+
+function arrangeTutorialBattleHand() {
+ if (!isTutorialActive() || !player || currentScreen !== 'battle') return;
+ const tutorialCards = [
+  takeTutorialCardForHand('攻撃', 'attack'),
+  takeTutorialCardForHand('防御', 'defense'),
+  takeTutorialCardForHand('受け流し', 'defense'),
+ ].filter(Boolean);
+ const usedIds = new Set(tutorialCards.map(card => card.id));
+ const rest = (player.hand || []).filter(card => !usedIds.has(card.id));
+ player.hand = [...tutorialCards, ...rest].slice(0, Math.max(INITIAL_HAND_COUNT, tutorialCards.length));
+ checkBattleCardZoneIntegrity('tutorialBattleHand');
 }
 
 function filterCurrentBattleExhaustedCards(cards) {
@@ -7809,6 +8129,7 @@ function startPlayerStatusTimer() {
 function applyPlayerFreeze(requiredClicks = 10) {
  if (!player) return;
  if (consumePlayerStatusGuard('凍結')) return;
+ requiredClicks = Math.max(1, Number(requiredClicks || 10) + getFieldEffectPlayerFreezeClickBonus());
 
  player.frozen = true;
  player.freezeTimer = 0;
@@ -7988,7 +8309,7 @@ function handleHandAreaClick(event) {
   
 function getEnemyActionInterval() {
  const temporaryDelay = cpu && cpu.enemyActionDelayTurns > 0 ? (cpu.enemyActionDelayAmount || 0) : 0;
- return ENEMY_ACTION_INTERVAL + playerPassives.enemyDelay + temporaryDelay;
+ return ENEMY_ACTION_INTERVAL + playerPassives.enemyDelay + temporaryDelay + getFieldEffectEnemyTimerBonus();
 }
 
 function applyBurnActionDelayPassive() {
@@ -8016,6 +8337,7 @@ function startEnemyTimer() {
    || pendingShopChoice
    || bossRevivalInProgress
    || isBattlePausedBySettings()
+   || isBattleTimePausedByTutorial()
   ) {
    return;
   }
@@ -8033,6 +8355,7 @@ function startEnemyTimer() {
      && !pendingPassiveChoice
      && !pendingShopChoice
      && !isBattlePausedBySettings()
+     && !isBattleTimePausedByTutorial()
    ) {
     enemyTimer = getEnemyActionInterval();
     updateEnemyTimerText();
@@ -8128,6 +8451,7 @@ function toggleQueuedReload() {
 
  queue.push({ type: 'reload' });
  showActionQueueNotice(`リロード予約${getActionQueueLabel(queue.length)}`, 'success');
+ if (tutorialState.step === 'battle-reload') completeTutorialStep('battle-reload');
  render();
  return true;
 }
@@ -8145,6 +8469,14 @@ function findCardButtonFromPointerEvent(event) {
 function handleActionQueuePointerDown(event) {
  if (isRandomEventInputBlocked()) return;
  if (!player || currentScreen !== 'battle' || isPlayerFrozen() || isBattlePausedBySettings()) return;
+ if (isTutorialActive() && !isTutorialInteractionAllowed(event)) {
+  event.preventDefault();
+  event.stopPropagation();
+  return;
+ }
+ if (isTutorialActive() && !['battle-queue', 'battle-reload'].includes(tutorialState.step)) {
+  return;
+ }
 
  const cardButton = findCardButtonFromPointerEvent(event);
  if (cardButton) {
@@ -8238,7 +8570,7 @@ function processQueuedActions() {
      return;
     }
 
-    if (isBattlePausedBySettings()) {
+    if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
      return;
     }
 
@@ -8289,6 +8621,8 @@ function startReload() {
 
    addLog('リロード開始');
    playSound('reload');
+   const tutorialReloadStep = tutorialState.step === 'battle-reload';
+   if (tutorialReloadStep) completeTutorialStep('battle-reload');
 
    if (player.nextReloadDoublePlayReady) {
     player.nextReloadDoublePlayReady = false;
@@ -8306,7 +8640,7 @@ function startReload() {
       return;
      }
 
-     if (isBattlePausedBySettings()) {
+     if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
       return;
      }
 
@@ -8358,6 +8692,13 @@ function startReload() {
      addLog(`リロード完了：${newCards.length}枚ドロー`);
      playSound('success');
 
+     if (tutorialState.step === 'battle-reload-wait') {
+      arrangeTutorialBattleHand();
+      completeTutorialStep('battle-reload-wait');
+      render();
+      return;
+     }
+
      processQueuedActions();
      render();
     }
@@ -8366,6 +8707,7 @@ function startReload() {
 
   function manualReload(options = {}) {
  if (isRandomEventInputBlocked()) return;
+ if (isTutorialActive() && !['battle-queue', 'battle-reload'].includes(tutorialState.step)) return;
  if (!options.fromQueue && !options.fromPointer && Date.now() < suppressQueuedReloadClickUntil) return;
  if (isBattlePausedBySettings()) return;
 
@@ -8406,7 +8748,7 @@ function startRareCardCooldown() {
      return;
     }
 
-    if (isBattlePausedBySettings()) {
+    if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
      return;
     }
 
@@ -8453,7 +8795,7 @@ function startRareCardCooldown() {
      return;
     }
 
-    if (isBattlePausedBySettings()) {
+    if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
      return;
     }
 
@@ -8506,7 +8848,7 @@ function startRareCooldown() {
    return;
   }
 
-  if (isBattlePausedBySettings()) {
+  if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
    return;
   }
 
@@ -9045,7 +9387,11 @@ function showCustomizeScreen(returnScreen = 'prepare') {
   }
 
 function showCustomizeFromPreDeparture() {
+ if (isTutorialActive() && tutorialState.step !== 'prep-deck-button') return;
  showCustomizeScreen('predeparture');
+ if (tutorialState.step === 'prep-deck-button') {
+  setTutorialStep('customize-remove');
+ }
 }
 
 function returnFromSetupScreen() {
@@ -9156,12 +9502,14 @@ function showPrepareScreen() {
   }
 
   function resetDeckCustomize() {
+   if (isTutorialActive()) return;
    deckCustomize = getInitialDeckCustomize();
 
    renderCustomizeScreen();
   }
 
   function clearDeckCustomize() {
+   if (isTutorialActive()) return;
    playUiSelectSound();
 
    const total = getDeckTotal();
@@ -9184,6 +9532,11 @@ function showPrepareScreen() {
   }
 
   function changeCardCount(cardName, diff) {
+   if (isTutorialActive()) {
+    if (tutorialState.step === 'customize-remove' && diff >= 0) return;
+    if (tutorialState.step === 'customize-add' && diff <= 0) return;
+    if (!['customize-remove', 'customize-add'].includes(tutorialState.step)) return;
+   }
    playUiSelectSound();
    const card = CARD_POOL.find(c => c.name === cardName);
    const current = deckCustomize[cardName] || 0;
@@ -9199,12 +9552,20 @@ function showPrepareScreen() {
    }
 
    deckCustomize[cardName] = Math.max(0, Math.min(maxCount, current + diff));
+   if (diff < 0 && tutorialState.step === 'customize-remove' && deckCustomize[cardName] < current) {
+    completeTutorialStep('customize-remove');
+   }
+   if (diff > 0 && tutorialState.step === 'customize-add' && deckCustomize[cardName] > current) {
+    completeTutorialStep('customize-add');
+   }
 
    renderCustomizeScreen();
+   if (isTutorialActive()) renderTutorialOverlay();
   }
 
   
 function saveDeckCustomize() {
+   if (isTutorialActive() && tutorialState.step !== 'customize-save') return;
    playUiSelectSound();
 
    deckCustomize = sanitizeDeckCustomize(deckCustomize);
@@ -9231,11 +9592,613 @@ function saveDeckCustomize() {
    }
 
    savedDeckCustomize = structuredClone(deckCustomize);
-   saveCurrentGameData(false);
+   if (!isTutorialActive()) {
+    saveCurrentGameData(false);
+   }
 
-   addLog('山札設定を保存しました');
+   addLog(isTutorialActive() ? 'チュートリアル用の仮山札を確認しました' : '山札設定を保存しました');
+   if (tutorialState.step === 'customize-save') {
+    completeTutorialStep('customize-save');
+   }
 
    returnFromSetupScreen();
+  }
+
+  const TUTORIAL_ORDER = ['prep-deck-button', 'customize-remove', 'customize-add', 'customize-save', 'prep-pet', 'prep-relic', 'prep-depth', 'depth-start', 'battle-timer', 'battle-passives', 'battle-enemy-preview', 'battle-pet', 'battle-attack', 'battle-cooldown', 'battle-queue', 'battle-reload', 'battle-reload-wait', 'battle-defense', 'battle-defense-resolve', 'battle-finish', 'done'];
+  const TUTORIAL_STEPS = {
+   'prep-deck-button': {
+    title: '山札編集を開く',
+    text: '実際の準備画面です。山札欄の「山札編集」を押して、現在の山札を確認しながらカードを追加します。',
+    wait: 'ハイライトされた山札編集ボタンを押してください。',
+   },
+   'customize-add': {
+    title: 'カードを山札に戻す',
+    text: '中央のカード一覧は追加候補、右側は現在の山札です。外したカードや追加したいカードの＋を押すと右側の山札に入ります。',
+    wait: 'ハイライトされた＋ボタンを押してください。',
+   },
+   'customize-remove': {
+    title: '現在の山札から外す',
+    text: '実際の山札カスタマイズ画面です。右側の「現在山札」は編成中の山札です。まず－ボタンでカードを1枚外し、山札の枚数が変わることを確認します。',
+    wait: 'ハイライトされた－ボタンを押してください。',
+   },
+   'customize-save': {
+    title: '山札を保存する',
+    text: '山札を変更したら保存します。保存後、準備画面に戻ります。',
+    wait: '保存ボタンを押してください。',
+   },
+   'prep-pet': {
+    title: 'ペットを確認する',
+    text: 'ペット欄ではペット画像、レベル、使用できる技を確認します。戦闘中はカード使用枚数に応じてペットが行動します。',
+    actionLabel: '確認した',
+   },
+   'prep-relic': {
+    title: '遺物を確認する',
+    text: '遺物欄では装備中の遺物を確認します。効果を発揮するのは装備中の遺物だけです。',
+    actionLabel: '確認した',
+   },
+   'prep-depth': {
+    title: '深度選択へ進む',
+    text: '準備が終わったら深度選択へ進みます。実際の潜行もこの流れで開始します。',
+    wait: 'ハイライトされた「深度選択へ」を押してください。',
+   },
+   'depth-start': {
+    title: '深度を選んで潜る',
+    text: '挑戦する深度を確認し、この深度で潜行開始を押すと実際の戦闘が始まります。',
+    wait: '開始ボタンを押してください。',
+   },
+   'battle-attack': {
+    title: '攻撃カードを使う',
+    text: 'カードをクリックすると即使用します。まず攻撃カードを1枚使って、カード使用後に発生する硬直を確認します。',
+    wait: '攻撃カードをクリックしてください。',
+   },
+   'battle-timer': {
+    title: '敵行動タイマーを見る',
+    text: '画面上部の「敵行動まで」は、敵が次に動くまでの残り時間です。0になると敵が行動し、ターンが進みます。',
+    actionLabel: '確認した',
+   },
+   'battle-passives': {
+    title: 'パッシブ表示を見る',
+    text: 'HPバー付近のバッジには、パッシブや状態異常が表示されます。攻撃アップ、防御アップ、毒、凍結などはここで確認します。',
+    actionLabel: '確認した',
+   },
+   'battle-enemy-preview': {
+    title: '敵行動予測を見る',
+    text: '敵画像の近くに、次の行動予測が表示されます。攻撃なら防御、状態異常なら早めに攻めるなど判断材料になります。',
+    actionLabel: '確認した',
+   },
+   'battle-pet': {
+    title: 'ペットの次行動を見る',
+    text: 'ペット欄では、あと何枚カードを使えば行動するか、次に何をするかを確認できます。ペットEXPはペット名の近くに表示されます。',
+    actionLabel: '確認した',
+   },
+   'battle-cooldown': {
+    title: '硬直を確認する',
+    text: 'カード使用後は硬直が発生し、硬直が終わるまで次のカードは即使用できません。この硬直中にカードやリロードをクリックすると、次の行動として予約できます。',
+    actionLabel: '予約を試す',
+   },
+   'battle-queue': {
+    title: '行動予約を試す',
+    text: '硬直中です。次に使いたいカードをクリックすると予約され、カード左上に①のような順番が表示されます。予約は最大5個までです。予約表示を確認したら「予約を確認した」を押してください。',
+    wait: '硬直中にカードをクリックしてください。',
+    actionLabel: '予約を確認した',
+   },
+   'battle-reload': {
+    title: 'リロードする',
+    text: '通常時にリロードを押すと、手札を捨ててリロード時間のあとに新しい手札を引きます。ここでは実際にリロードを行います。',
+    wait: 'リロードボタンを押してください。',
+   },
+   'battle-reload-wait': {
+    title: 'リロード中',
+    text: 'リロード時間が進み、完了すると新しい手札が配られます。完了まで少し待ってください。',
+   },
+   'battle-defense': {
+    title: '防御する',
+    text: '防御カードを使ったあと、敵行動を1回進めます。敵が攻撃した時に防御でダメージが軽減され、その敵行動後に防御が消費されることを確認してください。',
+    wait: '防御カードをクリックしてください。',
+   },
+   'battle-defense-resolve': {
+    title: '敵の攻撃を受ける',
+    text: '敵行動を進めています。防御がダメージを軽減し、その後に防御値が消費されるところを確認してください。',
+   },
+   'battle-finish': {
+    title: '敵を倒す',
+    text: 'あとは実際に敵を倒してみましょう。敵撃破後は報酬、イベント、次のレベルへ進む流れを確認できます。',
+    wait: 'カードを使って敵を倒してください。',
+   },
+   done: {
+    title: 'チュートリアル完了',
+    text: '基本操作は完了です。準備を整えて、深淵へ潜りましょう。',
+    actionLabel: 'メニューへ戻る',
+   },
+  };
+
+  function isTutorialActive() {
+   return Boolean(tutorialState && tutorialState.active);
+  }
+
+  function setTutorialStep(step) {
+   if (!isTutorialActive()) return;
+   tutorialState.step = step;
+   renderTutorialOverlay();
+  }
+
+  function completeTutorialStep(step) {
+   if (!isTutorialActive() || tutorialState.step !== step) return;
+   tutorialState.completed[step] = true;
+   if (step === 'battle-queue' && player) {
+    clearActionQueue();
+    player.cooldown = false;
+    player.cooldownTimer = 0;
+    stopCooldown();
+   }
+   if (step === 'battle-defense-resolve' && cpu) {
+    cpu.hp = Math.max(1, Math.min(Number(cpu.hp || 1), 5));
+   }
+   const index = TUTORIAL_ORDER.indexOf(step);
+   const next = TUTORIAL_ORDER[index + 1];
+   if (next) setTutorialStep(next);
+  }
+
+  function getTutorialEnemyAttackAction() {
+   return {
+    id: `tutorial-attack-${Date.now()}`,
+    name: '訓練攻撃',
+    type: 'attack',
+    value: 6,
+    text: '6ダメージ',
+   };
+  }
+
+  function resolveTutorialDefenseAfterCard() {
+   if (!isTutorialActive() || tutorialState.step !== 'battle-defense' || !player || !cpu) return;
+   stopEnemyTimer();
+   enemyTimerStarted = false;
+   enemyTimer = 0;
+   cpu.nextAction = getTutorialEnemyAttackAction();
+   setTutorialStep('battle-defense-resolve');
+   render();
+   setTimeout(() => {
+    if (!isTutorialActive() || tutorialState.step !== 'battle-defense-resolve' || !player || !cpu || gameOver) return;
+    enemyTurn();
+    if (!gameOver) {
+     completeTutorialStep('battle-defense-resolve');
+    }
+   }, 900);
+  }
+
+  function clearTutorialTargets() {
+   if (typeof document === 'undefined') return;
+   document.querySelectorAll('.tutorial-target').forEach(element => element.classList.remove('tutorial-target'));
+  }
+
+  function getTutorialTargetSelectors(step) {
+   const map = {
+    'prep-deck-button': ['.predeparture-deck-panel .predeparture-panel-head .ui-button'],
+    'customize-remove': ['#customize-current-deck-list .customize-current-count-control button'],
+    'customize-add': ['#customize-list .customize-add-control button:not(:disabled)'],
+    'customize-save': ['#custom-deck-save-button', '#customize-header-save-actions .ui-button', '.customize-header-save-actions .ui-button'],
+    'prep-pet': ['.predeparture-pet-panel'],
+    'prep-relic': ['.predeparture-relic-panel'],
+    'prep-depth': ['.predeparture-actions .ui-button-primary'],
+    'depth-start': ['#depth-confirm-button'],
+    'battle-timer': ['.top-timer'],
+    'battle-passives': ['#passive-effect-badges', '#player-status-badges', '#enemy-status-badges'],
+    'battle-enemy-preview': ['#cpu-next-action', '.enemy-action-preview'],
+    'battle-pet': ['#pet-panel'],
+    'battle-attack': ['#cards .card.attack-card:not(.disabled)'],
+    'battle-cooldown': ['#cooldown-status', '#cards .card'],
+    'battle-queue': ['#cards .card.action-queue-enabled', '#manual-reload-button.action-queue-enabled'],
+    'battle-reload': ['#manual-reload-button'],
+    'battle-reload-wait': ['#reload-status', '#cards .reload-panel'],
+    'battle-defense': ['#cards .card.defense-card', '#cards .card.parry-guard-card', '#cards .card.prepared-guard-card', '#cpu-next-action'],
+    'battle-defense-resolve': ['.top-timer', '#cpu-next-action', '#player-hp', '#player-status-badges'],
+    'battle-finish': ['#cards .card.attack-card:not(.disabled)'],
+   };
+   return map[step] || [];
+  }
+
+  function applyTutorialTargets() {
+   clearTutorialTargets();
+   if (!isTutorialActive()) return;
+   getTutorialTargetSelectors(tutorialState.step).forEach(selector => {
+    document.querySelectorAll(selector).forEach(element => element.classList.add('tutorial-target'));
+   });
+  }
+
+  function isTutorialInteractionAllowed(event) {
+   if (!isTutorialActive()) return true;
+   const target = event?.target;
+   if (!target || typeof target.closest !== 'function') return false;
+   if (target.closest('#tutorial-overlay')) return true;
+   return Boolean(target.closest('.tutorial-target'));
+  }
+
+  function blockUnexpectedTutorialInteraction(event) {
+   if (!isTutorialActive()) return;
+   if (isTutorialInteractionAllowed(event)) return;
+   event.preventDefault?.();
+   event.stopPropagation?.();
+   event.stopImmediatePropagation?.();
+  }
+
+  if (typeof document !== 'undefined' && !document.__deckTutorialGuardInstalled) {
+   document.__deckTutorialGuardInstalled = true;
+   document.addEventListener('click', blockUnexpectedTutorialInteraction, true);
+   document.addEventListener('submit', blockUnexpectedTutorialInteraction, true);
+  }
+
+  function renderTutorialOverlay() {
+   const overlay = document.getElementById('tutorial-overlay');
+   if (!overlay) return;
+
+   const active = isTutorialActive();
+   overlay.style.display = active ? 'block' : 'none';
+   if (!active) return;
+
+   const step = TUTORIAL_STEPS[tutorialState.step] || TUTORIAL_STEPS['prep-deck-button'];
+   const title = document.getElementById('tutorial-title');
+   const text = document.getElementById('tutorial-text');
+   const progress = document.getElementById('tutorial-progress');
+   const actionButton = document.getElementById('tutorial-primary-action');
+
+   if (title) title.textContent = step.title;
+   if (text) text.textContent = step.wait ? `${step.text}\n${step.wait}` : step.text;
+   if (progress) {
+    const index = Math.max(0, TUTORIAL_ORDER.indexOf(tutorialState.step));
+    progress.textContent = `${Math.min(index + 1, TUTORIAL_ORDER.length)} / ${TUTORIAL_ORDER.length}`;
+   }
+
+   if (actionButton) {
+    if (step.actionLabel) {
+     actionButton.textContent = step.actionLabel;
+     actionButton.style.display = '';
+     actionButton.onclick = tutorialConfirmCurrentStep;
+    } else {
+     actionButton.style.display = 'none';
+     actionButton.onclick = null;
+    }
+   }
+   requestAnimationFrame(applyTutorialTargets);
+  }
+
+  function startTutorial() {
+   playUiSelectSound();
+   tutorialState = {
+    active: true,
+    step: 'prep-deck-button',
+    completed: {},
+    mock: {},
+    originalDeckCustomize: structuredClone(deckCustomize),
+    originalSavedDeckCustomize: structuredClone(savedDeckCustomize),
+   };
+   deckCustomize = getInitialDeckCustomize();
+   savedDeckCustomize = structuredClone(deckCustomize);
+   showPreDepartureScreen();
+   renderTutorialOverlay();
+  }
+
+  function restoreTutorialDeckSandbox() {
+   if (!tutorialState) return;
+   if (tutorialState.originalDeckCustomize) {
+    deckCustomize = structuredClone(tutorialState.originalDeckCustomize);
+   }
+   if (tutorialState.originalSavedDeckCustomize) {
+    savedDeckCustomize = structuredClone(tutorialState.originalSavedDeckCustomize);
+   }
+  }
+
+  function tutorialConfirmCurrentStep(event) {
+   if (event) {
+    event.preventDefault?.();
+    event.stopPropagation?.();
+   }
+   if (!isTutorialActive()) return;
+   const step = tutorialState.step;
+
+   if (step === 'prep-pet') {
+    completeTutorialStep('prep-pet');
+    return;
+   }
+   if (step === 'prep-relic') {
+    completeTutorialStep('prep-relic');
+    return;
+   }
+   if (step === 'battle-timer') {
+    completeTutorialStep('battle-timer');
+    return;
+   }
+   if (step === 'battle-passives') {
+    completeTutorialStep('battle-passives');
+    return;
+   }
+   if (step === 'battle-enemy-preview') {
+    completeTutorialStep('battle-enemy-preview');
+    return;
+   }
+   if (step === 'battle-pet') {
+    completeTutorialStep('battle-pet');
+    return;
+   }
+   if (step === 'battle-cooldown') {
+    if (player && currentScreen === 'battle') {
+     player.cooldown = true;
+     player.cooldownTimer = Math.max(1.5, Number(player.cooldownTimer || 0));
+     render();
+    }
+    completeTutorialStep('battle-cooldown');
+    return;
+   }
+   if (step === 'battle-queue') {
+    if (getActionQueue().length <= 0) {
+     showActionQueueNotice('先にカードかリロードを予約してください', 'miss');
+     return;
+    }
+    completeTutorialStep('battle-queue');
+    return;
+   }
+   if (step === 'done') {
+    cancelTutorial();
+   }
+  }
+
+  function skipTutorialStep() {
+   return false;
+  }
+
+  function cancelTutorial(returnToTitle = true) {
+   restoreTutorialDeckSandbox();
+   tutorialState = { active: false, step: '', completed: {} };
+   clearTutorialTargets();
+   renderTutorialOverlay();
+   if (!returnToTitle) return;
+   if (currentScreen === 'battle') resetRunProgressForNextDive();
+   backToTitle();
+  }
+
+  function getTutorialProgressText() {
+   const index = Math.max(0, TUTORIAL_ORDER.indexOf(tutorialState.step));
+   return `${Math.min(index + 1, TUTORIAL_ORDER.length)} / ${TUTORIAL_ORDER.length}`;
+  }
+
+  function getTutorialTargetClass(step) {
+   return tutorialState.step === step ? ' tutorial-target' : '';
+  }
+
+  function renderTutorialScreen() {
+   const root = document.getElementById('tutorial-stage-content');
+   if (!root) return;
+
+   const step = TUTORIAL_STEPS[tutorialState.step] || TUTORIAL_STEPS['prep-deck-button'];
+   const mock = tutorialState.mock || {};
+   const isPrepare = step.area === 'prepare';
+   const isBattle = step.area === 'battle';
+
+   root.innerHTML = `
+    <section class="tutorial-mission-card">
+     <div class="tutorial-mission-meta">MISSION ${getTutorialProgressText()}</div>
+     <h2>${step.title}</h2>
+     <p>${step.text}</p>
+    </section>
+    ${isPrepare ? renderTutorialPrepareArea(mock) : ''}
+    ${isBattle ? renderTutorialBattleArea(mock) : ''}
+    ${step.area === 'done' ? renderTutorialDoneArea() : ''}
+   `;
+  }
+
+  function renderTutorialPrepareArea(mock) {
+   return `
+    <div class="predeparture-content tutorial-predeparture-content">
+     <div class="predeparture-grid">
+      <section class="predeparture-panel">
+       <div class="predeparture-panel-head">
+        <h2>ペット</h2>
+        <button class="ui-button ui-button-secondary" type="button" disabled>ペット変更</button>
+       </div>
+       <div class="predeparture-pet-body">
+        <div class="predeparture-pet-image"><span class="predeparture-placeholder">🦎</span></div>
+        <div>
+         <div class="predeparture-main-name">トカゲ</div>
+         <div class="predeparture-meta-grid">
+          <span>レベル <strong>1</strong></span>
+         </div>
+         <div class="predeparture-pet-skills">
+          <div class="predeparture-subtitle">技一覧</div>
+          <div class="pet-skill-item"><span class="pet-skill-name">しっぽアタック</span><span class="pet-skill-text">敵に3ダメージ</span></div>
+          <div class="pet-skill-item"><span class="pet-skill-name">うろこガード</span><span class="pet-skill-text">防御+4</span></div>
+         </div>
+        </div>
+       </div>
+      </section>
+
+      <section class="predeparture-panel">
+       <div class="predeparture-panel-head">
+        <h2>遺物</h2>
+        <button class="ui-button ui-button-secondary" type="button" disabled>遺物変更</button>
+       </div>
+       <div class="predeparture-relic-slots">
+        <div class="predeparture-relic-body empty">
+         <div class="predeparture-relic-icon">◇</div>
+         <div><div class="predeparture-main-name">未装備</div><p>装備中の遺物だけが探索中に効果を発揮します。</p></div>
+        </div>
+        <div class="predeparture-relic-body locked">
+         <div class="predeparture-relic-icon">🔒</div>
+         <div><div class="predeparture-main-name">未解放</div><p>深度クリアで装備枠が増えます。</p></div>
+        </div>
+       </div>
+      </section>
+
+      <section class="predeparture-panel predeparture-deck-panel">
+       <div class="predeparture-panel-head">
+        <h2>山札</h2>
+        <button class="ui-button ui-button-secondary" type="button" disabled>山札編集</button>
+       </div>
+       <div class="predeparture-deck-summary">
+        <span>デッキ枚数：<strong>${mock.deckAdded ? '21枚' : '20枚'}</strong></span>
+        <span>編成ポイント：<strong>0 / 0pt</strong></span>
+       </div>
+       <div class="tutorial-real-customize-row">
+        <article class="predeparture-deck-card predeparture-type-attack">
+         <div class="predeparture-deck-card-top"><span class="predeparture-deck-card-icons">⚔</span><strong>攻撃</strong><em>×2</em></div>
+         <p>5ダメージ</p>
+         <div class="predeparture-deck-card-tags"><span>攻撃</span><span>ノーマル</span></div>
+        </article>
+        <article class="predeparture-deck-card predeparture-type-defense tutorial-choice-card">
+         <div class="predeparture-deck-card-top"><span class="predeparture-deck-card-icons">🛡</span><strong>受け流し</strong><em>${mock.deckAdded ? '×1' : '×0'}</em></div>
+         <p>4ブロック / 次のリロード時間-0.2秒</p>
+         <div class="predeparture-deck-card-tags"><span>防御</span><span>ノーマル</span></div>
+         <button class="tutorial-round-button${getTutorialTargetClass('deck-add')}" type="button" onclick="tutorialAddDeckCard()">＋</button>
+        </article>
+       </div>
+       <div class="tutorial-prep-actions">
+        <button class="ui-button ui-button-primary${getTutorialTargetClass('deck-save')}" type="button" ${mock.deckAdded ? '' : 'disabled'} onclick="tutorialSaveDeck()">山札設定を保存</button>
+        <button class="ui-button ui-button-secondary${getTutorialTargetClass('pet-check')}" type="button" ${mock.saved ? '' : 'disabled'} onclick="tutorialConfirmPetRelic()">ペット・遺物を確認</button>
+       </div>
+      </section>
+     </div>
+    </div>
+    <div class="tutorial-bottom-actions">
+     <button class="ui-button ui-button-primary${getTutorialTargetClass('battle-start')}" type="button" ${tutorialState.step === 'battle-start' ? '' : 'disabled'} onclick="tutorialStartMockBattle()">模擬戦開始</button>
+    </div>
+   `;
+  }
+
+  function renderTutorialBattleArea(mock) {
+   const enemyHp = Math.max(0, Number(mock.enemyHp || 18));
+   const timerTarget = getTutorialTargetClass('battle-timer');
+   const passiveTarget = getTutorialTargetClass('battle-passives');
+   const previewTarget = getTutorialTargetClass('battle-enemy-preview');
+   const petTarget = getTutorialTargetClass('battle-pet');
+   return `
+    <div class="tutorial-battle-shell">
+     <div class="top-timer-wrap">
+      <div class="top-timer${timerTarget}">敵行動まで <span class="top-timer-value">5.0秒</span></div>
+     </div>
+     <div class="tutorial-info-row">
+      <div class="tutorial-ui-note${timerTarget}"><strong>敵行動タイマー</strong><span>0になると敵が行動します。</span></div>
+      <div class="tutorial-ui-note${passiveTarget}"><strong>パッシブ・状態表示</strong><span>プレイヤーの強化や状態異常を確認します。</span></div>
+      <div class="tutorial-ui-note${previewTarget}"><strong>敵行動予測</strong><span>次の敵行動に合わせてカードを選びます。</span></div>
+      <div class="tutorial-ui-note${petTarget}"><strong>ペット次行動</strong><span>あと何枚で行動するかを見ます。</span></div>
+     </div>
+     <div class="battle-area has-pet tutorial-real-battle-area">
+      <div class="fighter-card tutorial-fighter-card">
+       <div class="character-frame">
+        <img src="${PLAYER_IMAGE_ASSET}" alt="プレイヤー" class="character-img player-img">
+       </div>
+       <div class="hp-area">
+        <div class="hp-row hp-row-tight"><span>HP</span><span>40 / 40</span></div>
+        <div class="hp-bar"><div class="hp-fill" style="width:100%;"></div></div>
+        <div class="status-badges${passiveTarget}"><span class="status-badge">状態異常なし</span></div>
+        <div class="passive-effect-badges${passiveTarget}">
+         <div class="passive-effect-badge">💎 装備中遺物</div>
+         <div class="passive-effect-badge">🔥 攻撃+2</div>
+        </div>
+       </div>
+      </div>
+      <div class="pet-battle-column">
+       <div class="pet-panel${petTarget}">
+        <div class="pet-title">ペット：トカゲ Lv.1</div>
+        <div class="pet-body">
+         <div class="pet-image-wrap"><div class="tutorial-pet-real-icon">🦎</div></div>
+         <div class="pet-info-row">あと3枚</div>
+         <div class="pet-action-preview">次：しっぽアタック（敵に3ダメージ）</div>
+        </div>
+       </div>
+      </div>
+      <div class="vs-panel"></div>
+      <div class="fighter-card cpu-card tutorial-fighter-card">
+       <div class="fighter-name">訓練用スライム Lv.1</div>
+       <div class="character-frame tutorial-enemy-frame"><div class="tutorial-enemy-real-icon">💧</div></div>
+       <div class="enemy-action-preview${previewTarget}">
+        <span class="enemy-action-preview-label">次の行動予測</span>
+        <strong>⚔ 攻撃 5ダメージ</strong>
+       </div>
+       <div class="hp-area">
+        <div class="hp-row hp-row-tight"><span>HP</span><span>${enemyHp} / 18</span></div>
+        <div class="hp-bar"><div class="hp-fill" style="width:${Math.max(0, enemyHp / 18 * 100)}%;"></div></div>
+        <div class="status-badges"><span class="status-badge">状態異常なし</span></div>
+       </div>
+      </div>
+     </div>
+     ${['battle-timer', 'battle-passives', 'battle-enemy-preview', 'battle-pet'].includes(tutorialState.step)
+      ? `<div class="tutorial-confirm-row"><button class="ui-button ui-button-primary tutorial-target" type="button" onclick="tutorialAcknowledgeBattleInfo()">確認した</button></div>`
+      : ''}
+    </div>
+    <div class="tutorial-hand">
+     <button class="tutorial-hand-card attack${getTutorialTargetClass('battle-attack')}${getTutorialTargetClass('battle-finish')}" type="button" onclick="tutorialUseAttackCard()">攻撃<br><strong>5</strong><span>5ダメージ</span></button>
+     <button class="tutorial-hand-card defense${getTutorialTargetClass('battle-defense')}" type="button" onclick="tutorialUseDefenseCard()">防御<br><strong>5</strong><span>ブロック+5</span></button>
+     <button class="tutorial-hand-card support${getTutorialTargetClass('battle-queue')}" type="button" onclick="tutorialQueueCard()">受け流し<br><strong>4</strong><span>${mock.queued ? '① 予約中' : '予約してみる'}</span></button>
+     <button class="ui-button ui-button-secondary tutorial-reload-button${getTutorialTargetClass('battle-reload')}" type="button" onclick="tutorialReloadHand()">リロード</button>
+    </div>
+   `;
+  }
+
+  function renderTutorialDoneArea() {
+   return `
+    <div class="tutorial-done-card">
+     <h2>チュートリアル完了</h2>
+     <p>山札調整、ペット・遺物確認、カード使用、行動予約、リロード、防御の流れを確認しました。</p>
+     <button class="ui-button ui-button-primary tutorial-target" type="button" onclick="cancelTutorial()">メニューへ戻る</button>
+    </div>
+   `;
+  }
+
+  function tutorialAddDeckCard() {
+   if (tutorialState.step !== 'deck-add') return;
+   tutorialState.mock.deckAdded = true;
+   completeTutorialStep('deck-add');
+  }
+
+  function tutorialSaveDeck() {
+   if (tutorialState.step !== 'deck-save') return;
+   tutorialState.mock.saved = true;
+   completeTutorialStep('deck-save');
+  }
+
+  function tutorialConfirmPetRelic() {
+   if (tutorialState.step !== 'pet-check') return;
+   completeTutorialStep('pet-check');
+  }
+
+  function tutorialStartMockBattle() {
+   if (tutorialState.step !== 'battle-start') return;
+   tutorialState.mock.enemyHp = 18;
+   tutorialState.mock.block = 0;
+   tutorialState.mock.queued = false;
+   completeTutorialStep('battle-start');
+  }
+
+  function tutorialAcknowledgeBattleInfo() {
+   tutorialConfirmCurrentStep();
+  }
+
+  function tutorialUseAttackCard() {
+   if (tutorialState.step === 'battle-attack') {
+    tutorialState.mock.enemyHp = 13;
+    completeTutorialStep('battle-attack');
+    return;
+   }
+   if (tutorialState.step === 'battle-finish') {
+    tutorialState.mock.enemyHp = 0;
+    completeTutorialStep('battle-finish');
+   }
+  }
+
+  function tutorialQueueCard() {
+   if (tutorialState.step !== 'battle-queue') return;
+   tutorialState.mock.queued = true;
+   completeTutorialStep('battle-queue');
+  }
+
+  function tutorialReloadHand() {
+   if (tutorialState.step !== 'battle-reload') return;
+   tutorialState.mock.queued = false;
+   completeTutorialStep('battle-reload');
+  }
+
+  function tutorialUseDefenseCard() {
+   if (tutorialState.step !== 'battle-defense') return;
+   tutorialState.mock.block = 5;
+   completeTutorialStep('battle-defense');
   }
 
   function startBattle() {
@@ -9249,7 +10212,9 @@ function saveDeckCustomize() {
    }
    resetPetProgressForDive();
    deletedCardHistory = {};
-   saveCurrentGameData(false);
+   if (!isTutorialActive()) {
+    saveCurrentGameData(false);
+   }
 
    deckCustomize = structuredClone(savedDeckCustomize);
    runStartedAt = Date.now();
@@ -9326,13 +10291,14 @@ function saveDeckCustomize() {
    enemyLevel = 1;
    currentScreen = 'battle';
 
+   const tutorialDiveStart = tutorialState.step === 'depth-start';
    // 新規開始時はLv1から始めるが、Lv1戦闘に入る前の初期パッシブ選択は表示する。
    // 前回のLv1開始修正でこの初期パッシブ選択まで消えていたため、
    // pendingNextLevel=1 にして「パッシブ選択 → Lv1戦闘」の順に戻す。
-   pendingPassiveChoice = true;
-   pendingNextLevel = 1;
-   pendingPreviewEnemyId = chooseEnemyIdForLevel(1, currentDepth);
-   currentPassiveChoices = getRandomPassiveChoices(getPassiveChoiceCount(3));
+   pendingPassiveChoice = !tutorialDiveStart;
+   pendingNextLevel = tutorialDiveStart ? null : 1;
+   pendingPreviewEnemyId = tutorialDiveStart ? null : chooseEnemyIdForLevel(1, currentDepth);
+   currentPassiveChoices = tutorialDiveStart ? [] : getRandomPassiveChoices(getPassiveChoiceCount(3));
 
    enemyTimerStarted = false;
    if (enemyTimerInterval) {
@@ -9495,6 +10461,7 @@ function saveDeckCustomize() {
      tempAttackBuffValue: 0,
      tempAttackBuffTurns: 0,
     };
+   arrangeTutorialBattleHand();
 
    cpu = {
     hp: getEnemyMaxHp(),
@@ -9546,8 +10513,9 @@ function saveDeckCustomize() {
    gameOver = false;
    logs = ['潜行開始'];
    logVisible = false;
-   enemyTimer = getEnemyActionInterval();
+  enemyTimer = getEnemyActionInterval();
 
+   initializeFieldEffectForBattle();
    setCpuNextAction();
    applyBattleStartPassives();
    checkBattleCardZoneIntegrity('resetGame');
@@ -9886,6 +10854,9 @@ function playSound(type) {
    } else {
     lastRelicReward = null;
    }
+   if (result === 'win' && tutorialState.step === 'battle-finish') {
+    completeTutorialStep('battle-finish');
+   }
    recordBattleEndAchievement(result);
    recordEnemyBattleResult(result);
    recordBattleHistoryEntry(result);
@@ -9999,7 +10970,7 @@ function playSound(type) {
    }
 
    if (cpu && Number(cpu.freeze || 0) > 0) {
-    const frozenBonus = Math.max(0, Number(playerPassives.frozenVulnerabilityDamageBonus || 0));
+    const frozenBonus = Math.max(0, Number(playerPassives.frozenVulnerabilityDamageBonus || 0) + getFieldEffectFrozenDamageBonus());
     if (frozenBonus > 0) {
      preview = Math.ceil(preview * (1 + frozenBonus));
     }
@@ -10098,7 +11069,7 @@ function playSound(type) {
     incomingDamage = Math.max(0, Math.ceil(incomingDamage * (1 - Math.min(0.9, lowHpReduction))));
    }
    const frozenVulnerabilityBonus = target === cpu && target && Number(target.freeze || 0) > 0
-    ? Math.max(0, Number(playerPassives.frozenVulnerabilityDamageBonus || 0))
+    ? Math.max(0, Number(playerPassives.frozenVulnerabilityDamageBonus || 0) + getFieldEffectFrozenDamageBonus())
     : 0;
    const frozenVulnerabilityApplied = frozenVulnerabilityBonus > 0 && incomingDamage > 0;
    if (frozenVulnerabilityApplied) {
@@ -11306,6 +12277,8 @@ function prepareEnemyTimerForFirstCard() {
 
 function startEnemyTimerOnFirstCard() {
  if (
+  isTutorialActive()
+  ||
   enemyTimerStarted
   || gameOver
   || currentScreen !== 'battle'
@@ -11313,6 +12286,7 @@ function startEnemyTimerOnFirstCard() {
   || pendingShopChoice
   || bossRevivalInProgress
   || isBattlePausedBySettings()
+  || isBattleTimePausedByTutorial()
  ) {
   return;
  }
@@ -11350,9 +12324,10 @@ function applyPoisonToEnemy(amount, options = {}) {
   addLog(`毒蛇の牙：最初の毒付与+${relicPoisonBonus}`);
  }
  const bonus = options.ignorePassiveBonus ? 0 : Math.max(0, Math.floor(Number(playerPassives.poisonApplyBonus || 0)));
+ const fieldBonus = options.ignoreFieldBonus ? 0 : getFieldEffectPoisonBonus();
  const resistanceMultiplier = Math.max(0, Number(getEnemyPoisonApplyMultiplier() || 1));
  const resisted = resistanceMultiplier < 1;
- const applied = Math.max(0, Math.floor((baseAmount + bonus) * resistanceMultiplier));
+ const applied = Math.max(0, Math.floor((baseAmount + bonus + fieldBonus) * resistanceMultiplier));
  if (applied <= 0) return { applied: 0, drawn: [], resisted };
 
  cpu.poisonTurns = getEnemyPoisonAmount() + applied;
@@ -11375,10 +12350,18 @@ function applyPoisonToEnemy(amount, options = {}) {
 
 function playPlayerCard(id, options = {}) {
    if (isRandomEventInputBlocked()) return;
+   const tutorialCardStep = isTutorialActive() && currentScreen === 'battle' ? tutorialState.step : '';
 
    if (player && player.cooldown && Number(player.cooldownTimer || 0) <= 0) {
     player.cooldown = false;
     player.cooldownTimer = 0;
+   }
+
+   if (isTutorialActive() && currentScreen === 'battle') {
+    const step = tutorialState.step;
+    const allowedSteps = ['battle-attack', 'battle-queue', 'battle-defense', 'battle-finish'];
+    if (!allowedSteps.includes(step)) return;
+    if (step === 'battle-queue' && !canQueueActionNow()) return;
    }
 
    if (!options.fromQueue && canQueueActionNow()) {
@@ -11392,8 +12375,13 @@ function playPlayerCard(id, options = {}) {
    if (cardIndex === -1) return;
 
    const card = player.hand[cardIndex];
+   if (isTutorialActive() && currentScreen === 'battle') {
+    if (tutorialState.step === 'battle-defense' && getCardCustomizeCategory(card) !== 'defense') return;
+    if (['battle-attack', 'battle-finish'].includes(tutorialState.step) && !isAttackCardType(card.type)) return;
+   }
+   const shouldResolveTutorialDefense = tutorialCardStep === 'battle-defense' && getCardCustomizeCategory(card) === 'defense';
    const isEchoCopy = Boolean(options.echoCopy);
-   const suppressCooldown = Boolean(options.suppressCooldown);
+   const suppressCooldown = Boolean(options.suppressCooldown) || tutorialCardStep === 'battle-defense';
    const suppressDoublePlay = Boolean(options.suppressDoublePlay);
    const shouldDoublePlayThisCard = !suppressDoublePlay && Boolean(player.doublePlayNextCard && card.type !== 'reload-double-next');
    if (shouldDoublePlayThisCard) {
@@ -11406,6 +12394,9 @@ function playPlayerCard(id, options = {}) {
    }
    recordRunCardPlay(card);
    recordCardUseAchievement();
+   if (!options.fromQueue && tutorialCardStep === 'battle-attack') {
+    completeTutorialStep('battle-attack');
+   }
    if (card.type === 'chaos-hand') recordAchievementStat('chaosHandUses');
    if (card.type === 'echo-repeat') recordAchievementStat('echoUses');
    if (card.type === 'chance-guarantee') recordAchievementStat('fortuneUses');
@@ -11805,7 +12796,7 @@ if (card.type === 'rare-double-attack') {
 
    if (card.type === 'enemy-action-delay-turns') {
     const delay = Math.max(1, Number(card.value || 2));
-    const turns = Math.max(1, Number(card.turns || 2));
+    const turns = Math.max(1, Number(card.turns || 2) + getFieldEffectDebuffTurnBonus());
     cpu.pendingEnemyActionDelayTurns = Math.max(cpu.pendingEnemyActionDelayTurns || 0, turns);
     cpu.pendingEnemyActionDelayAmount = Math.max(cpu.pendingEnemyActionDelayAmount || 0, delay);
     recordAchievementStat('totalEnemyDelaySeconds', delay * Math.max(1, turns));
@@ -12455,7 +13446,7 @@ if (card.type === 'gamble-attack') {
 
 
    if (card.type === 'pure-burn') {
-    const burnTurns = Math.max(1, Number(card.turns || 3));
+    const burnTurns = Math.max(1, Number(card.turns || 3) + getFieldEffectBurnTurnBonus());
     const burnBlocked = isEnemyBurnImmune();
 
     if (!burnBlocked) {
@@ -12483,7 +13474,7 @@ if (card.type === 'burn') {
 
     consumeAttackBoostsAfterAttack();
 
-    const burnTurns = Math.max(1, Number(card.turns || 3));
+    const burnTurns = Math.max(1, Number(card.turns || 3) + getFieldEffectBurnTurnBonus());
     if (burned) {
      cpu.burn = true;
      cpu.burnTurns = (cpu.burnTurns || 0) + burnTurns;
@@ -12506,7 +13497,7 @@ if (card.type === 'burn') {
 
 
    if (card.type === 'attack-down') {
-    const turns = card.turns || 3;
+    const turns = Math.max(1, Number(card.turns || 3) + getFieldEffectDebuffTurnBonus());
     const value = card.value || 2;
     cpu.attackDownTurns = Math.max(cpu.attackDownTurns || 0, turns);
     cpu.attackDownValue = Math.max(cpu.attackDownValue || 0, value);
@@ -12516,7 +13507,7 @@ if (card.type === 'burn') {
    }
 
    if (card.type === 'defense-down') {
-    const turns = card.turns || 3;
+    const turns = Math.max(1, Number(card.turns || 3) + getFieldEffectDebuffTurnBonus());
     const value = card.value || 2;
     cpu.defenseDownTurns = Math.max(cpu.defenseDownTurns || 0, turns);
     cpu.defenseDownValue = Math.max(cpu.defenseDownValue || 0, value);
@@ -12555,12 +13546,12 @@ if (card.type === 'burn') {
     const burnApplied = burnChance > 0 && Math.random() < burnChance;
     if (burnApplied) {
      cpu.burn = true;
-     cpu.burnTurns = Math.max(cpu.burnTurns || 0, card.turns || 3);
+     cpu.burnTurns = Math.max(cpu.burnTurns || 0, Math.max(1, Number(card.turns || 3) + getFieldEffectBurnTurnBonus()));
     }
     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
     triggerDamageShake('.cpu-img');
     if (isEnemyBurned || burnApplied) triggerBurnEffect('.cpu-img');
-    addLog(`あなた：${card.name} (${result.damage}ダメージ${isEnemyBurned ? ` / 火傷特効+${card.bonus || 5}` : ''}${burnApplied ? ` / 火傷${card.turns || 3}T` : ''})`);
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${isEnemyBurned ? ` / 火傷特効+${card.bonus || 5}` : ''}${burnApplied ? ` / 火傷${Math.max(1, Number(card.turns || 3) + getFieldEffectBurnTurnBonus())}T` : ''})`);
     playSound(result.fullyBlocked ? 'guard' : (isEnemyBurned || burnApplied ? 'flame' : 'attack'));
    }
 
@@ -12921,6 +13912,11 @@ if (card.type === 'rare-attack') {
 
    if (!gameOver && !suppressCooldown) {
     startCooldown(card);
+   }
+
+   if (shouldResolveTutorialDefense) {
+    resolveTutorialDefenseAfterCard();
+    return;
    }
 
    render();
@@ -13880,6 +14876,12 @@ function triggerBurnEffect(selector) {
       enemyDefeatResolutionPending = false;
       gameOver = true;
 
+      if (isTutorialActive()) {
+       completeTutorialStep('battle-clear');
+       render();
+       return;
+      }
+
       if (enemyLevel >= 20) {
        showStageClearScreen();
       } else {
@@ -14718,7 +15720,8 @@ function getBaseCardDisplayText(card) {
  }
 
  if (card.type === 'enemy-action-delay-turns') {
-  return `次の敵行動後から${card.turns || 2}T 敵の行動時間+${card.value || 2}秒`;
+  const turns = Math.max(1, Number(card.turns || 2) + getFieldEffectDebuffTurnBonus());
+  return `次の敵行動後から${turns}T 敵の行動時間+${card.value || 2}秒`;
  }
 
 if (card.type === 'pet-attack-up') {
@@ -15083,7 +16086,8 @@ function getDisplayCardText(card) {
  }
 
  if (card.type === 'enemy-action-delay-turns') {
-  return `次の敵行動後から${card.turns || 2}T 敵の行動時間+${card.value || 2}秒`;
+  const turns = Math.max(1, Number(card.turns || 2) + getFieldEffectDebuffTurnBonus());
+  return `次の敵行動後から${turns}T 敵の行動時間+${card.value || 2}秒`;
  }
 
 if (card.type === 'pet-attack-up') {
@@ -15599,6 +16603,7 @@ function getCollectionProgressData() {
  const passivesTotal = getPassiveOptions().length;
  const eventsTotal = getRandomEventDefinitions().length;
  const relicsTotal = RELIC_DEFINITIONS.length;
+ const fieldEffectsTotal = getFieldEffectDefinitions().length;
  const pets = PET_POOL.filter(pet => pet.id !== 'none');
  const achievements = getAchievementDefinitions();
  const battleHistory = normalizeBattleHistory(loadBattleHistory());
@@ -15607,6 +16612,7 @@ function getCollectionProgressData() {
  const encounteredEnemies = loadEncounteredEnemies();
  const discoveredPassives = loadDiscoveredPassives();
  const eventProgress = loadRandomEventProgress();
+ const fieldEffectProgress = loadFieldEffectProgress();
  const relicProgress = loadRelicProgress();
  const unlockedPets = pets.filter(pet => isPetUnlocked(pet.id)).length;
  const unlockedAchievements = getUnlockedAchievementCount(achievements);
@@ -15618,6 +16624,7 @@ function getCollectionProgressData() {
   pets: { current: unlockedPets, total: pets.length },
   relics: { current: countOwnedDiscoveryEntries(relicProgress), total: relicsTotal },
   events: { current: countOwnedDiscoveryEntries(eventProgress), total: eventsTotal },
+  fields: { current: countOwnedDiscoveryEntries(fieldEffectProgress), total: fieldEffectsTotal },
   achievements: { current: unlockedAchievements, total: achievements.length },
   history: { current: battleHistory.length, total: null },
  };
@@ -15643,6 +16650,7 @@ function renderCollectionScreen() {
   { title: 'ペット図鑑', progress: progress.pets, description: '解放済みペットと確認済み進化情報を確認します。', action: 'showPetLibraryScreen()' },
   { title: '遺物図鑑', progress: progress.relics, description: '発見済み遺物と効果を確認します。', action: 'showRelicLibraryScreen()' },
   { title: 'イベント図鑑', progress: progress.events, description: '遭遇したランダムイベントの内容を確認します。', action: 'showRandomEventLibraryScreen()' },
+  { title: 'フィールド図鑑', progress: progress.fields, description: '戦闘中に発生する深淵環境と効果を確認します。', action: 'showFieldEffectLibraryScreen()' },
   { title: '実績一覧', progress: progress.achievements, description: '達成済み実績と進捗を確認します。', action: 'showAchievementLibraryScreen()' },
  ];
 
@@ -15652,8 +16660,94 @@ function renderCollectionScreen() {
    <span class="collection-card-title">${escapeHtml(item.title)}</span>
    <span class="collection-card-progress">${escapeHtml(formatCollectionProgress(item.progress))}</span>
    <span class="collection-card-description">${escapeHtml(item.description)}</span>
-  </button>
+ </button>
  `).join('');
+}
+
+function renderFieldEffectLibraryScreen() {
+ const list = document.getElementById('field-effect-library-list');
+ if (!list) return;
+
+ const fields = getFieldEffectDefinitions();
+ const progress = loadFieldEffectProgress();
+ const discoveredCount = countOwnedDiscoveryEntries(progress);
+ list.innerHTML = `
+  <div class="field-effect-library-summary">遭遇済み：${discoveredCount} / ${fields.length}</div>
+  <div class="field-effect-library-grid">
+   ${fields.map(field => {
+    const discovered = Boolean(progress[field.id]);
+    return `
+    <button class="field-effect-library-card ${discovered ? escapeHtml(field.className) : 'undiscovered'}" type="button" onclick="openFieldEffectLibraryDetail('${escapeHtml(field.id)}')">
+     <span class="field-effect-library-mark">${discovered ? escapeHtml(field.icon) : '?'}</span>
+     <span class="field-effect-library-body">
+      <span class="field-effect-library-kicker">FIELD EFFECT</span>
+      <span class="field-effect-library-title">${discovered ? escapeHtml(field.name) : '？？？'}</span>
+      <span class="field-effect-library-summary-text">${discovered ? escapeHtml(field.summary) : '未遭遇のフィールド変化です。'}</span>
+      <span class="field-effect-library-depths">${discovered ? escapeHtml(formatFieldEffectDepthChances(field.id)) : '遭遇すると詳細が記録されます'}</span>
+     </span>
+    </button>
+   `;
+   }).join('')}
+  </div>
+ `;
+}
+
+function getFieldEffectLibraryDetailHtml(field, discovered = isFieldEffectDiscovered(field?.id)) {
+ if (!field) return '';
+ if (!discovered) {
+  return `
+   <div class="field-effect-library-detail-main undiscovered">
+    <div class="field-effect-library-detail-mark">?</div>
+    <div class="field-effect-library-detail-body">
+     <div class="field-effect-library-detail-kicker">UNKNOWN FIELD</div>
+     <h3>？？？</h3>
+     <div class="field-effect-library-detail-summary">未遭遇</div>
+     <div class="field-effect-library-detail-section">
+      <div class="field-effect-library-detail-label">情報</div>
+      <p>まだ遭遇していないフィールド変化です。戦闘中に発生すると図鑑へ記録されます。</p>
+     </div>
+    </div>
+   </div>
+  `;
+ }
+ const depthHtml = getFieldEffectDepthChances(field.id).map(item => `
+  <span class="field-effect-library-depth-chip">深度${item.depth}<strong>${item.chance}%</strong></span>
+ `).join('');
+ return `
+  <div class="field-effect-library-detail-main ${escapeHtml(field.className)}">
+   <div class="field-effect-library-detail-mark">${escapeHtml(field.icon)}</div>
+   <div class="field-effect-library-detail-body">
+    <div class="field-effect-library-detail-kicker">FIELD EFFECT</div>
+    <h3>${escapeHtml(field.name)}</h3>
+    <div class="field-effect-library-detail-summary">${escapeHtml(field.summary)}</div>
+    <div class="field-effect-library-detail-section">
+     <div class="field-effect-library-detail-label">効果</div>
+     <p>${escapeHtml(field.detail)}</p>
+    </div>
+    <div class="field-effect-library-detail-section">
+     <div class="field-effect-library-detail-label">発生率</div>
+     <div class="field-effect-library-depth-chip-list">${depthHtml}</div>
+     <p class="field-effect-library-note">各戦闘開始時に抽選されます。フィールド変化なしの場合もあります。</p>
+    </div>
+   </div>
+  </div>
+ `;
+}
+
+function openFieldEffectLibraryDetail(fieldId) {
+ const field = FIELD_EFFECT_DEFINITIONS[fieldId];
+ const modal = document.getElementById('field-effect-library-detail-modal');
+ const content = document.getElementById('field-effect-library-detail-content');
+ if (!field || !modal || !content) return;
+ playUiSelectSound();
+ content.innerHTML = getFieldEffectLibraryDetailHtml(field, isFieldEffectDiscovered(fieldId));
+ modal.style.display = 'flex';
+}
+
+function closeFieldEffectLibraryDetailModal(event) {
+ if (event && event.target !== event.currentTarget) return;
+ const modal = document.getElementById('field-effect-library-detail-modal');
+ if (modal) modal.style.display = 'none';
 }
 
 function renderPetLibraryScreen() {
@@ -15841,6 +16935,15 @@ function showCardLibraryScreen() {
    currentScreen = 'random-event-library';
 
    renderRandomEventLibraryScreen();
+   render();
+  }
+
+  function showFieldEffectLibraryScreen() {
+   playUiSelectSound();
+
+   currentScreen = 'field-effect-library';
+
+   renderFieldEffectLibraryScreen();
    render();
   }
 
@@ -16069,7 +17172,20 @@ function showCardLibraryScreen() {
   window.selectNewGameDepth = selectNewGameDepth;
   window.confirmDepthSelection = confirmDepthSelection;
   window.confirmDepthAndStartBattle = confirmDepthAndStartBattle;
-  window.showPrepareScreen = showPrepareScreen;
+window.showPrepareScreen = showPrepareScreen;
+window.startTutorial = startTutorial;
+window.skipTutorialStep = skipTutorialStep;
+window.cancelTutorial = cancelTutorial;
+window.tutorialAddDeckCard = tutorialAddDeckCard;
+window.tutorialSaveDeck = tutorialSaveDeck;
+window.tutorialConfirmPetRelic = tutorialConfirmPetRelic;
+window.tutorialStartMockBattle = tutorialStartMockBattle;
+window.tutorialAcknowledgeBattleInfo = tutorialAcknowledgeBattleInfo;
+window.tutorialConfirmCurrentStep = tutorialConfirmCurrentStep;
+window.tutorialUseAttackCard = tutorialUseAttackCard;
+window.tutorialQueueCard = tutorialQueueCard;
+window.tutorialReloadHand = tutorialReloadHand;
+window.tutorialUseDefenseCard = tutorialUseDefenseCard;
 
   
   const passiveLibrary = window.GamePassiveLibrary.createPassiveLibrary({
@@ -16731,6 +17847,10 @@ function render() {
     renderRandomEventLibraryScreen();
    }
 
+   if (currentScreen === 'field-effect-library') {
+    renderFieldEffectLibraryScreen();
+   }
+
    if (currentScreen === 'relic-library') {
     renderRelicLibraryScreen();
    }
@@ -16799,6 +17919,7 @@ function render() {
    document.getElementById('passive-library-screen').style.display = currentScreen === 'passive-library' ? 'flex' : 'none';
    document.getElementById('achievement-library-screen').style.display = currentScreen === 'achievement-library' ? 'flex' : 'none';
    document.getElementById('random-event-library-screen').style.display = currentScreen === 'random-event-library' ? 'flex' : 'none';
+   document.getElementById('field-effect-library-screen').style.display = currentScreen === 'field-effect-library' ? 'flex' : 'none';
    document.getElementById('relic-library-screen').style.display = currentScreen === 'relic-library' ? 'flex' : 'none';
    document.getElementById('relic-equip-screen').style.display = currentScreen === 'relic-equip' ? 'flex' : 'none';
    document.getElementById('pet-library-screen').style.display = currentScreen === 'pet-library' ? 'flex' : 'none';
@@ -16811,7 +17932,20 @@ function render() {
    if (currentScreen === 'clear') renderClearScreen();
    document.getElementById('customize-screen').style.display = currentScreen === 'customize' ? 'block' : 'none';
    document.getElementById('pet-select-screen').style.display = currentScreen === 'pet-select' ? 'block' : 'none';
-   document.getElementById('battle-screen').style.display = currentScreen === 'battle' ? 'block' : 'none';
+   const battleScreen = document.getElementById('battle-screen');
+   battleScreen.style.display = currentScreen === 'battle' ? 'block' : 'none';
+   Object.values(FIELD_EFFECT_DEFINITIONS).forEach(field => {
+    const active = currentScreen === 'battle' && currentFieldEffectId === field.id;
+    battleScreen.classList.toggle(field.className, active);
+    document.body.classList.toggle(field.className, active);
+   });
+   document.body.classList.toggle('abyss-field-active', currentScreen === 'battle' && Boolean(currentFieldEffectId));
+   const tutorialScreen = document.getElementById('tutorial-screen');
+   if (tutorialScreen) {
+    tutorialScreen.style.display = currentScreen === 'tutorial' ? 'flex' : 'none';
+    if (currentScreen === 'tutorial') renderTutorialScreen();
+   }
+   renderTutorialOverlay();
 
    if (currentScreen === 'customize') {
     renderCustomizeScreen();
@@ -16832,9 +17966,31 @@ function render() {
    const battleArea = document.getElementById('battle-area');
 
    if (battleArea) {
-    battleArea.classList.toggle('has-pet', selectedPetId !== 'none');
-    battleArea.classList.toggle('no-pet', selectedPetId === 'none');
+   battleArea.classList.toggle('has-pet', selectedPetId !== 'none');
+   battleArea.classList.toggle('no-pet', selectedPetId === 'none');
+   Object.values(FIELD_EFFECT_DEFINITIONS).forEach(field => {
+    battleArea.classList.toggle(field.className, currentFieldEffectId === field.id);
+   });
 
+   }
+
+   const fieldBadge = document.getElementById('field-effect-badge');
+   const field = getCurrentFieldEffect();
+   if (fieldBadge) {
+    if (field) {
+     fieldBadge.style.display = 'inline-flex';
+     fieldBadge.className = `field-effect-badge ${field.className}`;
+     fieldBadge.setAttribute('data-tooltip', getFieldEffectTooltip(field));
+     fieldBadge.innerHTML = `
+      <span class="field-effect-badge-kicker">深淵環境</span>
+      <strong>${escapeHtml(field.icon)} ${escapeHtml(field.name)}</strong>
+     `;
+    } else {
+     fieldBadge.style.display = 'none';
+     fieldBadge.className = 'field-effect-badge';
+     fieldBadge.removeAttribute('data-tooltip');
+     fieldBadge.innerHTML = '';
+    }
    }
 
 
@@ -16988,6 +18144,7 @@ const nextAction = getCpuNextAction();
     } else {
      valueText = `${nextAction.value}ダメージ`;
     }
+    valueText = maskFieldEffectPredictionValue(valueText);
     prediction.innerHTML = `
      <div class="cpu-prediction-label">👁 次の行動予測</div>
      <div class="cpu-prediction-main">
@@ -17299,6 +18456,9 @@ window.showPetLibraryScreen = showPetLibraryScreen;
 window.showPassiveLibraryScreen = showPassiveLibraryScreen;
 window.showAchievementLibraryScreen = showAchievementLibraryScreen;
 window.showRandomEventLibraryScreen = showRandomEventLibraryScreen;
+window.showFieldEffectLibraryScreen = showFieldEffectLibraryScreen;
+window.openFieldEffectLibraryDetail = openFieldEffectLibraryDetail;
+window.closeFieldEffectLibraryDetailModal = closeFieldEffectLibraryDetailModal;
 window.showRelicLibraryScreen = showRelicLibraryScreen;
 window.showRelicEquipScreen = showRelicEquipScreen;
 window.showPreDepartureScreen = showPreDepartureScreen;

@@ -109,6 +109,7 @@
       </div>
 
       <div class="menu-section menu-section-main">
+        <button class="ui-button ui-button-secondary title-sub-button menu-large-button tutorial-start-button" onclick="startTutorial()">チュートリアル</button>
         <button class="ui-button ui-button-primary title-battle-button menu-primary-button" onclick="startBattle()">深淵へ潜る</button>
       </div>
 
@@ -125,6 +126,33 @@
         <button class="ui-button ui-button-secondary title-sub-button menu-system-button" onclick="backToStartScreen()">最初の画面へ戻る</button>
       </div>
 
+    </div>
+  </div>
+
+  <div id="tutorial-overlay" class="tutorial-overlay" style="display:none;" aria-live="polite">
+    <div class="tutorial-panel">
+      <div class="tutorial-kicker">TUTORIAL</div>
+      <h2 id="tutorial-title">チュートリアル</h2>
+      <p id="tutorial-text"></p>
+      <div id="tutorial-progress" class="tutorial-progress"></div>
+      <div class="tutorial-actions">
+        <button id="tutorial-primary-action" class="ui-button ui-button-primary" type="button" style="display:none;"></button>
+        <button class="ui-button ui-button-secondary" type="button" onclick="cancelTutorial()">終了</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tutorial-screen" class="container title-screen tutorial-screen" style="display:none;">
+    <div class="tutorial-stage">
+      <div class="tutorial-stage-header">
+        <div>
+          <div class="title-kicker">TUTORIAL MISSION</div>
+          <h1>チュートリアル</h1>
+          <p>指定された操作を実際に行うと、次のミッションへ進みます。</p>
+        </div>
+        <button class="ui-button ui-button-secondary" type="button" onclick="cancelTutorial()">終了</button>
+      </div>
+      <div id="tutorial-stage-content" class="tutorial-stage-content"></div>
     </div>
   </div>
 
@@ -507,6 +535,7 @@
         敵行動まで
         <span id="enemy-timer-value" class="top-timer-value"></span>
       </div>
+      <div id="field-effect-badge" class="field-effect-badge" style="display:none;"></div>
     </div>
 
     <div id="battle-area" class="battle-area">
@@ -945,6 +974,23 @@
       <div class="random-event-library-detail-dialog" onclick="event.stopPropagation()">
         <button class="ui-button ui-button-secondary random-event-library-detail-close" type="button" onclick="closeRandomEventLibraryDetailModal()">閉じる</button>
         <div id="random-event-library-detail-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="field-effect-library-screen" class="screen library-screen field-effect-library-screen" style="display:none;">
+    <div class="library-header">
+      <h2>フィールド図鑑</h2>
+      <div class="library-header-actions">
+        <button class="ui-button ui-button-secondary" onclick="showCollectionScreen()">コレクションに戻る</button>
+      </div>
+    </div>
+    <p class="library-description">戦闘中に発生する深淵環境と効果を確認できます。</p>
+    <div id="field-effect-library-list" class="field-effect-library-list"></div>
+    <div id="field-effect-library-detail-modal" class="field-effect-library-detail-modal" style="display:none;" onclick="closeFieldEffectLibraryDetailModal(event)">
+      <div class="field-effect-library-detail-dialog" onclick="event.stopPropagation()">
+        <button class="ui-button ui-button-secondary field-effect-library-detail-close" type="button" onclick="closeFieldEffectLibraryDetailModal()">閉じる</button>
+        <div id="field-effect-library-detail-content"></div>
       </div>
     </div>
   </div>
