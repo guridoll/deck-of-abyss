@@ -1950,7 +1950,7 @@ const PET_POOL = [
   }
 
   function getFieldEffectTooltip(field = getCurrentFieldEffect()) {
-   return field ? `${field.name}\n${field.detail}` : '';
+   return field ? field.summary : '';
   }
 
   function getFieldEffectDefinitions() {
@@ -16769,15 +16769,23 @@ function renderPetLibraryScreen() {
     ? `<img src="${pet.image}" alt="${escapeHtml(pet.name)}" class="pet-library-img" style="${pet.image ? '' : 'display:none;'}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
       <div class="pet-library-placeholder" style="${pet.image ? 'display:none;' : 'display:flex;'}">${escapeHtml(pet.placeholder || '？')}</div>`
     : '<div class="pet-library-placeholder pet-library-locked">？</div>';
+   const evolvedName = evolutionDiscovered ? getPetEvolutionPreviewName(pet) : '';
+   const evolvedImage = evolutionDiscovered ? getPetEvolutionPreviewImage(pet) : '';
    const evolutionHtml = evolutionDiscovered
     ? `
      <div class="pet-library-evolution">
       <div class="pet-library-section-title">進化後</div>
-      <div class="pet-library-evolution-name">${escapeHtml(getPetEvolutionPreviewName(pet))}</div>
+      <div class="pet-library-evolution-head">
+       <div class="pet-library-evolution-image-wrap">
+        <img src="${evolvedImage}" alt="${escapeHtml(evolvedName)}" class="pet-library-evolution-img" style="${evolvedImage ? '' : 'display:none;'}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="pet-library-placeholder pet-library-evolution-placeholder" style="${evolvedImage ? 'display:none;' : 'display:flex;'}">進化</div>
+       </div>
+       <div class="pet-library-evolution-name">${escapeHtml(evolvedName)}</div>
+      </div>
       <div class="pet-skill-list">${getPetSkillListHtml(getPetEvolutionPreviewSkills(pet.id), '進化後の技は未設定です。')}</div>
      </div>
     `
-    : `<div class="pet-library-evolution-locked">${unlocked ? '進化後：未確認' : '進化後：？？？'}</div>`;
+    : '';
 
    const detailHandler = unlocked
     ? `onclick="openPetLibraryDetail('${String(pet.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')"`
@@ -16830,7 +16838,7 @@ function getPetLibraryDetailHtml(pet, unlocked) {
     </div>
    </section>
   `
-  : '<section class="pet-library-detail-section"><h4>進化後情報</h4><p>まだ確認されていません。</p></section>';
+  : '';
 
  return `
   <div class="pet-library-detail-content">

@@ -10752,6 +10752,7 @@ body.battle-defeat-slowmo .battle-area {
 .guide-strategy { border-left-color: #a78bfa; --guide-glow: rgba(167, 139, 250, 0.22); }
 .guide-library { border-left-color: #f9a8d4; --guide-glow: rgba(249, 168, 212, 0.2); }
 .guide-pet { border-left-color: #fcd34d; --guide-glow: rgba(252, 211, 77, 0.22); }
+.guide-field { border-left-color: #38bdf8; --guide-glow: rgba(56, 189, 248, 0.22); }
 .guide-card-view { border-left-color: #93c5fd; --guide-glow: rgba(147, 197, 253, 0.2); }
 
 @media (max-width: 760px) {
@@ -16751,9 +16752,48 @@ body.battle-defeat-slowmo .battle-area {
   border-top: 1px solid rgba(255, 255, 255, 0.10);
 }
 
+.pet-library-evolution-head {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.pet-library-evolution-image-wrap {
+  width: 58px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(196, 181, 253, 0.30);
+  box-shadow: inset 0 0 18px rgba(15, 23, 42, 0.42);
+}
+
+.pet-library-evolution-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(216, 180, 254, 0.35));
+}
+
+.pet-library-evolution-placeholder {
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  color: #ddd6fe;
+  font-size: 0.75rem;
+  font-weight: 1000;
+}
+
 .pet-library-evolution-name {
   color: #ddd6fe;
   font-weight: 1000;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .pet-library-card .pet-skill-list {
