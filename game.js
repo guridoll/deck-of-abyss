@@ -124,6 +124,13 @@ const RARE_CARD_COOLDOWN = 5;
    { id: 'forgotten_collar', name: '忘れられた首輪', source: '3層敗北', table: 'depth3Defeat', icon: '🐾', effect: 'ペットカード出現率+7%', description: '誰かを待ち続けていた首輪。', effects: { petCardRate: 0.07 } },
    { id: 'shattered_poison_crystal', name: '砕けた毒晶', source: '3層敗北', table: 'depth3Defeat', icon: '☠', effect: '毒カード出現率+7%', description: '砕けた断面から毒気が漏れる。', effects: { poisonCardRate: 0.07 } },
    { id: 'shattered_powder_core', name: '砕けた火薬核', source: '3層敗北', table: 'depth3Defeat', icon: '💣', effect: '爆弾カード出現率+7%', description: '破片ですら爆ぜる火薬核。', effects: { bombCardRate: 0.07 } },
+   { id: 'mist_lantern', name: '霧渡りのランタン', source: '1層敗北', table: 'depth1Defeat', icon: '🌫', effect: '深淵の霧で戦闘開始時1ドロー', description: '霧の奥にある手札を照らすランタン。', effects: { fieldAbyssFogDraw: 1 } },
+   { id: 'storm_scrying_crystal', name: '嵐詠みの水晶', source: '2層敗北', table: 'depth2Defeat', icon: '🌀', effect: '魔力嵐で戦闘開始時、敵攻撃低下1T', description: '荒れる魔力を読み、敵の刃先を鈍らせる水晶。', effects: { fieldManaStormAttackDownTurns: 1 } },
+   { id: 'black_iron_boots', name: '黒鉄の重靴', source: '1層敗北', table: 'depth1Defeat', icon: '◆', effect: '重圧で戦闘開始時、防御+5', description: '重圧の中でも踏み止まるための黒鉄靴。', effects: { fieldGravityStartBlock: 5 } },
+   { id: 'powder_soaked_fuse', name: '火薬染みの導火線', source: '2層敗北', table: 'depth2Defeat', icon: '💣', effect: '火薬の匂いで戦闘開始時、小爆弾1個付与', description: '火薬の匂いに反応して勝手に火が走る導火線。', effects: { fieldGunpowderStartSmallBomb: 1 } },
+   { id: 'toxic_rain_vial', name: '毒雨の小瓶', source: '2層敗北', table: 'depth2Defeat', icon: '☠', effect: '腐毒の雨で戦闘開始時、毒3付与', description: '雨粒を閉じ込めた小瓶。割れると毒気が広がる。', effects: { fieldToxicRainStartPoison: 3 } },
+   { id: 'frozen_air_charm', name: '凍空の護符', source: '2層敗北', table: 'depth2Defeat', icon: '❄', effect: '凍てつく空気の被凍結解除クリック増加を無効化', description: '凍える空気の中でも指先を動かせる護符。', effects: { ignoreFreezingAirClickPenalty: 1 } },
+   { id: 'deep_layer_wedge', name: '深層の楔', source: '3層敗北', table: 'depth3Defeat', icon: '◇', effect: '敵パッシブでフィールド発生時、戦闘開始時1ドロー', description: '敵が支配する領域に打ち込み、流れを読み取る楔。', effects: { enemyFieldStartDraw: 1 } },
   ];
   const RELIC_VICTORY_DISCOVERY_CHANCE = { 1: 0.08, 2: 0.10, 3: 0.12 };
 
@@ -496,6 +503,18 @@ const PET_POOL = [
    { name: '時限地獄', type: 'bomb-advance-all-two', value: 2, text: '設置中の全ての爆弾を2進める', rare: true, epic: true },
    { name: '終焉爆撃', type: 'bomb-doomsday', value: 0, damageMultiplier: 2, text: '設置中の全ての爆弾を即爆発させる / 爆発ダメージ2倍', rare: true, legendary: true },
    { name: '奈落の爆薬', type: 'bomb-abyssal', value: 0, selfMaxHp: 3, text: '大爆弾を2個付与する / 最大HP-3', rare: true, legendary: true },
+   { name: '深淵観測', type: 'field-observe', value: 1, block: 4, text: 'フィールド中なら1ドロー / フィールドなしなら防御+4' },
+   { name: '魔力収束', type: 'field-magic-convergence', value: 1, turns: 1, text: '攻撃低下1T / 防御低下1T / 魔力嵐中は各2T' },
+   { name: '火花誘爆', type: 'field-spark-fuse', value: 1, text: '爆弾を1進める / 火薬の匂い中ならさらに+1' },
+   { name: '毒雨の刃', type: 'field-toxic-blade', value: 4, poison: 2, fieldPoison: 5, text: '4ダメージ / 毒2付与 / 腐毒の雨中は毒5付与' },
+   { name: '氷気の追撃', type: 'field-ice-follow', value: 3, bonus: 5, text: '3ダメージ / 敵が凍結中なら+5ダメージ' },
+   { name: '霧中の刃', type: 'field-fog-blade', value: 4, bonus: 4, text: '4ダメージ / 深淵の霧中なら+4ダメージ' },
+   { name: '重圧斬り', type: 'field-gravity-slash', value: 5, defenseRemove: 3, text: '5ダメージ / 重圧中なら敵防御-3' },
+   { name: '霧払い', type: 'field-clear', value: 1, text: 'フィールドを解除 / 1ドロー / 使用後破棄', rare: true },
+   { name: '地脈干渉', type: 'field-shift', value: 0, text: '現在と別のランダムフィールドへ変化', rare: true },
+   { name: '環境固定', type: 'field-lock-next', value: 0, text: '戦闘終了時のフィールドを次の戦闘へ引き継ぐ / 使用後破棄', rare: true },
+   { name: '境界破り', type: 'field-boundary', value: 0, text: '現在フィールドに対応する一時カードを手札に加える', rare: true, epic: true },
+   { name: '深淵改変', type: 'field-rewrite', value: 0, text: 'フィールドを1つ選んで変化させる', rare: true, legendary: true },
    {
     name: 'ガードブレード',
     type: 'rare-attack-defense',
@@ -1152,6 +1171,18 @@ const PET_POOL = [
    '大型爆弾設置': 'rare',
    '超導火線': 'rare',
    '強制起爆': 'epic',
+   '深淵観測': 'normal',
+   '魔力収束': 'normal',
+   '火花誘爆': 'normal',
+   '毒雨の刃': 'normal',
+   '氷気の追撃': 'normal',
+   '霧中の刃': 'normal',
+   '重圧斬り': 'normal',
+   '霧払い': 'rare',
+   '地脈干渉': 'rare',
+   '環境固定': 'rare',
+   '境界破り': 'epic',
+   '深淵改変': 'legendary',
   };
 
   function normalizeCardRarity(card) {
@@ -1737,6 +1768,8 @@ const PET_POOL = [
    rareReviveOnce: false,
    rareReviveUsed: false,
    frozenVulnerabilityDamageBonus: 0,
+   fieldStartDrawBonus: 0,
+   fieldCooldownReduce: 0,
     petLevelGrowthOnVictory: 0,
     bloodPrice: false,
     bombDamageBonusMultiplier: 0,
@@ -1798,6 +1831,9 @@ const PET_POOL = [
   let relicRewardHandledForRun = false;
   let relicRewardModalShownForRun = false;
   let currentFieldEffectId = null;
+  let currentFieldEffectSource = '';
+  let carriedFieldEffectId = null;
+  let fieldSelectionOpen = false;
   let lastFieldEffectToastId = null;
   let setupReturnScreen = 'prepare';
   let depthSelectMode = 'prepare';
@@ -1904,12 +1940,47 @@ const PET_POOL = [
    ],
   };
 
+  const ENEMY_FIELD_EFFECT_PASSIVE_MAP = {
+   field_abyss_fog: 'abyss_fog',
+   field_mana_storm: 'mana_storm',
+   field_gravity_pressure: 'gravity_pressure',
+   field_gunpowder_scent: 'gunpowder_scent',
+   field_toxic_rain: 'toxic_rain',
+   field_freezing_air: 'freezing_air',
+  };
+
   function getCurrentFieldEffect() {
    return currentFieldEffectId ? FIELD_EFFECT_DEFINITIONS[currentFieldEffectId] || null : null;
   }
 
   function isFieldEffectActive(id) {
    return currentFieldEffectId === id;
+  }
+
+  function getFieldEffectName(fieldId) {
+   return FIELD_EFFECT_DEFINITIONS[fieldId]?.name || 'フィールドなし';
+  }
+
+  function getRandomFieldEffectId(excludeId = null) {
+   const ids = Object.keys(FIELD_EFFECT_DEFINITIONS).filter(id => id !== excludeId);
+   return ids[Math.floor(Math.random() * ids.length)] || null;
+  }
+
+  function setCurrentFieldEffect(fieldId, source = 'card') {
+   const nextFieldId = fieldId && FIELD_EFFECT_DEFINITIONS[fieldId] ? fieldId : null;
+   currentFieldEffectId = nextFieldId;
+   currentFieldEffectSource = nextFieldId ? source : '';
+
+   if (!nextFieldId) {
+    addLog('フィールドが解除された');
+    return null;
+   }
+
+   const field = getCurrentFieldEffect();
+   markFieldEffectEncountered(field.id);
+   addLog(`フィールド変化：${field.name} (${field.summary})`);
+   showFieldEffectToast(field);
+   return field;
   }
 
   function rollFieldEffectForBattle(depth = currentDepth) {
@@ -1925,13 +1996,27 @@ const PET_POOL = [
    return null;
   }
 
+  function getEnemyForcedFieldEffectId() {
+   if (isTutorialActive() || pendingPassiveChoice || pendingShopChoice || !areEnemyPassivesEnabled()) return null;
+   const passiveIds = getCurrentEnemyPassiveIds();
+   for (const passiveId of passiveIds) {
+    const fieldId = ENEMY_FIELD_EFFECT_PASSIVE_MAP[passiveId];
+    if (fieldId && FIELD_EFFECT_DEFINITIONS[fieldId]) return fieldId;
+   }
+   return null;
+  }
+
   function initializeFieldEffectForBattle() {
-   currentFieldEffectId = (!pendingPassiveChoice && !pendingShopChoice) ? rollFieldEffectForBattle(currentDepth) : null;
+   const carriedFieldId = carriedFieldEffectId && FIELD_EFFECT_DEFINITIONS[carriedFieldEffectId] ? carriedFieldEffectId : null;
+   carriedFieldEffectId = null;
+   const forcedFieldId = getEnemyForcedFieldEffectId();
+   currentFieldEffectId = (!pendingPassiveChoice && !pendingShopChoice) ? (carriedFieldId || forcedFieldId || rollFieldEffectForBattle(currentDepth)) : null;
+   currentFieldEffectSource = carriedFieldId ? 'carry' : forcedFieldId ? 'enemy' : currentFieldEffectId ? 'random' : '';
    const field = getCurrentFieldEffect();
    if (!field) return;
    markFieldEffectEncountered(field.id);
    lastFieldEffectToastId = `${field.id}-${Date.now()}`;
-   addLog(`深淵環境：${field.name} (${field.summary})`);
+   addLog(`${carriedFieldId ? '環境固定' : forcedFieldId ? '敵の支配領域' : '深淵環境'}：${field.name} (${field.summary})`);
    setTimeout(() => showFieldEffectToast(field), 180);
   }
 
@@ -1955,6 +2040,65 @@ const PET_POOL = [
 
   function getFieldEffectDefinitions() {
    return Object.values(FIELD_EFFECT_DEFINITIONS);
+  }
+
+  function closeFieldSelectionOverlay(resumeTimer = false) {
+   document.getElementById('field-selection-modal')?.remove();
+   fieldSelectionOpen = false;
+   render();
+  }
+
+  function openFieldSelectionOverlay(sourceLabel = 'フィールド選択') {
+   if (fieldSelectionOpen) return false;
+   fieldSelectionOpen = true;
+
+   const overlay = document.createElement('div');
+   overlay.id = 'field-selection-modal';
+   overlay.className = 'field-selection-modal-backdrop';
+   const optionsHtml = getFieldEffectDefinitions().map(field => `
+    <button type="button" class="field-selection-option ${escapeHtml(field.className)}" data-field-id="${escapeHtml(field.id)}">
+     <span class="field-selection-option-icon">${escapeHtml(field.icon)}</span>
+     <span class="field-selection-option-name">${escapeHtml(field.name)}</span>
+     <span class="field-selection-option-effect">${escapeHtml(field.summary)}</span>
+    </button>
+   `).join('');
+
+   overlay.innerHTML = `
+    <div class="field-selection-panel" role="dialog" aria-modal="true">
+     <div class="field-selection-kicker">${escapeHtml(sourceLabel)}</div>
+     <h3>フィールドを選択</h3>
+     <div class="field-selection-options">${optionsHtml}</div>
+    </div>
+   `;
+   overlay.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+   });
+   overlay.querySelectorAll('.field-selection-option').forEach(button => {
+    button.addEventListener('click', event => {
+     event.preventDefault();
+     event.stopPropagation();
+     const fieldId = button.getAttribute('data-field-id');
+     const field = setCurrentFieldEffect(fieldId, 'card');
+     addLog(`${sourceLabel}：${field ? field.name : 'フィールドなし'}へ変化`);
+     playSound(field ? 'success' : 'miss');
+     closeFieldSelectionOverlay(false);
+    });
+   });
+   document.body.appendChild(overlay);
+   return true;
+  }
+
+  function getFieldBoundaryCardName(fieldId = currentFieldEffectId) {
+   const map = {
+    abyss_fog: '霧中の刃',
+    mana_storm: '魔力収束',
+    gravity_pressure: '重圧斬り',
+    gunpowder_scent: '火花誘爆',
+    toxic_rain: '毒雨の刃',
+    freezing_air: '氷気の追撃',
+   };
+   return map[fieldId] || '';
   }
 
   function getFieldEffectDepthChances(fieldId) {
@@ -2015,6 +2159,7 @@ const PET_POOL = [
   }
 
   function getFieldEffectPlayerFreezeClickBonus() {
+   if (Number(getRelicEffectTotal('ignoreFreezingAirClickPenalty') || 0) > 0) return 0;
    return isFieldEffectActive('freezing_air') ? 5 : 0;
   }
 
@@ -3786,6 +3931,18 @@ function getCardCooldownSeconds(card) {
    '時限地獄': 2,
    '終焉爆撃': 3.5,
    '奈落の爆薬': 3,
+   '深淵観測': 0.8,
+   '魔力収束': 1,
+   '火花誘爆': 0.7,
+   '毒雨の刃': 1,
+   '氷気の追撃': 0.8,
+   '霧中の刃': 0.8,
+   '重圧斬り': 1,
+   '霧払い': 1.6,
+   '地脈干渉': 1.4,
+   '環境固定': 1.2,
+   '境界破り': 1.8,
+   '深淵改変': 2.2,
 
   };
 
@@ -3808,7 +3965,8 @@ function getEffectiveCardCooldownSeconds(card, options = {}) {
   && card?.type !== 'cooldown-boost'
   && baseCooldown > 1;
  const tempReduce = canApplyTemporaryReduce ? temporaryReduceAmount : 0;
- const totalReduce = (playerPassives.cooldownReduce || 0) + tempReduce;
+ const fieldPassiveReduce = getCurrentFieldEffect() ? Math.max(0, Number(playerPassives.fieldCooldownReduce || 0)) : 0;
+ const totalReduce = (playerPassives.cooldownReduce || 0) + tempReduce + fieldPassiveReduce;
  const burnPenalty = player && player.burn && Number(player.burnTurns || 0) > 0 ? 0.5 : 0;
  const fieldPenalty = getFieldEffectCooldownBonus();
  const minimumCooldown = baseCooldown < 0.5 ? 0.1 : 0.5;
@@ -3870,6 +4028,10 @@ function isAttackCardType(type) {
   || type === 'pursuit-attack'
   || type === 'counter-blade'
   || type === 'ice-needle'
+  || type === 'field-toxic-blade'
+  || type === 'field-ice-follow'
+  || type === 'field-fog-blade'
+  || type === 'field-gravity-slash'
   || type === 'pet-spirit-attack';
 }
 
@@ -4200,6 +4362,17 @@ function getNormalPassiveOptions() {
   },
 
 {
+   id: 'fieldAdaptation',
+   icon: '◇📚',
+   rarity: 'normal',
+   name: '環境適応',
+   text: 'フィールドが発生している戦闘開始時、1ドロー。',
+   apply() {
+    playerPassives.fieldStartDrawBonus += 1;
+   },
+  },
+
+{
    id: 'rareCriticalDouble',
    icon: '💥×2',
    rarity: 'normal',
@@ -4222,6 +4395,16 @@ function getRarePassiveOptions() {
    text: '自身のカード効果でHPを失うたび防御+1（その戦闘中のみ）。',
    apply() {
     playerPassives.bloodPrice = true;
+   },
+  },
+  {
+   id: 'deepFieldAdaptation',
+   icon: '◇⏩',
+   rarity: 'rare',
+   name: '深層適応',
+   text: 'フィールドが発生している間、カード硬直-0.1秒。',
+   apply() {
+    playerPassives.fieldCooldownReduce += 0.1;
    },
   },
   
@@ -6569,6 +6752,12 @@ const ENEMY_PASSIVE_DEFINITIONS = {
  flame_snare: { name: '火炎足止め', text: '火傷で硬直を伸ばす' },
  reload_plus_1: { name: 'リロード+1', text: 'プレイヤーのリロード時間+1秒' },
  blood_price: { name: '血の代償', text: 'HPが減るほど攻撃が激しくなる' },
+ field_abyss_fog: { name: '深淵の霧', text: '戦闘開始時、フィールドを深淵の霧に変化させる' },
+ field_mana_storm: { name: '魔力嵐', text: '戦闘開始時、フィールドを魔力嵐に変化させる' },
+ field_gravity_pressure: { name: '重圧', text: '戦闘開始時、フィールドを重圧に変化させる' },
+ field_gunpowder_scent: { name: '火薬の匂い', text: '戦闘開始時、フィールドを火薬の匂いに変化させる' },
+ field_toxic_rain: { name: '腐毒の雨', text: '戦闘開始時、フィールドを腐毒の雨に変化させる' },
+ field_freezing_air: { name: '凍てつく空気', text: '戦闘開始時、フィールドを凍てつく空気に変化させる' },
 };
 
 function getCurrentEnemyPassiveIds() {
@@ -6948,6 +7137,77 @@ function applyBattleStartPassives() {
    recordCardDiscovery(picked.name);
    addLog(`遺物：${picked.name}をこの戦闘中だけ手札に追加`);
    triggerCardResultReveal([temporaryCard], '遺物', 'この戦闘中のみ', { delay: 420 });
+  }
+ }
+
+ const field = getCurrentFieldEffect();
+ if (field) {
+  const fieldDraw = Math.max(0, Math.floor(Number(playerPassives.fieldStartDrawBonus || 0)));
+  if (fieldDraw > 0) {
+   const drawn = drawCardsToPlayerHand(fieldDraw);
+   if (drawn.length > 0) {
+    addLog(`環境適応：${field.name}で${drawn.length}ドロー`);
+    triggerCardResultReveal(drawn, '環境適応', `${drawn.length}枚引いた`, { delay: 360 });
+   }
+  }
+
+  if (field.id === 'abyss_fog') {
+   const relicDraw = Math.max(0, Math.floor(Number(getRelicEffectTotal('fieldAbyssFogDraw') || 0)));
+   if (relicDraw > 0) {
+    const drawn = drawCardsToPlayerHand(relicDraw);
+    if (drawn.length > 0) {
+     addLog(`霧渡りのランタン：${drawn.length}ドロー`);
+     triggerCardResultReveal(drawn, '霧渡りのランタン', `${drawn.length}枚引いた`, { delay: 520 });
+    }
+   }
+  }
+
+  if (field.id === 'mana_storm') {
+   const turns = Math.max(0, Math.floor(Number(getRelicEffectTotal('fieldManaStormAttackDownTurns') || 0)));
+   if (turns > 0) {
+    cpu.attackDownTurns = Math.max(Number(cpu.attackDownTurns || 0), turns);
+    cpu.attackDownValue = Math.max(Number(cpu.attackDownValue || 0), 1);
+    addLog(`嵐詠みの水晶：敵攻撃-1 / ${turns}T`);
+    triggerCardVisualEffect('.cpu-img', 'debuff');
+   }
+  }
+
+  if (field.id === 'gravity_pressure') {
+   const block = Math.max(0, Math.floor(Number(getRelicEffectTotal('fieldGravityStartBlock') || 0)));
+   if (block > 0 && player) {
+    player.block = Math.max(0, Number(player.block || 0)) + block;
+    recordAchievementMax('maxBlock', player.block || 0);
+    showDamagePopup('player-hp-change', `防御+${block}`);
+    addLog(`黒鉄の重靴：防御+${block}`);
+   }
+  }
+
+  if (field.id === 'gunpowder_scent') {
+   const count = Math.max(0, Math.floor(Number(getRelicEffectTotal('fieldGunpowderStartSmallBomb') || 0)));
+   for (let i = 0; i < count; i++) {
+    addBombToEnemy('small', { source: '火薬染みの導火線' });
+   }
+   if (count > 0) addLog(`火薬染みの導火線：小爆弾${count}個`);
+  }
+
+  if (field.id === 'toxic_rain') {
+   const poison = Math.max(0, Math.floor(Number(getRelicEffectTotal('fieldToxicRainStartPoison') || 0)));
+   if (poison > 0) {
+    const applied = applyPoisonToEnemy(poison, { ignoreFieldBonus: true, skipDrawChance: true });
+    addLog(`毒雨の小瓶：毒+${applied.applied}`);
+    triggerPoisonEffect('.cpu-img');
+   }
+  }
+
+  if (currentFieldEffectSource === 'enemy') {
+   const enemyFieldDraw = Math.max(0, Math.floor(Number(getRelicEffectTotal('enemyFieldStartDraw') || 0)));
+   if (enemyFieldDraw > 0) {
+    const drawn = drawCardsToPlayerHand(enemyFieldDraw);
+    if (drawn.length > 0) {
+     addLog(`深層の楔：敵支配フィールドで${drawn.length}ドロー`);
+     triggerCardResultReveal(drawn, '深層の楔', `${drawn.length}枚引いた`, { delay: 620 });
+    }
+   }
   }
  }
 
@@ -8336,6 +8596,7 @@ function startEnemyTimer() {
    || pendingPassiveChoice
    || pendingShopChoice
    || bossRevivalInProgress
+   || fieldSelectionOpen
    || isBattlePausedBySettings()
    || isBattleTimePausedByTutorial()
   ) {
@@ -8404,6 +8665,7 @@ function canQueueActionNow() {
   && !bossRevivalInProgress
   && !pendingPassiveChoice
   && !pendingShopChoice
+  && !fieldSelectionOpen
   && !isRandomEventInputBlocked()
   && !isPlayerFrozen()
   && !isBattlePausedBySettings();
@@ -8468,7 +8730,7 @@ function findCardButtonFromPointerEvent(event) {
 
 function handleActionQueuePointerDown(event) {
  if (isRandomEventInputBlocked()) return;
- if (!player || currentScreen !== 'battle' || isPlayerFrozen() || isBattlePausedBySettings()) return;
+ if (fieldSelectionOpen || !player || currentScreen !== 'battle' || isPlayerFrozen() || isBattlePausedBySettings()) return;
  if (isTutorialActive() && !isTutorialInteractionAllowed(event)) {
   event.preventDefault();
   event.stopPropagation();
@@ -8506,7 +8768,7 @@ if (typeof document !== 'undefined' && !document.__deckActionQueuePointerInstall
 
 function processQueuedActions() {
  if (actionQueueProcessing) return false;
- if (!player || !cpu || currentScreen !== 'battle' || gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || player.cooldown || player.reloading || isPlayerFrozen() || isBattlePausedBySettings()) {
+ if (!player || !cpu || currentScreen !== 'battle' || gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || fieldSelectionOpen || isRandomEventInputBlocked() || player.cooldown || player.reloading || isPlayerFrozen() || isBattlePausedBySettings()) {
   return false;
  }
 
@@ -8517,7 +8779,7 @@ function processQueuedActions() {
  let startedAction = false;
 
  try {
-  while (queue.length > 0 && !startedAction && !gameOver && player && cpu && currentScreen === 'battle' && !isRandomEventInputBlocked() && !player.cooldown && !player.reloading && !isPlayerFrozen()) {
+  while (queue.length > 0 && !startedAction && !gameOver && player && cpu && currentScreen === 'battle' && !fieldSelectionOpen && !isRandomEventInputBlocked() && !player.cooldown && !player.reloading && !isPlayerFrozen()) {
    const action = queue.shift();
 
    if (!action) continue;
@@ -8570,7 +8832,7 @@ function processQueuedActions() {
      return;
     }
 
-    if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
+    if (fieldSelectionOpen || isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
      return;
     }
 
@@ -8606,7 +8868,7 @@ function processQueuedActions() {
   }
 
 function startReload() {
-   if (pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || !player || player.reloading || player.cooldown || gameOver || isBattlePausedBySettings()) return;
+   if (pendingPassiveChoice || pendingShopChoice || fieldSelectionOpen || isRandomEventInputBlocked() || !player || player.reloading || player.cooldown || gameOver || isBattlePausedBySettings()) return;
 
    if (playerDeck.length <= 0) {
     startDeckReload();
@@ -8640,7 +8902,7 @@ function startReload() {
       return;
      }
 
-     if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
+     if (fieldSelectionOpen || isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
       return;
      }
 
@@ -8709,7 +8971,7 @@ function startReload() {
  if (isRandomEventInputBlocked()) return;
  if (isTutorialActive() && !['battle-queue', 'battle-reload'].includes(tutorialState.step)) return;
  if (!options.fromQueue && !options.fromPointer && Date.now() < suppressQueuedReloadClickUntil) return;
- if (isBattlePausedBySettings()) return;
+ if (fieldSelectionOpen || isBattlePausedBySettings()) return;
 
  startEnemyTimerOnFirstCard();
 
@@ -8718,7 +8980,7 @@ function startReload() {
     return;
    }
 
-   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || !player || player.reloading || player.cooldown || isPlayerFrozen()) return;
+   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || fieldSelectionOpen || isRandomEventInputBlocked() || !player || player.reloading || player.cooldown || isPlayerFrozen()) return;
    if (player.hand.length === 0) return;
 
    queueReloadCurseEffects(player.hand);
@@ -8748,7 +9010,7 @@ function startRareCardCooldown() {
      return;
     }
 
-    if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
+    if (fieldSelectionOpen || isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
      return;
     }
 
@@ -8795,7 +9057,7 @@ function startRareCardCooldown() {
      return;
     }
 
-    if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
+    if (fieldSelectionOpen || isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
      return;
     }
 
@@ -8848,7 +9110,7 @@ function startRareCooldown() {
    return;
   }
 
-  if (isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
+  if (fieldSelectionOpen || isBattlePausedBySettings() || isBattleTimePausedByTutorial()) {
    return;
   }
 
@@ -10227,6 +10489,10 @@ function saveDeckCustomize() {
    lastRelicReward = null;
    relicRewardHandledForRun = false;
    relicRewardModalShownForRun = false;
+   carriedFieldEffectId = null;
+   currentFieldEffectSource = '';
+   fieldSelectionOpen = false;
+   document.getElementById('field-selection-modal')?.remove();
    playerPassives = {
     maxHp: 0,
     battleMaxHpPenalty: 0,
@@ -10266,6 +10532,8 @@ function saveDeckCustomize() {
     rareReviveOnce: false,
     rareReviveUsed: false,
     frozenVulnerabilityDamageBonus: 0,
+    fieldStartDrawBonus: 0,
+    fieldCooldownReduce: 0,
      petLevelGrowthOnVictory: 0,
      bombDamageBonusMultiplier: 0,
      bombStartSmall: 0,
@@ -10455,6 +10723,7 @@ function saveDeckCustomize() {
     currentPetAttackMultiplier: 1,
     relicFirstPoisonBonusAvailable: getRelicEffectTotal('firstPoisonBonus') > 0,
     relicFirstBombFuseReduceAvailable: getRelicEffectTotal('firstBombFuseReduce') > 0,
+    carryFieldOnWin: false,
      bloodAwakenAttackBoostUses: 0,
      scalingAttackUses: 0,
      scalingDefenseUses: 0,
@@ -10829,6 +11098,13 @@ function playSound(type) {
    if (Array.isArray(playerDeck)) {
     playerDeck = playerDeck.filter(card => !card.temporaryBattleCard);
     deckCount = playerDeck.length;
+   }
+
+   if (result === 'win' && player && player.carryFieldOnWin) {
+    carriedFieldEffectId = currentFieldEffectId || null;
+    addLog(carriedFieldEffectId
+     ? `環境固定：次の戦闘も${getFieldEffectName(carriedFieldEffectId)}`
+     : '環境固定：引き継ぐフィールドなし');
    }
 
    if (result === 'win' && playerPassives.maxHpOnBattleWin > 0) {
@@ -12285,6 +12561,7 @@ function startEnemyTimerOnFirstCard() {
   || pendingPassiveChoice
   || pendingShopChoice
   || bossRevivalInProgress
+  || fieldSelectionOpen
   || isBattlePausedBySettings()
   || isBattleTimePausedByTutorial()
  ) {
@@ -12350,6 +12627,7 @@ function applyPoisonToEnemy(amount, options = {}) {
 
 function playPlayerCard(id, options = {}) {
    if (isRandomEventInputBlocked()) return;
+   if (fieldSelectionOpen) return;
    const tutorialCardStep = isTutorialActive() && currentScreen === 'battle' ? tutorialState.step : '';
 
    if (player && player.cooldown && Number(player.cooldownTimer || 0) <= 0) {
@@ -12369,7 +12647,7 @@ function playPlayerCard(id, options = {}) {
     return;
    }
 
-   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || isBattlePausedBySettings() || !player || !cpu || player.reloading || player.cooldown || isPlayerFrozen()) return;
+   if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || fieldSelectionOpen || isRandomEventInputBlocked() || isBattlePausedBySettings() || !player || !cpu || player.reloading || player.cooldown || isPlayerFrozen()) return;
 
    const cardIndex = player.hand.findIndex(c => c.id === id);
    if (cardIndex === -1) return;
@@ -13860,6 +14138,148 @@ if (card.type === 'rare-attack') {
      playSound('success');
     }
 
+    if (card.type === 'field-observe') {
+     if (getCurrentFieldEffect()) {
+      const drawn = drawCardsToPlayerHand(Math.max(1, Number(card.value || 1)));
+      if (drawn.length > 0) triggerCardResultReveal(drawn, '深淵観測', `${drawn.length}枚引いた`, { delay: 220 });
+      showDamagePopup('player-hp-change', `ドロー+${drawn.length}`);
+      addLog(`あなた：${card.name} (${getCurrentFieldEffect().name}を観測 / ${drawn.length}枚ドロー)`);
+      playSound(drawn.length > 0 ? 'success' : 'miss');
+     } else {
+      const blockValue = Math.max(0, Number(card.block || 4));
+      player.block += blockValue;
+      recordAchievementMax('maxBlock', player.block || 0);
+      showDamagePopup('player-hp-change', `防御+${blockValue}`);
+      triggerCardVisualEffect('.player-img', 'guard');
+      addLog(`あなた：${card.name} (フィールドなし / 防御+${blockValue})`);
+      playSound('defense');
+     }
+    }
+
+    if (card.type === 'field-clear') {
+     const beforeField = getCurrentFieldEffect();
+     setCurrentFieldEffect(null, 'card');
+     const drawn = drawCardsToPlayerHand(Math.max(1, Number(card.value || 1)));
+     if (drawn.length > 0) triggerCardResultReveal(drawn, '霧払い', `${drawn.length}枚引いた`, { delay: 220 });
+     discardPlayedCardForCurrentBattle(card);
+     showDamagePopup('player-hp-change', beforeField ? '解除' : '不発');
+     addLog(`あなた：${card.name} (${beforeField ? `${beforeField.name}解除` : 'フィールドなし'} / ${drawn.length}枚ドロー / 使用後破棄)`);
+     playSound(beforeField || drawn.length > 0 ? 'success' : 'miss');
+    }
+
+    if (card.type === 'field-shift') {
+     const nextFieldId = getRandomFieldEffectId(currentFieldEffectId);
+     const field = setCurrentFieldEffect(nextFieldId, 'card');
+     showDamagePopup('player-hp-change', field ? field.name : '変化なし');
+     addLog(`あなた：${card.name} (${field ? field.name : '変化なし'}へ変化)`);
+     playSound(field ? 'success' : 'miss');
+    }
+
+    if (card.type === 'field-lock-next') {
+     player.carryFieldOnWin = true;
+     discardPlayedCardForCurrentBattle(card);
+     showDamagePopup('player-hp-change', '環境固定');
+     addLog(`あなた：${card.name} (戦闘終了時のフィールドを次戦闘へ引き継ぐ / 使用後破棄)`);
+     playSound('success');
+    }
+
+    if (card.type === 'field-magic-convergence') {
+     const turns = Math.max(1, Number(card.turns || 1) + (isFieldEffectActive('mana_storm') ? 1 : 0));
+     const value = Math.max(1, Number(card.value || 1));
+     cpu.attackDownTurns = Math.max(cpu.attackDownTurns || 0, turns);
+     cpu.attackDownValue = Math.max(cpu.attackDownValue || 0, value);
+     cpu.defenseDownTurns = Math.max(cpu.defenseDownTurns || 0, turns);
+     cpu.defenseDownValue = Math.max(cpu.defenseDownValue || 0, value);
+     triggerCardVisualEffect('.cpu-img', 'debuff');
+     showDamagePopup('cpu-hp-change', `弱体${turns}T`);
+     addLog(`あなた：${card.name} (攻撃-${value} / 防御-${value} / ${turns}T${isFieldEffectActive('mana_storm') ? ' / 魔力嵐' : ''})`);
+     playSound('success');
+    }
+
+    if (card.type === 'field-spark-fuse') {
+     const advance = Math.max(1, Number(card.value || 1)) + (isFieldEffectActive('gunpowder_scent') ? 1 : 0);
+     const count = advanceEnemyBombs(advance, { all: false });
+     addLog(`あなた：${card.name} (${count > 0 ? `爆弾+${advance}進行` : '対象なし'}${isFieldEffectActive('gunpowder_scent') ? ' / 火薬の匂い' : ''})`);
+     playSound(count > 0 ? 'success' : 'miss');
+    }
+
+    if (card.type === 'field-toxic-blade') {
+     const attackValue = getEffectiveCardValue({ ...card, type: 'attack' });
+     const result = applyPlayerCardDamage(attackValue);
+     consumeAttackBoostsAfterAttack();
+     const poisonAmount = isFieldEffectActive('toxic_rain')
+      ? Math.max(1, Number(card.fieldPoison || 5))
+      : Math.max(1, Number(card.poison || 2));
+     const poison = applyPoisonToEnemy(poisonAmount, { ignoreFieldBonus: true });
+     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+     triggerDamageShake('.cpu-img');
+     triggerPoisonEffect('.cpu-img');
+     addLog(`あなた：${card.name} (${result.damage}ダメージ / 毒+${poison.applied}${isFieldEffectActive('toxic_rain') ? ' / 腐毒の雨' : ''})`);
+     playSound(result.fullyBlocked ? 'guard' : 'attack');
+    }
+
+    if (card.type === 'field-ice-follow') {
+     const frozen = Boolean(cpu.freeze && cpu.freeze > 0);
+     const attackValue = getEffectiveCardValue({ ...card, type: 'attack' }) + (frozen ? Math.max(0, Number(card.bonus || 5)) : 0);
+     const result = applyPlayerCardDamage(attackValue);
+     consumeAttackBoostsAfterAttack();
+     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+     triggerDamageShake('.cpu-img');
+     if (frozen) triggerFreezeEffect('.cpu-img');
+     addLog(`あなた：${card.name} (${result.damage}ダメージ${frozen ? ` / 凍結追撃+${card.bonus || 5}` : ''})`);
+     playSound(result.fullyBlocked ? 'guard' : (frozen ? 'freeze' : 'attack'));
+    }
+
+    if (card.type === 'field-fog-blade') {
+     const active = isFieldEffectActive('abyss_fog');
+     const attackValue = getEffectiveCardValue({ ...card, type: 'attack' }) + (active ? Math.max(0, Number(card.bonus || 4)) : 0);
+     const result = applyPlayerCardDamage(attackValue);
+     consumeAttackBoostsAfterAttack();
+     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+     triggerDamageShake('.cpu-img');
+     addLog(`あなた：${card.name} (${result.damage}ダメージ${active ? ` / 深淵の霧+${card.bonus || 4}` : ''})`);
+     playSound(result.fullyBlocked ? 'guard' : 'attack');
+    }
+
+    if (card.type === 'field-gravity-slash') {
+     const result = applyPlayerCardDamage(getEffectiveCardValue({ ...card, type: 'attack' }));
+     consumeAttackBoostsAfterAttack();
+     let removedBlock = 0;
+     if (isFieldEffectActive('gravity_pressure')) {
+      removedBlock = Math.min(Math.max(0, Number(cpu.block || 0)), Math.max(0, Number(card.defenseRemove || 3)));
+      cpu.block = Math.max(0, Number(cpu.block || 0) - removedBlock);
+      if (removedBlock > 0) showDamagePopup('cpu-hp-change', `防御-${removedBlock}`);
+     }
+     showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+     triggerDamageShake('.cpu-img');
+     addLog(`あなた：${card.name} (${result.damage}ダメージ${removedBlock > 0 ? ` / 敵防御-${removedBlock}` : ''})`);
+     playSound(result.fullyBlocked ? 'guard' : 'attack');
+    }
+
+    if (card.type === 'field-boundary') {
+     const cardName = getFieldBoundaryCardName(currentFieldEffectId);
+     const sourceCard = cardName ? CARD_POOL.find(item => item.name === cardName) : null;
+     if (sourceCard) {
+      const temporaryCard = createTemporaryBattleCard(sourceCard);
+      player.hand.push(temporaryCard);
+      recordCardDiscovery(sourceCard.name);
+      triggerCardResultReveal([temporaryCard], '境界破り', 'この戦闘中のみ / 使用後破棄', { delay: 220 });
+      showDamagePopup('player-hp-change', sourceCard.name);
+      addLog(`あなた：${card.name} (${getFieldEffectName(currentFieldEffectId)}対応カード「${sourceCard.name}」を追加)`);
+      playSound('success');
+     } else {
+      showDamagePopup('player-hp-change', '不発');
+      addLog(`あなた：${card.name} (対応フィールドなし)`);
+      playSound('miss');
+     }
+    }
+
+    if (card.type === 'field-rewrite') {
+     const opened = openFieldSelectionOverlay(card.name);
+     addLog(`あなた：${card.name} (${opened ? '変更先フィールドを選択' : '選択中'})`);
+     playSound(opened ? 'success' : 'miss');
+    }
+
     const playedCardIndex = player.hand.findIndex(c => c.id === card.id);
    if (playedCardIndex !== -1) {
     player.hand.splice(playedCardIndex, 1);
@@ -14919,9 +15339,9 @@ function getCustomizeTabs() {
   function getCardCustomizeCategory(card) {
    if (isCurseCard(card)) return 'status';
   if (isBombCardType(card.type)) return 'status';
-  if (['pursuit-attack', 'counter-blade', 'ice-needle'].includes(card.type)) return 'attack';
+  if (['pursuit-attack', 'counter-blade', 'ice-needle', 'field-toxic-blade', 'field-ice-follow', 'field-fog-blade', 'field-gravity-slash'].includes(card.type)) return 'attack';
    if (['parry-guard', 'prepared-guard'].includes(card.type)) return 'defense';
-   if (['reload-first-draw', 'improvised-tactics'].includes(card.type)) return 'support';
+   if (['reload-first-draw', 'improvised-tactics', 'field-observe', 'field-clear', 'field-shift', 'field-lock-next', 'field-boundary', 'field-rewrite'].includes(card.type)) return 'support';
 
    if (card.type === 'attack'
     || card.type === 'gamble-attack'
@@ -14963,6 +15383,8 @@ function getCustomizeTabs() {
     || card.type === 'defense-down'
     || card.type === 'strip-defense'
     || card.type === 'mutual-freeze'
+    || card.type === 'field-magic-convergence'
+    || card.type === 'field-spark-fuse'
     || card.type === 'enemy-action-delay-turns'
     || card.type === 'enemy-action-shift-delay') {
     return 'status';
@@ -15486,6 +15908,9 @@ function getCardVisualClass(card) {
    if (String(card.type || '').startsWith('pet-')) {
     classes.push('pet-card');
    }
+   if (String(card.type || '').startsWith('field-')) {
+    classes.push('field-card');
+   }
 
 return classes.join(' ');
   }
@@ -15500,6 +15925,18 @@ function getCardIcon(type) {
    if (type === 'prepared-guard') return '▣';
    if (type === 'ice-needle') return '❄';
    if (type === 'improvised-tactics') return '🎲';
+   if (type === 'field-observe') return '◇';
+   if (type === 'field-clear') return '🌫';
+   if (type === 'field-shift') return '◇';
+   if (type === 'field-lock-next') return '◇';
+   if (type === 'field-magic-convergence') return '🌀';
+   if (type === 'field-spark-fuse') return '💣';
+   if (type === 'field-toxic-blade') return '☠';
+   if (type === 'field-ice-follow') return '❄';
+   if (type === 'field-fog-blade') return '🌫';
+   if (type === 'field-gravity-slash') return '◆';
+   if (type === 'field-boundary') return '◇';
+   if (type === 'field-rewrite') return '◇';
    if (type === 'attack') return '⚔️';
    if (type === 'defense') return '🛡️';
    if (type === 'heal') return '💚';
