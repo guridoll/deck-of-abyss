@@ -7,6 +7,8 @@
    loadEncounteredEnemies,
    getEnemyBattleResultCounts,
   } = deps || {};
+  let currentEnemyLibraryDepthFilter = 'all';
+  let currentEnemyLibrarySearchText = '';
 
   if (typeof getEnemyCatalog !== 'function' || typeof loadEncounteredEnemies !== 'function' || typeof getEnemyBattleResultCounts !== 'function') {
    throw new Error('GameEnemyLibrary dependencies are missing.');
@@ -22,12 +24,15 @@
    }[char]));
   }
 
-  function getEnemyLibraryDepthText(encounter) {
+  function getEnemyLibraryDepthKeys(encounter) {
    const depths = encounter && typeof encounter.depths === 'object' ? encounter.depths : null;
-   const keys = depths
+   return depths
     ? Object.keys(depths).map(depth => Math.floor(Number(depth))).filter(depth => depth >= 1).sort((a, b) => a - b)
     : [];
+  }
 
+  function getEnemyLibraryDepthText(encounter) {
+   const keys = getEnemyLibraryDepthKeys(encounter);
    if (!keys.length) return '深度1';
    return keys.map(depth => `深度${depth}`).join(' / ');
   }
@@ -190,6 +195,16 @@
    if (modal) modal.style.display = 'none';
   }
 
+  function renderFilterOptions(options, selected) {
+   return options.map(option => `<option value="${escapeHtml(option.id)}"${option.id === selected ? ' selected' : ''}>${escapeHtml(option.name)}</option>`).join('');
+  }
+
+  function updateEnemyLibraryFilter(type, value) {
+   if (type === 'depth') currentEnemyLibraryDepthFilter = value || 'all';
+   if (type === 'search') currentEnemyLibrarySearchText = value || '';
+   renderEnemyLibraryScreen();
+  }
+
   function renderEnemyLibraryScreen() {
    const list = document.getElementById('enemy-library-list');
 
@@ -198,12 +213,57 @@
    const encounters = loadEncounteredEnemies();
    const enemies = getEnemyCatalog().slice().sort(compareEnemyLibraryOrder);
    const encounterCount = enemies.filter(enemy => encounters[enemy.id]).length;
+   const searchText = String(currentEnemyLibrarySearchText || '').trim().toLocaleLowerCase('ja');
+   const depthOptions = [
+    { id: 'all', name: 'すべて' },
+    { id: '1', name: '深度1' },
+    { id: '2', name: '深度2' },
+    { id: '3', name: '深度3' },
+   ];
+   const visibleEnemies = enemies.filter(enemy => {
+    const encounter = encounters[enemy.id];
+    const discovered = Boolean(encounter);
+    if (currentEnemyLibraryDepthFilter !== 'all') {
+     const depth = Math.floor(Number(currentEnemyLibraryDepthFilter));
+     const depthKeys = getEnemyLibraryDepthKeys(encounter);
+     const normalizedDepthKeys = depthKeys.length ? depthKeys : [1];
+     if (!discovered || !normalizedDepthKeys.includes(depth)) return false;
+    }
+    if (searchText) {
+     if (!discovered) return false;
+     return String(enemy.name || '').toLocaleLowerCase('ja').includes(searchText);
+    }
+    return true;
+   });
 
    list.innerHTML = `
-    <div class="enemy-library-summary">発見済み：${encounterCount} / ${enemies.length}</div>
+    <div class="enemy-library-summary">遭遇済み：${encounterCount} / ${enemies.length}</div>
+    <div class="library-filter-panel enemy-library-filter-panel">
+     <label>
+      <span>深度</span>
+      <select id="enemy-library-depth-filter">${renderFilterOptions(depthOptions, currentEnemyLibraryDepthFilter)}</select>
+     </label>
+     <label class="library-search-label">
+      <span>敵名検索</span>
+      <input id="enemy-library-name-search" type="search" value="${escapeHtml(currentEnemyLibrarySearchText)}" placeholder="敵名を入力">
+     </label>
+     <div class="library-filter-result">表示中：${visibleEnemies.length}体</div>
+    </div>
    `;
 
-   enemies.forEach(enemy => {
+   const depthSelect = document.getElementById('enemy-library-depth-filter');
+   const searchInput = document.getElementById('enemy-library-name-search');
+   if (depthSelect) depthSelect.onchange = event => updateEnemyLibraryFilter('depth', event.target.value);
+   if (searchInput) {
+    searchInput.oninput = event => updateEnemyLibraryFilter('search', event.target.value);
+    if (currentEnemyLibrarySearchText) {
+     searchInput.focus();
+     const caret = String(currentEnemyLibrarySearchText).length;
+     searchInput.setSelectionRange(caret, caret);
+    }
+   }
+
+   visibleEnemies.forEach(enemy => {
     const encounter = encounters[enemy.id];
     const discovered = Boolean(encounter);
     const div = document.createElement('div');
@@ -246,12 +306,13 @@
      </div>
      <div class="enemy-library-content">
       <div class="enemy-library-title-row">
-       <div class="enemy-library-name">${discovered ? enemy.name : '未遭遇の敵'}</div>
-       <div class="enemy-library-level">${discovered ? enemy.levelText : '???'}</div>
+       <div class="enemy-library-name">${discovered ? escapeHtml(enemy.name) : '未遭遇の敵'}</div>
+       <div class="enemy-library-level">${discovered ? escapeHtml(enemy.levelText) : '???'}</div>
       </div>
-      <div class="enemy-library-description">${discovered ? enemy.description : '戦闘で遭遇すると情報が記録されます。'}</div>
+      <div class="enemy-library-description">${discovered ? escapeHtml(enemy.description) : '戦闘で遭遇すると情報が記録されます。'}</div>
       ${discovered ? `
-       <div class="enemy-library-meta">初遭遇：Lv${encounter.firstLevel} / 深度：${escapeHtml(getEnemyLibraryDepthText(encounter))} / 遭遇回数：${encounter.count} / 倒した回数：${enemyBattleResultCounts.defeatedCount} / やられた回数：${enemyBattleResultCounts.defeatedByCount}</div>
+       <div class="enemy-library-meta">初遭遇 Lv${escapeHtml(encounter.firstLevel)} / ${escapeHtml(getEnemyLibraryDepthText(encounter))} / 遭遇 ${escapeHtml(encounter.count)}回 / 撃破 ${escapeHtml(enemyBattleResultCounts.defeatedCount)}回 / 敗北 ${escapeHtml(enemyBattleResultCounts.defeatedByCount)}回</div>
+       ${libraryPassives.length > 0 ? `<div class="enemy-library-passive-row">${libraryPassives.map(passive => `<span>${escapeHtml(passive)}</span>`).join('')}</div>` : ''}
        <div class="enemy-library-status">詳細を見る</div>
       ` : ''}
      </div>
@@ -259,6 +320,13 @@
 
     list.appendChild(div);
    });
+
+   if (visibleEnemies.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'library-empty-message';
+    empty.textContent = '条件に一致する敵はありません。';
+    list.appendChild(empty);
+   }
   }
 
   function switchEnemyLibraryPhase(enemyId, phaseIndex) {

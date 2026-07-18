@@ -257,7 +257,7 @@ const PET_POOL = [
     name: '成長の一撃',
     type: 'scaling-attack',
     value: 1,
-    text: '1ダメージ / 使うたび、この戦闘中の威力+2',
+    text: '1ダメージ / 使うたび、このカードの威力+2',
     rare: true,
     shopOnly: true,
    },
@@ -265,7 +265,7 @@ const PET_POOL = [
     name: '成長の守り',
     type: 'scaling-defense',
     value: 1,
-    text: '防御+1 / 使うたび、この戦闘中の防御+2',
+    text: '防御+1 / 使うたび、このカードの防御+2',
     rare: true,
     shopOnly: true,
    },
@@ -460,16 +460,16 @@ const PET_POOL = [
    { name: '猛毒刃', type: 'poison', value: 7, turns: 5, text: '7ダメージ / 毒5付与', rare: true },
    { name: '毒霧', type: 'poison-cloud', value: 0, turns: 5, text: '毒5付与' },
    { name: '猛毒霧', type: 'poison-cloud', value: 0, turns: 8, text: '毒8付与', rare: true },
-   { name: '蛇牙', type: 'poison-fang', value: 3, text: '3ダメージ / 敵の毒の25%分の追加ダメージ' },
-   { name: '毒龍牙', type: 'poison-fang', value: 4, poisonScale: 0.5, text: '4ダメージ / 敵の毒の50%分の追加ダメージ', rare: true },
+   { name: '蛇牙', type: 'poison-fang', value: 3, text: '3ダメージ / 敵に付与した毒の25%分の追加ダメージ' },
+   { name: '毒龍牙', type: 'poison-fang', value: 4, poisonScale: 0.5, text: '4ダメージ / 敵に付与した毒の50%分の追加ダメージ', rare: true },
    { name: '猛毒注入', type: 'poison-inject', value: 0, turns: 10, text: '毒10付与', rare: true },
-   { name: '毒爆発', type: 'poison-burst', value: 0.75, text: '敵の毒を半分消費 / 消費毒の75%分のダメージ', rare: true },
-   { name: '腐蝕爆発', type: 'poison-burst', value: 1, consumeRatio: 1, text: '敵の毒を全消費 / 消費毒と同じダメージ', rare: true, epic: true },
+   { name: '毒爆発', type: 'poison-burst', value: 0.75, text: '敵に付与した毒を半分消費 / 消費毒の75%分のダメージ', rare: true },
+   { name: '腐蝕爆発', type: 'poison-burst', value: 1, consumeRatio: 1, text: '敵に付与した毒を全消費 / 消費毒と同じダメージ', rare: true, epic: true },
    { name: '侵食', type: 'poison-vulnerability', value: 0, turns: 3, text: '毒状態の敵が受けるダメージ+50% / 3T', rare: true },
-   { name: '毒吸収', type: 'poison-drain', value: 0, text: '敵の毒を全消費 / 消費毒の半分だけ回復', rare: true },
-   { name: '暴食', type: 'poison-drain', value: 0, healMultiplier: 1.5, text: '敵の毒を全消費 / 消費毒×1.5回復', rare: true, epic: true },
-   { name: '毒の宴', type: 'poison-banquet', value: 0, text: '敵の毒を全消費 / 消費毒と同じダメージ / 毒耐性付与（毒付与50%減少）', rare: true, epic: true },
-   { name: '疫病', type: 'poison-plague', value: 2, text: '敵の毒が毎ターン+2 / 使用後破棄', rare: true, epic: true },
+   { name: '毒吸収', type: 'poison-drain', value: 0, text: '敵に付与した毒を全消費 / 消費毒の半分だけ回復', rare: true },
+   { name: '暴食', type: 'poison-drain', value: 0, healMultiplier: 1.5, text: '敵に付与した毒を全消費 / 消費毒×1.5回復', rare: true, epic: true },
+   { name: '毒の宴', type: 'poison-banquet', value: 0, text: '敵に付与した毒を全消費 / 消費毒と同じダメージ / 毒耐性付与（毒付与50%減少）', rare: true, epic: true },
+   { name: '疫病', type: 'poison-plague', value: 2, text: '敵に付与した毒が毎ターン+2 / 使用後破棄', rare: true, epic: true },
    { name: '火花斬り', type: 'burn', value: 2, chance: 0.3, turns: 3, burnText: '火傷+3T', text: '2ダメージ / 30%で火傷3T付与', shopOnly: true },
    { name: '小爆弾設置', type: 'bomb-place-small', value: 0, bombKind: 'small', text: '小爆弾を付与する' },
    { name: '改良爆弾', type: 'bomb-place-small', value: 0, bombKind: 'small', bombCount: 2, text: '小爆弾を2個付与する', rare: true },
@@ -3212,7 +3212,7 @@ const PET_POOL = [
     { id: 'enemy_discover_15', tier: '上級', icon: '👁️', name: '魔物研究家', description: '敵を15種類図鑑に登録する。', target: 15, statKey: 'discoveredEnemyCount', progressText: value => `${value} / 15種類` },
     { id: 'depth2_clear', tier: '上級', icon: '🌊', name: '中層踏破', description: '深度2をクリアする。', target: 1, statKey: 'depth2Clears', progressText: value => `${value} / 1回` },
     { id: 'random_event_all', tier: '上級', icon: '🎭', name: '出来事の蒐集家', description: '全ランダムイベントを図鑑に登録する。', target: () => getRandomEventDefinitions().length, statKey: 'discoveredRandomEventCount', progressText: value => `${value} / ${getRandomEventDefinitions().length}種類` },
-    { id: 'poison_50_stack', tier: '上級', icon: '☠️', name: '猛毒の沼', description: '敵の毒量を50以上にする。', target: 50, statKey: 'maxPoisonAmount', progressText: value => `最大${value} / 50` },
+    { id: 'poison_50_stack', tier: '上級', icon: '☠️', name: '猛毒の沼', description: '敵に付与した毒量を50以上にする。', target: 50, statKey: 'maxPoisonAmount', progressText: value => `最大${value} / 50` },
     { id: 'poison_banquet_10', tier: '上級', icon: '🍽️', name: '毒の晩餐', description: '毒の宴を累計10回使用する。', target: 10, statKey: 'poisonBanquetUses', progressText: value => `${value} / 10回` },
     { id: 'bomb_explode_50', tier: '上級', icon: '💣', name: '連続爆破', description: '爆弾を累計50個爆発させる。', target: 50, statKey: 'bombExplosions', progressText: value => `${value} / 50個` },
     { id: 'pet_level_10', tier: '上級', icon: '🐾', name: '進化の準備', description: 'ペットをLv10にする。', target: 10, statKey: 'highestPetLevel', progressText: value => `最高Lv.${value} / 10` },
@@ -3230,7 +3230,7 @@ const PET_POOL = [
     { id: 'block_250', tier: '廃人向け', icon: '🛡️', name: '城塞化', description: '戦闘中に防御値250以上になる。', target: 250, statKey: 'maxBlock', progressText: value => `最大${value} / 250` },
     { id: 'depth3_clear', tier: '廃人向け', icon: '🌌', name: '深淵踏破', description: '深度3をクリアする。', target: 1, statKey: 'depth3Clears', progressText: value => `${value} / 1回` },
     { id: 'bomb_damage_5000', tier: '廃人向け', icon: '💣', name: '爆破専門家', description: '爆弾で累計5000ダメージを与える。', target: 5000, statKey: 'bombExplosionDamage', progressText: value => `${value} / 5000` },
-    { id: 'poison_100_stack', tier: '廃人向け', icon: '☠️', name: '毒海', description: '敵の毒量を100以上にする。', target: 100, statKey: 'maxPoisonAmount', progressText: value => `最大${value} / 100` },
+    { id: 'poison_100_stack', tier: '廃人向け', icon: '☠️', name: '毒海', description: '敵に付与した毒量を100以上にする。', target: 100, statKey: 'maxPoisonAmount', progressText: value => `最大${value} / 100` },
     { id: 'random_event_accept_100', tier: '廃人向け', icon: '🎭', name: '運命に身を任せる者', description: 'ランダムイベントを累計100回受諾する。', target: 100, statKey: 'randomEventAcceptedTotal', progressText: value => `${value} / 100回` },
 
     { id: 'secret_chaos', tier: '隠し', icon: '🌀', name: 'カオス中毒', description: 'カオスハンドを累計10回使用する。', hidden: true, target: 10, statKey: 'chaosHandUses', progressText: value => `${value} / 10回` },
@@ -4414,7 +4414,7 @@ function getRarePassiveOptions() {
    icon: '☠️',
    rarity: 'rare',
    name: '猛毒増幅',
-   text: '敵の毒10T毎に毒ダメージ+5。',
+   text: '敵に付与した毒10T毎に毒ダメージ+5。',
    apply() {
     playerPassives.poisonThresholdDamageBonus += 5;
    },
@@ -4434,7 +4434,7 @@ function getRarePassiveOptions() {
    icon: '☠🔥',
    rarity: 'rare',
    name: '毒暴走',
-   text: '敵の毒が20以上の時、毒ダメージ2倍。',
+   text: '敵に付与した毒が20以上の時、毒ダメージ2倍。',
    apply() {
     playerPassives.poisonOverdriveThreshold = 20;
     playerPassives.poisonOverdriveMultiplier = Math.max(Number(playerPassives.poisonOverdriveMultiplier || 1), 2);
@@ -5260,11 +5260,11 @@ function getRandomEventCardPool(poolType = 'all') {
  } else if (poolType === 'legendary') {
   return basePool.filter(card => getCardRarity(card) === 'legendary');
  } else if (poolType === 'attack') {
-  pool = basePool.filter(card => getCardCustomizeCategory(card) === 'attack');
+  pool = basePool.filter(card => getCardCustomizeCategories(card).includes('attack'));
  } else if (poolType === 'guard') {
-  pool = basePool.filter(card => getCardCustomizeCategory(card) === 'defense' || ['heal', 'rare-heal', 'risky-heal'].includes(card.type));
+  pool = basePool.filter(card => getCardCustomizeCategories(card).includes('defense') || ['heal', 'rare-heal', 'risky-heal'].includes(card.type));
  } else if (poolType === 'status') {
-  pool = basePool.filter(card => getCardCustomizeCategory(card) === 'status');
+  pool = basePool.filter(card => getCardCustomizeCategories(card).includes('status'));
  } else if (poolType === 'poison') {
   pool = basePool.filter(isPoisonBuildCard);
  } else if (poolType === 'bomb') {
@@ -7879,7 +7879,7 @@ function takeTutorialCardForHand(name, fallbackCategory = '') {
  }
 
  const poolCard = CARD_POOL.find(card => card.name === name)
-  || CARD_POOL.find(card => fallbackCategory && getCardCustomizeCategory(card) === fallbackCategory);
+  || CARD_POOL.find(card => fallbackCategory && getCardCustomizeCategories(card).includes(fallbackCategory));
  return createBattleCardInstance(poolCard);
 }
 
@@ -11068,6 +11068,18 @@ function playSound(type) {
    logs = logs.slice(0, 10);
   }
 
+  function getBattleLogMeta(text) {
+   const value = String(text || '');
+   if (value.startsWith('あなた：')) return { className: 'log-player', label: 'カード' };
+   if (value.startsWith('ペット：') || value.includes('ペット') || value.startsWith('共鳴：') || value.startsWith('鎖行動：') || value.startsWith('ご褒美：')) return { className: 'log-pet', label: 'ペット' };
+   if (value.startsWith('遺物：') || value.includes('：戦闘開始時') || value.includes('ランタン') || value.includes('水晶') || value.includes('重靴') || value.includes('小瓶')) return { className: 'log-relic', label: '遺物' };
+   if (value.includes('フィールド') || value.includes('環境') || value.includes('深淵環境')) return { className: 'log-field', label: '場' };
+   if (value.startsWith('毒：') || value.startsWith('爆弾：') || value.startsWith('凍結') || value.includes('火傷') || value.includes('麻痺') || value.includes('状態異常')) return { className: 'log-status', label: '状態' };
+   if (value.includes(getEnemyName()) || value.includes('Lv.') || value.startsWith('深淵騎士ヴォイド')) return { className: 'log-enemy', label: '敵' };
+   if (value.startsWith('イベント：') || value.startsWith('ショップ') || value.startsWith('パッシブ獲得')) return { className: 'log-system', label: '進行' };
+   return { className: 'log-system', label: '情報' };
+  }
+
   function resetBattleResultStats() {
    battleResultStats = {
     level: enemyLevel,
@@ -12654,10 +12666,10 @@ function playPlayerCard(id, options = {}) {
 
    const card = player.hand[cardIndex];
    if (isTutorialActive() && currentScreen === 'battle') {
-    if (tutorialState.step === 'battle-defense' && getCardCustomizeCategory(card) !== 'defense') return;
+    if (tutorialState.step === 'battle-defense' && !getCardCustomizeCategories(card).includes('defense')) return;
     if (['battle-attack', 'battle-finish'].includes(tutorialState.step) && !isAttackCardType(card.type)) return;
    }
-   const shouldResolveTutorialDefense = tutorialCardStep === 'battle-defense' && getCardCustomizeCategory(card) === 'defense';
+   const shouldResolveTutorialDefense = tutorialCardStep === 'battle-defense' && getCardCustomizeCategories(card).includes('defense');
    const isEchoCopy = Boolean(options.echoCopy);
    const suppressCooldown = Boolean(options.suppressCooldown) || tutorialCardStep === 'battle-defense';
    const suppressDoublePlay = Boolean(options.suppressDoublePlay);
@@ -13661,7 +13673,7 @@ if (card.type === 'dein') {
     discardPlayedCardForCurrentBattle(card);
     triggerPoisonEffect('.cpu-img');
     showDamagePopup('cpu-hp-change', `毒成長+${cpu.poisonGrowthPerTurn}`);
-    addLog(`あなた：${card.name} (敵の毒が毎ターン+${cpu.poisonGrowthPerTurn}${getEnemyPoisonApplyMultiplier() < 1 ? ' / 耐性中は増加量50%' : ''} / 使用後破棄)`);
+    addLog(`あなた：${card.name} (敵に付与した毒が毎ターン+${cpu.poisonGrowthPerTurn}${getEnemyPoisonApplyMultiplier() < 1 ? ' / 耐性中は増加量50%' : ''} / 使用後破棄)`);
     playSound('poison');
    }
 
@@ -15323,6 +15335,17 @@ function getCustomizeTabs() {
     { id: 'defense', name: '防御' },
     { id: 'status', name: '状態異常' },
     { id: 'support', name: '補助' },
+    { id: 'paralysis', name: '麻痺系' },
+    { id: 'freeze', name: '凍結系' },
+    { id: 'burn', name: '火傷系' },
+    { id: 'poison', name: '毒系' },
+    { id: 'gamble', name: 'ギャンブル系' },
+    { id: 'bomb', name: '爆弾系' },
+    { id: 'selfDamage', name: '自傷系' },
+    { id: 'pet', name: 'ペット系' },
+    { id: 'draw', name: 'ドロー系' },
+    { id: 'field', name: 'フィールド系' },
+    { id: 'heal', name: '回復' },
    ];
   }
 
@@ -15336,61 +15359,112 @@ function getCustomizeTabs() {
    ];
   }
 
+  function addCardCategory(categories, id) {
+   if (!categories.includes(id)) categories.push(id);
+  }
+
+  function getCardCustomizeCategories(card) {
+   const categories = [];
+   const type = String(card?.type || '');
+   const nameAndText = `${card?.name || ''} ${card?.text || ''}`;
+
+   if (isCurseCard(card)) {
+    addCardCategory(categories, 'status');
+    return categories;
+   }
+
+   if (isBombCardType(type)) {
+    addCardCategory(categories, 'status');
+    addCardCategory(categories, 'bomb');
+   }
+
+   if (type.startsWith('field-')) addCardCategory(categories, 'field');
+   if (type.startsWith('pet-')) addCardCategory(categories, 'pet');
+   if (type === 'heal' || type === 'rare-heal' || type === 'risky-heal' || /HP\+|回復/.test(nameAndText)) addCardCategory(categories, 'heal');
+   if (type.startsWith('draw-') || type === 'reload-first-draw' || type === 'improvised-tactics' || /ドロー|手札補充/.test(nameAndText)) addCardCategory(categories, 'draw');
+   if (type.includes('paralyze') || type === 'dein' || type === 'pure-paralysis' || /麻痺/.test(nameAndText)) {
+    addCardCategory(categories, 'status');
+    addCardCategory(categories, 'paralysis');
+   }
+   if (type.includes('freeze') || type === 'ice-needle' || /凍結|氷/.test(nameAndText)) {
+    addCardCategory(categories, 'status');
+    addCardCategory(categories, 'freeze');
+   }
+   if (type.includes('burn') || /火傷|焼夷|火花|火炎/.test(nameAndText)) {
+    addCardCategory(categories, 'status');
+    addCardCategory(categories, 'burn');
+   }
+   if (type === 'poison' || type.startsWith('poison-') || type === 'field-toxic-blade' || /毒/.test(nameAndText)) {
+    addCardCategory(categories, 'status');
+    addCardCategory(categories, 'poison');
+   }
+   if (type.includes('chance') || type.includes('gamble') || type === 'high-risk-attack' || /確率|MISS|賭け|一撃狙い|ラッキー/.test(nameAndText)) {
+    addCardCategory(categories, 'gamble');
+   }
+   if (type.includes('self') || type.startsWith('blood-') || type === 'risky-heal' || type === 'percent-hp-attack' || /HP[0-9０-９]*失う|自分に|自傷|血/.test(nameAndText)) {
+    addCardCategory(categories, 'selfDamage');
+   }
+
+   if (['pursuit-attack', 'counter-blade', 'ice-needle', 'field-toxic-blade', 'field-ice-follow', 'field-fog-blade', 'field-gravity-slash'].includes(type)) addCardCategory(categories, 'attack');
+   if (['parry-guard', 'prepared-guard', 'scaling-defense'].includes(type)) addCardCategory(categories, 'defense');
+   if (['reload-first-draw', 'improvised-tactics', 'field-observe', 'field-clear', 'field-shift', 'field-lock-next', 'field-boundary', 'field-rewrite'].includes(type)) addCardCategory(categories, 'support');
+
+   if (type === 'attack'
+    || type === 'gamble-attack'
+    || type === 'double-slash'
+    || type === 'rare-attack'
+    || type === 'paralyze-bonus-attack'
+    || type === 'rare-attack-defense'
+    || type === 'self-damage-attack'
+    || type === 'chance-attack'
+    || type === 'high-risk-attack'
+    || type === 'freeze-bonus-attack'
+    || type === 'freeze-triple-attack'
+    || type === 'risky-self-attack'
+    || type === 'percent-hp-attack'
+    || type === 'revenge-attack'
+    || type === 'finisher-attack'
+    || type === 'burn-bonus-attack'
+    || type === 'timer-execute-attack'
+    || type === 'pierce-attack'
+    || type === 'attack-defense'
+    || type === 'scaling-attack') {
+    addCardCategory(categories, 'attack');
+   }
+
+   if (type === 'defense'
+    || type === 'rare-defense'
+    || type === 'reflect-next-attack'
+    || type === 'endure-next-attack'
+    || type === 'chance-defense') {
+    addCardCategory(categories, 'defense');
+   }
+
+   if (type === 'dein'
+    || type === 'pure-paralysis'
+    || type === 'freeze'
+    || type === 'poison'
+    || type === 'burn'
+    || type === 'pure-burn'
+    || type === 'attack-down'
+    || type === 'defense-down'
+    || type === 'strip-defense'
+    || type === 'mutual-freeze'
+    || type === 'field-magic-convergence'
+    || type === 'field-spark-fuse'
+    || type === 'enemy-action-delay-turns'
+    || type === 'enemy-action-shift-delay') {
+    addCardCategory(categories, 'status');
+   }
+
+   if (!categories.length) addCardCategory(categories, 'support');
+   return categories;
+  }
+
   function getCardCustomizeCategory(card) {
-   if (isCurseCard(card)) return 'status';
-  if (isBombCardType(card.type)) return 'status';
-  if (['pursuit-attack', 'counter-blade', 'ice-needle', 'field-toxic-blade', 'field-ice-follow', 'field-fog-blade', 'field-gravity-slash'].includes(card.type)) return 'attack';
-   if (['parry-guard', 'prepared-guard'].includes(card.type)) return 'defense';
-   if (['reload-first-draw', 'improvised-tactics', 'field-observe', 'field-clear', 'field-shift', 'field-lock-next', 'field-boundary', 'field-rewrite'].includes(card.type)) return 'support';
-
-   if (card.type === 'attack'
-    || card.type === 'gamble-attack'
-    || card.type === 'double-slash'
-    || card.type === 'rare-attack'
-    || card.type === 'paralyze-bonus-attack'
-    || card.type === 'rare-attack-defense'
-    || card.type === 'self-damage-attack'
-    || card.type === 'chance-attack'
-    || card.type === 'high-risk-attack'
-    || card.type === 'freeze-bonus-attack'
-    || card.type === 'freeze-triple-attack'
-    || card.type === 'risky-self-attack'
-    || card.type === 'percent-hp-attack'
-    || card.type === 'revenge-attack'
-    || card.type === 'finisher-attack'
-    || card.type === 'burn-bonus-attack'
-    || card.type === 'timer-execute-attack'
-    || card.type === 'pierce-attack'
-    || card.type === 'attack-defense') {
-    return 'attack';
-   }
-
-   if (card.type === 'defense'
-    || card.type === 'rare-defense'
-    || card.type === 'reflect-next-attack'
-    || card.type === 'endure-next-attack'
-    || card.type === 'chance-defense') {
-    return 'defense';
-   }
-
-   if (card.type === 'dein'
-    || card.type === 'pure-paralysis'
-    || card.type === 'freeze'
-    || card.type === 'poison'
-    || card.type === 'burn'
-    || card.type === 'pure-burn'
-    || card.type === 'attack-down'
-    || card.type === 'defense-down'
-    || card.type === 'strip-defense'
-    || card.type === 'mutual-freeze'
-    || card.type === 'field-magic-convergence'
-    || card.type === 'field-spark-fuse'
-    || card.type === 'enemy-action-delay-turns'
-    || card.type === 'enemy-action-shift-delay') {
-    return 'status';
-   }
-
-   return 'support';
+   const categories = getCardCustomizeCategories(card);
+   const primaryOrder = ['attack', 'defense', 'status', 'support'];
+   return primaryOrder.find(category => categories.includes(category)) || categories[0] || 'support';
   }
 
   function changeCustomizeTab(tabId) {
@@ -15724,7 +15798,12 @@ function renderCustomizeCurrentDeck() {
      <strong>×${count}</strong>
     </div>
     <div class="customize-current-card-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
-    <div class="customize-current-card-meta">${escapeHtml(rarityName)} / ${escapeHtml(getCardCooldownText(card))} / ${escapeHtml(getPreDepartureCardTypeLabel(card))}</div>
+    <div class="customize-current-card-meta">
+     <span class="deck-card-chip deck-card-rarity-chip rarity-${escapeHtml(getCardRarity(card))}">${escapeHtml(rarityName)}</span>
+     <span class="deck-card-chip deck-card-type-chip">${escapeHtml(getPreDepartureCardTypeLabel(card))}</span>
+     <span class="deck-card-chip">${escapeHtml(getCardCooldownText(card))}</span>
+     <span class="deck-card-chip">${pointCost}pt</span>
+    </div>
     <div class="count-control customize-current-count-control">
      <div class="count-value">${count}/${getMaxCardCount(card.name)}枚</div>
      <button ${canRemove ? '' : 'disabled'} onclick="changeCardCount('${cardName}', -1)" title="山札から外す">−</button>
@@ -15773,7 +15852,7 @@ function renderCustomizeScreen() {
    const visibleCards = CARD_POOL
     .filter(card => isCardUnlockedForDeckCustomize(card, discoveredCardsForCustomize))
     .filter(card => currentCustomizeRarityTab === 'all' || getCardRarity(card) === currentCustomizeRarityTab)
-    .filter(card => currentCustomizeTab === 'all' || getCardCustomizeCategory(card) === currentCustomizeTab)
+    .filter(card => currentCustomizeTab === 'all' || getCardCustomizeCategories(card).includes(currentCustomizeTab))
     .filter(card => !searchText || String(card.name || '').toLocaleLowerCase('ja').includes(searchText));
    const browserHeading = document.querySelector('.customize-browser-heading strong');
    if (browserHeading) {
@@ -15817,6 +15896,11 @@ function renderCustomizeScreen() {
       <div class="customize-card-header">
        <span>${getCardIcon(card.type)} ${escapeHtml(card.name)}</span>
        <span>${escapeHtml(getPreDepartureCardTypeLabel(card))}</span>
+      </div>
+      <div class="customize-card-meta-row">
+       <span class="deck-card-chip deck-card-rarity-chip rarity-${escapeHtml(getCardRarity(card))}">${escapeHtml(getCardRarityDisplayName(card))}</span>
+       <span class="deck-card-chip deck-card-type-chip">${escapeHtml(getPreDepartureCardTypeLabel(card))}</span>
+       <span class="deck-card-chip">${pointCost}pt</span>
       </div>
       <div class="customize-card-text">${escapeHtml(getBaseCardDisplayText(card))}</div>
       <div class="card-cooldown">${getCardCooldownText(card)}</div>
@@ -16037,12 +16121,12 @@ function getDynamicCardDisplayText(card) {
 
  if (card.type === 'scaling-attack') {
   const value = getBattleCardDisplayValue(card);
-  return `${value}ダメージ / 使うたび、この戦闘中の威力+2`;
+  return `${value}ダメージ / 使うたび、このカードの威力+2`;
  }
 
  if (card.type === 'scaling-defense') {
   const value = getBattleCardDisplayValue(card);
-  return `防御+${value} / 使うたび、この戦闘中の防御+2`;
+  return `防御+${value} / 使うたび、このカードの防御+2`;
  }
 
  if (card.type === 'blood-slash') {
@@ -16075,7 +16159,7 @@ function getDynamicCardDisplayText(card) {
  if (card.type === 'poison-fang') {
   const poisonScale = Math.max(0, Number(card.poisonScale ?? 0.25));
   const poisonBonus = Math.floor(getEnemyPoisonAmount() * poisonScale);
-  return `${getBattleCardDisplayValue(card)}ダメージ / 毒${Math.round(poisonScale * 100)}%+${poisonBonus}`;
+  return `${getBattleCardDisplayValue(card)}ダメージ / 付与毒${Math.round(poisonScale * 100)}%+${poisonBonus}`;
  }
 
  if (card.type === 'poison-burst') {
@@ -16094,7 +16178,7 @@ function getDynamicCardDisplayText(card) {
 
  if (card.type === 'poison-banquet') {
   const poisonAmount = getEnemyPoisonAmount();
-  return `毒${poisonAmount}全消費 / ${poisonAmount}ダメージ / 毒耐性付与(50%)`;
+  return `付与毒${poisonAmount}全消費 / ${poisonAmount}ダメージ / 毒耐性付与(50%)`;
  }
 
  return getBaseCardDisplayText(card);
@@ -16604,11 +16688,14 @@ if (card.type === 'pet-attack-up') {
  }
 
  if (card.type === 'poison-fang') {
-  return `${value}ダメージ / 敵の毒25%分の追加ダメージ`;
+  const scale = Math.round(Math.max(0, Number(card.poisonScale ?? 0.25)) * 100);
+  return `${value}ダメージ / 敵に付与した毒${scale}%分の追加ダメージ`;
  }
 
  if (card.type === 'poison-burst') {
-  return '敵の毒を半分消費 / 消費毒の75%分のダメージ';
+  const consumeText = Number(card.consumeRatio || 0.5) >= 1 ? '全消費' : '半分消費';
+  const damageRate = Math.round(Math.max(0, Number(card.value || 0.75)) * 100);
+  return `敵に付与した毒を${consumeText} / 消費毒の${damageRate}%分のダメージ`;
  }
 
  if (card.type === 'poison-vulnerability') {
@@ -16616,15 +16703,17 @@ if (card.type === 'pet-attack-up') {
  }
 
  if (card.type === 'poison-drain') {
-  return '敵の毒を全消費 / 消費毒の半分だけ回復';
+  return Number(card.healMultiplier || 0.5) > 1
+   ? '敵に付与した毒を全消費 / 消費毒×1.5回復'
+   : '敵に付与した毒を全消費 / 消費毒の半分だけ回復';
  }
 
  if (card.type === 'poison-banquet') {
-  return '敵の毒を全消費 / 消費毒と同じダメージ / 毒耐性付与(50%)';
+  return '敵に付与した毒を全消費 / 消費毒と同じダメージ / 毒耐性付与(50%)';
  }
 
  if (card.type === 'poison-plague') {
-  return '敵の毒が毎ターン+2 / 使用後破棄';
+  return '敵に付与した毒が毎ターン+2 / 使用後破棄';
  }
 
  if (card.type === 'burn') {
@@ -18002,12 +18091,27 @@ function updateEnemyTimerText() {
   }
 
   function getPreDepartureCardTypeLabel(card) {
-   const category = getCardCustomizeCategory(card);
-   if (category === 'attack') return '攻撃';
-   if (category === 'defense') return '防御';
-   if (category === 'status') return '状態';
-   if (category === 'support') return '補助';
-   return '汎用';
+   const labels = {
+    attack: '攻撃',
+    defense: '防御',
+    status: '状態異常',
+    support: '補助',
+    paralysis: '麻痺系',
+    freeze: '凍結系',
+    burn: '火傷系',
+    poison: '毒系',
+    gamble: 'ギャンブル系',
+    bomb: '爆弾系',
+    selfDamage: '自傷系',
+    pet: 'ペット系',
+    draw: 'ドロー系',
+    field: 'フィールド系',
+    heal: '回復',
+   };
+   return getCardCustomizeCategories(card)
+    .map(category => labels[category] || category)
+    .filter(Boolean)
+    .join(' / ') || '汎用';
   }
 
   function getPreDepartureCardRarityLabel(card) {
@@ -18706,16 +18810,27 @@ const cards = document.getElementById('cards');
 
    const log = document.getElementById('log');
 
-   log.innerHTML = '';
+   if (log) {
+    log.innerHTML = '';
 
-   logs.forEach(item => {
-    const div = document.createElement('div');
+    logs.forEach(item => {
+     const div = document.createElement('div');
+     const text = String(item || '');
+     const meta = getBattleLogMeta(text);
 
-    div.className = 'log-item';
-    div.textContent = item;
+     div.className = `log-item ${meta.className}`;
+     const label = document.createElement('span');
+     label.className = 'log-item-label';
+     label.textContent = meta.label;
+     const body = document.createElement('span');
+     body.className = 'log-item-text';
+     body.textContent = text;
+     div.appendChild(label);
+     div.appendChild(body);
 
-    log.appendChild(div);
-   });
+     log.appendChild(div);
+    });
+   }
 
    const winner = document.getElementById('winner');
    const victoryActions = document.getElementById('victory-actions');

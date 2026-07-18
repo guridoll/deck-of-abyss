@@ -8,6 +8,8 @@
    loadDiscoveredPassives,
    escapeHtml,
   } = deps || {};
+  let currentPassiveLibraryRarityFilter = 'all';
+  let currentPassiveLibrarySearchText = '';
 
   if (typeof getNormalPassiveOptions !== 'function' || typeof getRarePassiveOptions !== 'function' || typeof loadDiscoveredPassives !== 'function' || typeof escapeHtml !== 'function') {
    throw new Error('GamePassiveLibrary dependencies are missing.');
@@ -17,24 +19,26 @@
    const map = {
     normal: {
      title: 'ノーマル',
-     icon: '✨',
-     subtitle: '安定した強化と基礎ビルドを作るパッシブ',
+     icon: 'N',
+     subtitle: '基本効果を持つパッシブ',
      className: 'normal',
     },
     rare: {
      title: 'レア',
-     icon: '💎',
-     subtitle: 'ビルドを大きく変える強力な特殊パッシブ',
+     icon: 'R',
+     subtitle: '強力な効果を持つパッシブ',
      className: 'rare',
-    },
-    epic: {
-     title: 'エピック',
-     icon: '✦',
-     subtitle: '希少で強力な特殊パッシブ',
-     className: 'epic',
     },
    };
    return map[rarity] || map.normal;
+  }
+
+  function getPassiveLibraryRarityFilters() {
+   return [
+    { id: 'all', name: 'すべて' },
+    { id: 'normal', name: 'ノーマル' },
+    { id: 'rare', name: 'レア' },
+   ];
   }
 
   function getAllPassiveLibraryDefinitions() {
@@ -56,6 +60,12 @@
    });
   }
 
+  function updatePassiveLibraryFilter(type, value) {
+   if (type === 'rarity') currentPassiveLibraryRarityFilter = value || 'all';
+   if (type === 'search') currentPassiveLibrarySearchText = value || '';
+   renderPassiveLibraryScreen();
+  }
+
   function getPassiveLibraryDetailHtml(passiveId) {
    const discoveries = loadDiscoveredPassives();
    const definitions = getAllPassiveLibraryDefinitions();
@@ -69,7 +79,7 @@
    const discovered = (record.seenCount || record.count || 0) > 0;
    const passiveSelectedCount = record.selectedCount || 0;
    const seenCount = record.seenCount || record.count || 0;
-   const icon = passive.icon || (rarity === 'epic' ? '★' : rarity === 'rare' ? '◆' : '✦');
+   const icon = passive.icon || (rarity === 'rare' ? 'R' : 'N');
 
    if (!discovered) {
     return `
@@ -78,7 +88,7 @@
       <div class="passive-library-detail-body">
        <div class="passive-library-detail-kicker">${escapeHtml(meta.title)}</div>
        <h2>未発見パッシブ</h2>
-       <p>パッシブ選択の候補に出ると情報が記録されます。</p>
+       <p>候補に出現すると情報が記録されます。</p>
       </div>
      </div>
     `;
@@ -93,7 +103,7 @@
       <p>${escapeHtml(passive.text || passive.description || '')}</p>
       <div class="passive-library-detail-stats">
        <span><strong>${passiveSelectedCount}</strong><small>選択回数</small></span>
-       <span><strong>${seenCount}</strong><small>候補に出現</small></span>
+       <span><strong>${seenCount}</strong><small>候補出現</small></span>
       </div>
      </div>
     </div>
@@ -117,6 +127,10 @@
    if (modal) modal.style.display = 'none';
   }
 
+  function renderFilterOptions(options, selected) {
+   return options.map(option => `<option value="${escapeHtml(option.id)}"${option.id === selected ? ' selected' : ''}>${escapeHtml(option.name)}</option>`).join('');
+  }
+
   function renderPassiveLibraryScreen() {
    const list = document.getElementById('passive-library-list');
    if (!list) return;
@@ -126,6 +140,16 @@
    const discoveredCount = definitions.filter(passive => (discoveries[passive.id]?.seenCount || discoveries[passive.id]?.count || 0) > 0).length;
    const selectedCount = definitions.reduce((sum, passive) => sum + (discoveries[passive.id]?.selectedCount || 0), 0);
    const totalSeenCount = definitions.reduce((sum, passive) => sum + (discoveries[passive.id]?.seenCount || discoveries[passive.id]?.count || 0), 0);
+   const searchText = String(currentPassiveLibrarySearchText || '').trim().toLocaleLowerCase('ja');
+   const visibleDefinitions = definitions.filter(passive => {
+    const discovered = (discoveries[passive.id]?.seenCount || discoveries[passive.id]?.count || 0) > 0;
+    if (currentPassiveLibraryRarityFilter !== 'all' && (passive.rarity || 'normal') !== currentPassiveLibraryRarityFilter) return false;
+    if (searchText) {
+     if (!discovered) return false;
+     return String(passive.name || '').toLocaleLowerCase('ja').includes(searchText);
+    }
+    return true;
+   });
 
    list.innerHTML = `
     <div class="passive-library-summary-panel">
@@ -133,17 +157,40 @@
      <div class="passive-library-summary-metrics">
       <div><strong>${discoveredCount}</strong><span>/ ${definitions.length}</span><em>発見</em></div>
       <div><strong>${selectedCount}</strong><span>回</span><em>選択</em></div>
-      <div><strong>${totalSeenCount}</strong><span>回</span><em>候補に出現</em></div>
+      <div><strong>${totalSeenCount}</strong><span>回</span><em>候補出現</em></div>
      </div>
-     <div class="passive-library-summary-note">パッシブ選択の候補に出ると発見、実際に選ぶと選択回数が増えます。</div>
+     <div class="passive-library-summary-note">候補に出現すると発見済みになり、選ぶと選択回数が記録されます。</div>
+    </div>
+    <div class="library-filter-panel passive-library-filter-panel">
+     <label>
+      <span>レアリティ</span>
+      <select id="passive-library-rarity-filter">${renderFilterOptions(getPassiveLibraryRarityFilters(), currentPassiveLibraryRarityFilter)}</select>
+     </label>
+     <label class="library-search-label">
+      <span>パッシブ名検索</span>
+      <input id="passive-library-name-search" type="search" value="${escapeHtml(currentPassiveLibrarySearchText)}" placeholder="パッシブ名を入力">
+     </label>
+     <div class="library-filter-result">表示中：${visibleDefinitions.length}件</div>
     </div>
    `;
 
-   const rarityOrder = ['normal', 'rare', 'epic'];
+   const raritySelect = document.getElementById('passive-library-rarity-filter');
+   const searchInput = document.getElementById('passive-library-name-search');
+   if (raritySelect) raritySelect.onchange = event => updatePassiveLibraryFilter('rarity', event.target.value);
+   if (searchInput) {
+    searchInput.oninput = event => updatePassiveLibraryFilter('search', event.target.value);
+    if (currentPassiveLibrarySearchText) {
+     searchInput.focus();
+     const caret = String(currentPassiveLibrarySearchText).length;
+     searchInput.setSelectionRange(caret, caret);
+    }
+   }
+
+   const rarityOrder = ['normal', 'rare'];
 
    rarityOrder.forEach(rarity => {
     const meta = getPassiveLibraryRarityMeta(rarity);
-    const items = definitions.filter(passive => (passive.rarity || 'normal') === rarity);
+    const items = visibleDefinitions.filter(passive => (passive.rarity || 'normal') === rarity);
     if (!items.length) return;
 
     const discoveredInRarity = items.filter(passive => (discoveries[passive.id]?.seenCount || discoveries[passive.id]?.count || 0) > 0).length;
@@ -171,10 +218,10 @@
      const discovered = (record.seenCount || record.count || 0) > 0;
      const passiveSelectedCount = record.selectedCount || 0;
      const seenCount = record.seenCount || record.count || 0;
-     const icon = passive.icon || (rarity === 'epic' ? '✦' : rarity === 'rare' ? '💎' : '✨');
+     const icon = passive.icon || (rarity === 'rare' ? 'R' : 'N');
 
      const div = document.createElement('div');
-     div.className = `passive-library-card${discovered ? '' : ' undiscovered-passive'}${rarity !== 'normal' ? ' rare-passive-library-card' : ''}`;
+     div.className = `passive-library-card${discovered ? '' : ' undiscovered-passive'}${rarity === 'rare' ? ' rare-passive-library-card' : ''}`;
      div.setAttribute('role', 'button');
      div.setAttribute('tabindex', '0');
      div.onclick = () => openPassiveLibraryDetailModal(passive.id);
@@ -191,15 +238,15 @@
        <div>
         <div class="passive-library-title-row">
          <div class="passive-library-name">${escapeHtml(passive.name)}</div>
-         <span class="passive-library-rarity-badge ${rarity === 'epic' ? 'epic' : rarity === 'rare' ? 'rare' : 'normal'}">${escapeHtml(meta.title)}</span>
+         <span class="passive-library-rarity-badge ${rarity === 'rare' ? 'rare' : 'normal'}">${escapeHtml(meta.title)}</span>
+        </div>
+        <div class="passive-library-subtitle">発見済みパッシブ</div>
        </div>
-       <div class="passive-library-subtitle">発見済みパッシブ</div>
       </div>
-     </div>
       <div class="passive-library-text">${escapeHtml(passive.text || passive.description || '')}</div>
       <div class="passive-library-stats">
        <div class="passive-library-stat selected"><span>選択回数</span><strong>${passiveSelectedCount}</strong><em>回</em></div>
-       <div class="passive-library-stat"><span>候補に出現</span><strong>${seenCount}</strong><em>回</em></div>
+       <div class="passive-library-stat"><span>候補出現</span><strong>${seenCount}</strong><em>回</em></div>
       </div>
       <div class="passive-library-detail-button">詳細を見る</div>
      ` : `
@@ -209,15 +256,15 @@
        <div>
         <div class="passive-library-title-row">
          <div class="passive-library-name">未発見パッシブ</div>
-         <span class="passive-library-rarity-badge ${rarity === 'epic' ? 'epic' : rarity === 'rare' ? 'rare' : 'normal'}">${escapeHtml(meta.title)}</span>
+         <span class="passive-library-rarity-badge ${rarity === 'rare' ? 'rare' : 'normal'}">${escapeHtml(meta.title)}</span>
         </div>
-        <div class="passive-library-subtitle">パッシブ選択で発見できます</div>
+        <div class="passive-library-subtitle">候補に出現すると発見できます。</div>
        </div>
       </div>
       <div class="passive-library-text">効果は未発見です。</div>
       <div class="passive-library-stats">
        <div class="passive-library-stat"><span>選択回数</span><strong>-</strong><em>回</em></div>
-       <div class="passive-library-stat"><span>候補に出現</span><strong>-</strong><em>回</em></div>
+       <div class="passive-library-stat"><span>候補出現</span><strong>-</strong><em>回</em></div>
       </div>
      `;
 
@@ -226,6 +273,13 @@
 
     list.appendChild(section);
    });
+
+   if (visibleDefinitions.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'library-empty-message';
+    empty.textContent = '条件に一致するパッシブはありません。';
+    list.appendChild(empty);
+   }
   }
 
   return {
