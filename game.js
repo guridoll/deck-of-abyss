@@ -1654,6 +1654,8 @@ const PET_POOL = [
    modal.setAttribute('aria-hidden', 'false');
    renderSoundSettingsControls();
    render();
+   const dialog = modal.querySelector('.sound-settings-dialog');
+   if (dialog) window.requestAnimationFrame(() => dialog.focus());
   }
 
   function closeSoundSettings() {
@@ -4032,7 +4034,39 @@ function isAttackCardType(type) {
   || type === 'field-ice-follow'
   || type === 'field-fog-blade'
   || type === 'field-gravity-slash'
-  || type === 'pet-spirit-attack';
+   || type === 'pet-spirit-attack';
+}
+
+function isSwordPhysicalAttackCard(card) {
+ const type = String(card && card.type || '');
+ return new Set([
+  'attack',
+  'reload-first-draw',
+  'scaling-attack',
+  'gamble-attack',
+  'double-slash',
+  'rare-attack',
+  'rare-double-attack',
+  'drain-sword',
+  'rare-attack-defense',
+  'self-damage-attack',
+  'chance-attack',
+  'high-risk-attack',
+  'risky-self-attack',
+  'percent-hp-attack',
+  'revenge-attack',
+  'finisher-attack',
+  'timer-execute-attack',
+  'pierce-attack',
+  'desperate-power',
+  'attack-defense',
+  'pursuit-attack',
+  'counter-blade',
+  'field-fog-blade',
+  'field-gravity-slash',
+  'blood-slash',
+  'berserk-strike'
+ ]).has(type);
 }
 
 function isDefenseCardType(type) {
@@ -10358,7 +10392,7 @@ function saveDeckCustomize() {
       </div>
       <div class="pet-battle-column">
        <div class="pet-panel${petTarget}">
-        <div class="pet-title">ペット：トカゲ Lv.1</div>
+        <div class="pet-title">トカゲ Lv.1</div>
         <div class="pet-body">
          <div class="pet-image-wrap"><div class="tutorial-pet-real-icon">🦎</div></div>
          <div class="pet-info-row">あと3枚</div>
@@ -11063,8 +11097,17 @@ function playSound(type) {
    oscillator.stop(now + 0.25);
   }
 
+  function localizeBattleLogText(text) {
+   return String(text ?? '')
+    .replace(/MISS/g, '失敗')
+    .replace(/EXP/g, '経験値')
+    .replace(/HP/g, '体力')
+    .replace(/Lv\.?\s*(\d+)/g, 'レベル$1')
+    .replace(/(\d+)T\b/g, '$1ターン');
+  }
+
   function addLog(text) {
-   logs.unshift(text);
+   logs.unshift(localizeBattleLogText(text));
    logs = logs.slice(0, 10);
   }
 
@@ -12693,6 +12736,11 @@ function playPlayerCard(id, options = {}) {
 
    startEnemyTimerOnFirstCard();
    triggerNormalCardUseEffect(card);
+   if (isSwordPhysicalAttackCard(card)) {
+    triggerSwordAttackEffect(card);
+   } else {
+    triggerThemedCardEffect(card);
+   }
    if (isCurseCard(card)) {
     addLog(`呪いカード：${card.name}（効果なし）`);
     playSound('miss');
@@ -14409,6 +14457,163 @@ if (card.type === 'rare-attack') {
    return { attackValue, wasBurned, attackDown };
   }
 
+  function getEnemyAttackPreviewValue(baseValue) {
+   let attackValue = Math.max(0, Number(baseValue || 0));
+   attackValue = Math.round(attackValue * getEnemyAttackPassiveMultiplier());
+   const attackDown = cpu && cpu.attackDownTurns > 0 ? (cpu.attackDownValue || 0) : 0;
+   if (attackDown > 0) attackValue = Math.max(0, attackValue - attackDown);
+   const wasBurned = Boolean(cpu && cpu.burn && Number(cpu.burnTurns || 0) > 0);
+   if (wasBurned) attackValue = Math.ceil(attackValue / 2);
+   return { attackValue, wasBurned, attackDown };
+  }
+
+  function getEnemyPredictionPassiveNotes(action, preview = {}) {
+   const notes = [];
+   const type = action?.type || '';
+   const isAttack = ['attack', 'enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison', 'enemy-bomb'].includes(type);
+   const hpRate = cpu ? Math.max(0, Number(cpu.hp || 0)) / Math.max(1, Number(cpu.maxHp || getEnemyMaxHp())) : 1;
+
+   if (isAttack) {
+    if (enemyHasPassive('desperate') && hpRate <= 0.5) notes.push('背水：攻撃上昇');
+    if (enemyHasPassive('fatal_power') && cpu?.enemyTenacityTriggered) notes.push('致命強化：攻撃上昇');
+    if (enemyHasPassive('blood_price') && hpRate <= 0.5) notes.push(`血の代償：攻撃上昇${hpRate <= 0.25 ? '大' : ''}`);
+    if (preview.attackDown > 0) notes.push(`攻撃低下：-${preview.attackDown}`);
+    if (preview.wasBurned) notes.push('火傷：攻撃半減');
+   }
+
+   if (type === 'defense') {
+    const defenseDown = cpu && cpu.defenseDownTurns > 0 ? (cpu.defenseDownValue || 0) : 0;
+    const blockCap = getEnemyBlockCap();
+    if (defenseDown > 0) notes.push(`防御低下：-${defenseDown}`);
+    if (Number.isFinite(blockCap)) notes.push(`最大防御：${blockCap}`);
+   }
+
+   if (type === 'enemy-bomb' && enemyHasPassive('bomb_frenzy')) notes.push('爆発狂：爆弾行動');
+   if (type === 'enemy-burn' && enemyHasPassive('flame_snare')) notes.push('火炎足止め：火傷付与');
+   if (enemyHasPassive('reload_plus_1')) notes.push('リロード+1：常時');
+
+   const fieldPassiveId = getCurrentEnemyPassiveIds().find(id => ENEMY_FIELD_EFFECT_PASSIVE_MAP[id]);
+   if (fieldPassiveId) {
+    const fieldName = getFieldEffectName(ENEMY_FIELD_EFFECT_PASSIVE_MAP[fieldPassiveId]);
+    notes.push(`支配領域：${fieldName}`);
+   }
+
+   return notes;
+  }
+
+  function getEnemyBombPredictionText(action) {
+   const bombDef = getBombDefinition(action?.bombKind || 'small');
+   const count = Math.max(1, Number(action?.bombCount || bombDef.count || 3));
+   const damage = Math.max(0, Number(action?.bombDamage || bombDef.damage || 0));
+   return `${bombDef.name} ${count}枚後/${damage}ダメージ`;
+  }
+
+  function getEnemyActionPrediction(action) {
+   if (!action) return null;
+
+   const statusAttackTypes = ['enemy-paralyze', 'enemy-freeze', 'enemy-burn', 'enemy-poison', 'enemy-bomb'];
+   const isAttack = action.type === 'attack' || statusAttackTypes.includes(action.type);
+   const preview = isAttack ? getEnemyAttackPreviewValue(action.value) : {};
+   const mask = value => maskFieldEffectPredictionValue(value);
+   const result = {
+    className: 'prediction-attack',
+    icon: '⚔',
+    kind: '攻撃',
+    name: action.name || '行動',
+    primary: '',
+    details: [],
+    notes: [],
+   };
+
+   if (action.type === 'defense') {
+    const defenseDown = cpu && cpu.defenseDownTurns > 0 ? (cpu.defenseDownValue || 0) : 0;
+    const blockGain = Math.max(0, Number(action.value || 0) - defenseDown);
+    const blockCap = getEnemyBlockCap();
+    const beforeBlock = Math.max(0, Number(cpu?.block || 0));
+    const actualBlockGain = Number.isFinite(blockCap)
+     ? Math.max(0, Math.min(blockGain, blockCap - beforeBlock))
+     : blockGain;
+    result.className = 'prediction-defense';
+    result.icon = '🛡';
+    result.kind = '防御';
+    result.primary = `防御 +${actualBlockGain}`;
+   } else if (action.type === 'enemy-cleanse') {
+    result.className = 'prediction-support';
+    result.icon = '✨';
+    result.kind = '補助';
+    result.primary = '状態異常を全解除';
+    result.details.push('自身に凍結');
+   } else if (action.type === 'enemy-paralyze') {
+    result.className = 'prediction-status';
+    result.icon = '⚡';
+    result.kind = '麻痺攻撃';
+    result.primary = `${preview.attackValue}ダメージ`;
+    result.details.push('麻痺 3秒');
+   } else if (action.type === 'enemy-freeze') {
+    result.className = 'prediction-status';
+    result.icon = '❄';
+    result.kind = '凍結攻撃';
+    result.primary = `${preview.attackValue}ダメージ`;
+    result.details.push(`凍結 ${Math.max(1, 10 + getFieldEffectPlayerFreezeClickBonus())}クリック`);
+   } else if (action.type === 'enemy-burn') {
+    result.className = 'prediction-status';
+    result.icon = '🔥';
+    result.kind = '火傷攻撃';
+    result.primary = `${preview.attackValue}ダメージ`;
+    result.details.push(`火傷 ${Math.max(1, Number(action.burnTurns || 3))}T`);
+   } else if (action.type === 'enemy-poison') {
+    result.className = 'prediction-status';
+    result.icon = '☠';
+    result.kind = '毒攻撃';
+    result.primary = `${preview.attackValue}ダメージ`;
+    result.details.push(`毒 ${Math.max(1, Number(action.poisonTurns || 3))}T`);
+   } else if (action.type === 'enemy-bomb') {
+    result.className = 'prediction-status prediction-bomb';
+    result.icon = '💣';
+    result.kind = '爆弾攻撃';
+    result.primary = `${preview.attackValue}ダメージ`;
+    result.details.push(getEnemyBombPredictionText(action));
+   } else {
+    result.primary = `${preview.attackValue ?? Math.max(0, Number(action.value || 0))}ダメージ`;
+   }
+
+   result.notes = getEnemyPredictionPassiveNotes(action, preview);
+   result.primary = mask(result.primary);
+   result.details = result.details.map(mask);
+   result.notes = result.notes.map(mask);
+   return result;
+  }
+
+  function renderEnemyActionPredictionHtml(action) {
+   const prediction = getEnemyActionPrediction(action);
+   if (!prediction) {
+    return '<div class="cpu-prediction-label">👁 次の行動予測</div><div class="cpu-prediction-none">なし</div>';
+   }
+
+   const detailsHtml = prediction.details.length
+    ? `<div class="cpu-prediction-details">${prediction.details.map(detail => `<span>${escapeHtml(detail)}</span>`).join('')}</div>`
+    : '';
+   const notesHtml = prediction.notes.length
+    ? `<div class="cpu-prediction-notes">${prediction.notes.map(note => `<span>${escapeHtml(note)}</span>`).join('')}</div>`
+    : '';
+
+   return `
+    <div class="cpu-prediction-label">👁 次の行動予測</div>
+    <div class="cpu-prediction-card ${prediction.className}">
+     <div class="cpu-prediction-icon">${escapeHtml(prediction.icon)}</div>
+     <div class="cpu-prediction-body">
+      <div class="cpu-prediction-head">
+       <span class="cpu-prediction-name">${escapeHtml(prediction.name)}</span>
+       <span class="cpu-prediction-kind">${escapeHtml(prediction.kind)}</span>
+      </div>
+      <div class="cpu-prediction-value">${escapeHtml(prediction.primary)}</div>
+      ${detailsHtml}
+      ${notesHtml}
+     </div>
+    </div>
+   `;
+  }
+
   function cpuAction() {
    if (gameOver || !player || !cpu) return;
 
@@ -14919,6 +15124,125 @@ if (card.type === 'rare-attack') {
    setTimeout(() => {
     target.classList.remove(className);
    }, 430);
+  }
+
+  function triggerSwordAttackEffect(card) {
+   const enemy = document.querySelector('.cpu-img');
+   if (!enemy) return;
+
+   let overlay = document.getElementById('battle-effect-overlay');
+   if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'battle-effect-overlay';
+    document.body.appendChild(overlay);
+   }
+
+   const enemyRect = enemy.getBoundingClientRect();
+   const targetX = enemyRect.left + enemyRect.width * 0.52;
+   const targetY = enemyRect.top + enemyRect.height * 0.43;
+   const basePower = Math.max(1, Number(getEffectiveCardValue(card) || card?.value || 1));
+   const hitCount = card?.type === 'rare-double-attack' ? 5 : Math.max(1, Number(card?.hits || 1));
+   const visualPower = basePower * hitCount;
+   const powerTier = visualPower >= 12 ? 'high' : visualPower >= 7 ? 'medium' : 'low';
+   const effect = document.createElement('div');
+   effect.className = `sword-attack-effect sword-power-${powerTier}`;
+   effect.dataset.visualPower = String(Math.round(visualPower));
+   effect.setAttribute('aria-hidden', 'true');
+   effect.style.setProperty('--sword-target-x', `${targetX}px`);
+   effect.style.setProperty('--sword-target-y', `${targetY}px`);
+   effect.innerHTML = `
+    <div class="sword-attack-trail"></div>
+    <div class="sword-attack-weapon">
+     <span class="sword-attack-blade"></span>
+     <span class="sword-attack-guard"></span>
+     <span class="sword-attack-grip"></span>
+    </div>
+    <div class="sword-impact-burst">
+     <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+   `;
+   overlay.appendChild(effect);
+
+   const battleArea = document.getElementById('battle-area') || document.getElementById('battle-screen');
+   setTimeout(() => {
+    effect.classList.add('sword-impact');
+    if (battleArea) {
+     battleArea.classList.remove('sword-hit-stop');
+     void battleArea.offsetWidth;
+     battleArea.classList.add('sword-hit-stop');
+    }
+    triggerBattleScreenShake(powerTier === 'high' ? 'heavy' : 'normal');
+   }, 260);
+
+   setTimeout(() => {
+    if (battleArea) battleArea.classList.remove('sword-hit-stop');
+   }, 355);
+   setTimeout(() => effect.remove(), 820);
+  }
+
+  function getPlayerCardVfxTheme(card) {
+   const type = String(card?.type || '');
+   if (!type || isBombCardType(type) || isSwordPhysicalAttackCard(card)) return '';
+
+   if (['dein', 'pure-paralysis', 'paralyze-bonus-attack'].includes(type)) return 'lightning';
+   if (['burn', 'pure-burn', 'burn-bonus-attack'].includes(type)) return 'fire';
+   if (['freeze', 'freeze-bonus-attack', 'freeze-triple-attack', 'ice-needle', 'mutual-freeze', 'field-ice-follow'].includes(type)) return 'ice';
+   if (['poison', 'poison-fang', 'poison-cloud', 'poison-inject', 'poison-burst', 'poison-banquet', 'poison-drain', 'poison-plague', 'poison-vulnerability', 'field-toxic-blade'].includes(type)) return 'poison';
+   if (['pierce-attack'].includes(type)) return 'ranged';
+   if (isDefenseCardType(type) || ['status-guard', 'reflect-next-attack'].includes(type)) return 'shield';
+   if (['heal', 'rare-heal', 'risky-heal'].includes(type)) return 'heal';
+   if (['attack-down', 'defense-down', 'strip-defense', 'field-magic-convergence'].includes(type)) return 'debuff';
+   if (['enhance', 'defense-enhance', 'cooldown-boost', 'blood-awaken', 'blood-attack-buff', 'chance-guarantee', 'endure-next-attack'].includes(type)) return 'support';
+   if (['enemy-action-delay-turns', 'enemy-action-shift-delay', 'field-observe', 'field-boundary', 'field-clear', 'field-lock-next', 'field-rewrite', 'field-shift'].includes(type)) return 'arcane';
+   return '';
+  }
+
+  function triggerThemedCardEffect(card) {
+   const theme = getPlayerCardVfxTheme(card);
+   if (!theme) return;
+
+   const selfThemes = ['shield', 'heal', 'support'];
+   const isSelfEffect = selfThemes.includes(theme);
+   const source = document.querySelector('.player-img');
+   const target = document.querySelector(isSelfEffect ? '.player-img' : '.cpu-img');
+   if (!source || !target) return;
+
+   let overlay = document.getElementById('battle-effect-overlay');
+   if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'battle-effect-overlay';
+    document.body.appendChild(overlay);
+   }
+
+   const sourceRect = source.getBoundingClientRect();
+   const targetRect = target.getBoundingClientRect();
+   const rawPower = Math.max(0, Number(card?.value || 0));
+   const rarityFloor = card?.legendary ? 14 : card?.epic ? 10 : card?.rare ? 7 : 0;
+   const visualPower = Math.max(rawPower, rarityFloor);
+   const powerTier = visualPower >= 12 ? 'high' : visualPower >= 7 ? 'medium' : 'low';
+   const effect = document.createElement('div');
+   effect.className = `card-theme-effect theme-${theme} theme-power-${powerTier}${isSelfEffect ? ' theme-self' : ''}`;
+   effect.dataset.theme = theme;
+   effect.dataset.visualPower = String(Math.round(visualPower));
+   effect.setAttribute('aria-hidden', 'true');
+   effect.style.setProperty('--theme-from-x', `${sourceRect.left + sourceRect.width * 0.58}px`);
+   effect.style.setProperty('--theme-from-y', `${sourceRect.top + sourceRect.height * 0.42}px`);
+   effect.style.setProperty('--theme-to-x', `${targetRect.left + targetRect.width * 0.5}px`);
+   effect.style.setProperty('--theme-to-y', `${targetRect.top + targetRect.height * 0.43}px`);
+   effect.innerHTML = `
+    <div class="card-theme-projectile"><span></span></div>
+    <div class="card-theme-impact"><b></b><i></i><i></i><i></i><i></i><i></i><i></i></div>
+   `;
+   overlay.appendChild(effect);
+
+   const impactDelay = isSelfEffect ? 30 : 300;
+   setTimeout(() => {
+    effect.classList.add('theme-impact-active');
+    if (!isSelfEffect && ['lightning', 'fire', 'ice', 'poison', 'ranged'].includes(theme)) {
+     triggerBattleScreenShake(powerTier === 'high' ? 'heavy' : 'normal');
+    }
+   }, impactDelay);
+   setTimeout(() => effect.remove(), isSelfEffect ? 900 : 980);
   }
 
   function triggerDamageShake(selector) {
@@ -18027,7 +18351,7 @@ if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-eff
    return badges.map(badge => badge.includes('data-tooltip=') ? badge : addPassiveBadgeTooltip(badge)).join('');
   }
 
-  function renderPassiveEffectBadges() {
+function renderPassiveEffectBadges() {
    const passiveElement = document.getElementById('passive-effect-badges');
    const enemyPassiveElement = document.getElementById('enemy-passive-effect-badges');
 
@@ -18040,6 +18364,78 @@ if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-eff
     const html = getEnemyPassiveEffectBadgesHtml();
     if (enemyPassiveElement.innerHTML !== html) enemyPassiveElement.innerHTML = html;
    }
+  }
+
+
+  function getBattlePassiveIcon(passive = {}) {
+   const text = `${passive.id || ''} ${passive.name || ''} ${passive.text || ''}`;
+   if (/毒|poison/i.test(text)) return '☠';
+   if (/爆弾|火薬|bomb/i.test(text)) return '💣';
+   if (/ペット|獣|pet/i.test(text)) return '🐾';
+   if (/防御|守り|ガード|block|guard/i.test(text)) return '🛡';
+   if (/攻撃|ダメージ|闘志|attack|damage/i.test(text)) return '⚔';
+   if (/ドロー|手札|draw/i.test(text)) return '📚';
+   if (/回復|HP|heal/i.test(text)) return '❤';
+   if (/リロード|reload/i.test(text)) return '↻';
+   if (/フィールド|霧|嵐|重圧|火薬|雨|空気|field/i.test(text)) return '◇';
+   return '✦';
+  }
+
+  function getBattleIconTrayHtml() {
+   const items = [];
+   const relics = getEquippedRelicIds()
+    .map(relicId => getRelicById(relicId))
+    .filter(Boolean);
+
+   relics.forEach(relic => {
+    items.push({
+     type: 'relic',
+     icon: relic.icon || '◆',
+     name: relic.name,
+     text: relic.effect || relic.description || relic.name,
+     count: 1
+    });
+   });
+
+   const passiveOptions = getPassiveOptions();
+   const passiveMap = new Map(passiveOptions.map(passive => [passive.id, passive]));
+   const passiveCounts = new Map();
+   (currentRunPassiveIds || []).forEach(passiveId => {
+    if (!passiveMap.has(passiveId)) return;
+    passiveCounts.set(passiveId, (passiveCounts.get(passiveId) || 0) + 1);
+   });
+
+   passiveCounts.forEach((count, passiveId) => {
+    const passive = passiveMap.get(passiveId);
+    items.push({
+     type: 'passive',
+     icon: passive.icon || getBattlePassiveIcon(passive),
+     name: passive.name,
+     text: passive.text || passive.description || passive.name,
+     count
+    });
+   });
+
+   if (!items.length) return '';
+
+   return items.map(item => {
+    const countLabel = item.count > 1 ? ` ×${item.count}` : '';
+    const tooltip = `${item.type === 'relic' ? '遺物' : 'パッシブ'}：${item.name}${countLabel}\n効果：${item.text || ''}`.trim();
+    return `
+     <div class="battle-icon-badge battle-icon-${item.type}" tabindex="0" data-tooltip="${escapeHtml(tooltip)}" title="${escapeHtml(tooltip)}">
+      <span class="battle-icon-symbol">${escapeHtml(item.icon)}</span>
+      ${item.count > 1 ? `<span class="battle-icon-count">×${item.count}</span>` : ''}
+     </div>
+    `;
+   }).join('');
+  }
+
+  function renderBattleIconTray() {
+   const trayElement = document.getElementById('battle-icon-tray');
+   if (!trayElement) return;
+
+   const html = getBattleIconTrayHtml();
+   if (trayElement.innerHTML !== html) trayElement.innerHTML = html;
   }
 
 
@@ -18539,12 +18935,13 @@ function render() {
      fieldBadge.className = 'field-effect-badge';
      fieldBadge.removeAttribute('data-tooltip');
      fieldBadge.innerHTML = '';
-    }
    }
+  }
 
 
    renderStatusBadges();
    renderPassiveEffectBadges();
+   renderBattleIconTray();
 
    document.getElementById('deck-count').textContent = `${deckCount}枚`;
    updateDeckHoverDetail();
@@ -18660,50 +19057,11 @@ function render() {
    /* update paralysis visual after cards render */
    updatePlayerParalysisVisual();
 
-const nextAction = getCpuNextAction();
+   const nextAction = getCpuNextAction();
    const prediction = document.getElementById('cpu-next-action');
 
-   if (prediction && nextAction) {
-    const isStatusAttack = ['enemy-paralyze','enemy-freeze','enemy-burn','enemy-poison','enemy-bomb'].includes(nextAction.type);
-
-    const kind = nextAction.type === 'defense'
-     ? '防御'
-     : nextAction.type === 'enemy-cleanse'
-      ? '補助'
-      : isStatusAttack
-       ? '特殊攻撃'
-       : '攻撃';
-
-    let valueText = '';
-
-    if (nextAction.type === 'defense') {
-     valueText = `防御 ${nextAction.value}`;
-    } else if (nextAction.type === 'enemy-cleanse') {
-     valueText = '自身の状態異常を全解除 + 自身に凍結';
-    } else if (nextAction.type === 'enemy-paralyze') {
-     valueText = `${nextAction.value}ダメージ + 麻痺`;
-    } else if (nextAction.type === 'enemy-freeze') {
-     valueText = `${nextAction.value}ダメージ + 凍結`;
-    } else if (nextAction.type === 'enemy-burn') {
-     valueText = `${nextAction.value}ダメージ + 火傷`;
-    } else if (nextAction.type === 'enemy-poison') {
-     valueText = `${nextAction.value}ダメージ + 毒`;
-    } else if (nextAction.type === 'enemy-bomb') {
-     valueText = `${nextAction.value}ダメージ + 爆弾`;
-    } else {
-     valueText = `${nextAction.value}ダメージ`;
-    }
-    valueText = maskFieldEffectPredictionValue(valueText);
-    prediction.innerHTML = `
-     <div class="cpu-prediction-label">👁 次の行動予測</div>
-     <div class="cpu-prediction-main">
-      <span class="cpu-prediction-name">${escapeHtml(nextAction.name)}</span>
-      <span class="cpu-prediction-kind">${kind}</span>
-      <span class="cpu-prediction-value">${valueText}</span>
-     </div>
-    `;
-   } else if (prediction) {
-    prediction.innerHTML = '<div class="cpu-prediction-label">👁 次の行動予測</div><div class="cpu-prediction-none">なし</div>';
+   if (prediction) {
+    prediction.innerHTML = renderEnemyActionPredictionHtml(nextAction);
    }
 
    
@@ -18723,7 +19081,7 @@ const nextAction = getCpuNextAction();
    }
 
   if (petTitle && petImage && petPlaceholder && selectedPet && selectedPet.id !== 'none') {
-    petTitle.textContent = `ペット：${selectedPet.name} Lv.${getEffectivePetLevel() >= MAX_PET_LEVEL ? 'MAX' : getEffectivePetLevel()}`;
+    petTitle.textContent = `${selectedPet.name} Lv.${getEffectivePetLevel() >= MAX_PET_LEVEL ? 'MAX' : getEffectivePetLevel()}`;
     petPlaceholder.textContent = selectedPet.placeholder;
     petPlaceholder.style.display = 'none';
     petImage.style.display = '';
