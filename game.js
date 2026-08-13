@@ -4258,6 +4258,10 @@ function getEffectiveCardValue(card) {
 
   if (isAttackCardType(card.type)) {
    value += playerPassives.attack;
+   // 厄災の循環は、蓄積値を次の攻撃カード1枚の表示値と実ダメージへ加える。
+   if (player && Number(player.nextCurseAttackBonus || 0) > 0) {
+    value += Math.max(0, Number(player.nextCurseAttackBonus || 0));
+   }
    if (player && Array.isArray(player.hand) && player.hand.length <= 2) {
     value += Math.max(0, Number(playerPassives.lowHandAttackBonus || 0));
    }
@@ -4950,10 +4954,6 @@ function pickWeightedUniqueItems(items, count, getWeight) {
    picked.push(source.shift());
    continue;
   }
-  if (player && Number(player.nextCurseAttackBonus || 0) > 0) {
-   value += Math.max(0, Number(player.nextCurseAttackBonus || 0));
-  }
-
   let roll = Math.random() * total;
   let pickedIndex = weighted.length - 1;
   for (let i = 0; i < weighted.length; i++) {
@@ -12821,6 +12821,7 @@ function consumeAttackBoostsAfterAttack() {
   playerPassives.packAssaultReady = false;
  }
  if (Number(player.nextCurseAttackBonus || 0) > 0) {
+  addLog(`厄災の循環：攻撃ダメージ+${Math.max(0, Number(player.nextCurseAttackBonus || 0))}を消費`);
   player.nextCurseAttackBonus = 0;
  }
 }
@@ -18723,6 +18724,7 @@ if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-eff
    if (Number(playerPassives.cursePoisonTickDamageBonus || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 毒1回ダメ+${playerPassives.cursePoisonTickDamageBonus}</div>`);
    if (Number(playerPassives.curseDrawBlock || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 呪いドロー毎 防御+${playerPassives.curseDrawBlock}</div>`);
    if (Number(playerPassives.curseDrawNextAttack || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 呪いドロー毎 次攻撃+${playerPassives.curseDrawNextAttack}</div>`);
+   if (player && Number(player.nextCurseAttackBonus || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 厄災の循環 次攻撃+${Math.max(0, Number(player.nextCurseAttackBonus || 0))}（蓄積）</div>`);
    if (Number(playerPassives.curseTurnStartBlockPerCard || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ ターン開始 呪い毎防御+${playerPassives.curseTurnStartBlockPerCard}</div>`);
    if (Number(playerPassives.curseDiscardAoeDamage || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 呪い破棄毎 全体${playerPassives.curseDiscardAoeDamage}ダメ</div>`);
    if (Number(playerPassives.curseDamagePercentPerCard || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 呪い毎 与ダメ+${Math.round(playerPassives.curseDamagePercentPerCard * 100)}%</div>`);
