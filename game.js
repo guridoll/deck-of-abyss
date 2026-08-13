@@ -1418,12 +1418,10 @@ const PET_POOL = [
    if (!indices.length) return null;
    const index = indices[Math.floor(Math.random() * indices.length)];
    const [card] = playerDeck.splice(index, 1);
-   player.hand.push(card);
    deckCount = playerDeck.length;
-   recordCardDiscovery(card.name);
-   handleCurseCardsDrawn([card]);
-   checkBattleCardZoneIntegrity('drawCurseCardToHand');
-   return card;
+   const [drawn] = addCardsToPlayerHand([card], 'drawCurseCardToHand');
+   if (drawn) recordCardDiscovery(drawn.name);
+   return drawn || null;
   }
 
   function applyCurseTurnStartPassive() {
@@ -1969,6 +1967,8 @@ const PET_POOL = [
   let lastRelicReward = null;
   let relicRewardHandledForRun = false;
   let relicRewardModalShownForRun = false;
+  let relicRewardModalTimer = null;
+  let relicRewardModalRequestId = 0;
   let currentFieldEffectId = null;
   let currentFieldEffectSource = '';
   let carriedFieldEffectId = null;
@@ -8101,10 +8101,7 @@ function drawCards(count, shouldDecreaseDeck = true) {
     const index = Math.floor(Math.random() * playerDeck.length);
     const [card] = playerDeck.splice(index, 1);
 
-    result.push({
-     ...card,
-     id: Math.random().toString(36).slice(2),
-    });
+    result.push(createBattleCardInstance(card));
    }
 
    deckCount = playerDeck.length;
@@ -8117,22 +8114,70 @@ function drawCards(count, shouldDecreaseDeck = true) {
     return result;
   }
 
-function drawCardsToPlayerHand(count) {
- if (!player) return [];
- const drawn = drawCards(count, true);
- if (drawn.length > 0) {
- player.hand.push(...drawn);
-  handleCurseCardsDrawn(drawn);
-  checkBattleCardZoneIntegrity('drawCardsToPlayerHand');
- }
- return drawn;
+let battleCardInstanceSequence = 0;
+
+function createBattleCardInstanceId(occupiedIds = null) {
+ const occupied = occupiedIds instanceof Set ? occupiedIds : new Set();
+ let id = '';
+ do {
+  battleCardInstanceSequence += 1;
+  id = `battle-card-${Date.now().toString(36)}-${battleCardInstanceSequence.toString(36)}`;
+ } while (occupied.has(id));
+ return id;
 }
 
-function createBattleCardInstance(card) {
- return card ? {
-  ...card,
-  id: Math.random().toString(36).slice(2),
- } : null;
+function createBattleCardInstance(card, occupiedIds = null) {
+ if (!card) return null;
+ const occupied = occupiedIds instanceof Set ? occupiedIds : new Set();
+ let id = typeof card.id === 'string' ? card.id.trim() : '';
+ if (!id || occupied.has(id)) id = createBattleCardInstanceId(occupied);
+ occupied.add(id);
+ return { ...card, id };
+}
+
+function addCardsToPlayerHand(cards, context = 'cardEffectDraw') {
+ if (!player || !Array.isArray(player.hand)) return [];
+ const occupiedIds = new Set(
+  player.hand
+   .map(card => typeof card?.id === 'string' ? card.id.trim() : '')
+   .filter(Boolean)
+ );
+ getActionQueue().forEach(action => {
+  if (action?.type === 'card' && action.cardId) occupiedIds.add(String(action.cardId));
+ });
+
+ const materialized = (Array.isArray(cards) ? cards : [])
+  .map(card => createBattleCardInstance(card, occupiedIds))
+  .filter(Boolean);
+ if (!materialized.length) return [];
+
+ player.hand.push(...materialized);
+ handleCurseCardsDrawn(materialized);
+ checkBattleCardZoneIntegrity(context);
+ return materialized;
+}
+
+function ensurePlayerHandCardInstanceIds() {
+ if (!player || !Array.isArray(player.hand)) return false;
+ const occupiedIds = new Set();
+ let repaired = false;
+ player.hand = player.hand.map(card => {
+  const currentId = typeof card?.id === 'string' ? card.id.trim() : '';
+  if (currentId && !occupiedIds.has(currentId)) {
+   occupiedIds.add(currentId);
+   return card;
+  }
+  repaired = true;
+  return createBattleCardInstance({ ...(card || {}), id: '' }, occupiedIds);
+ });
+ if (repaired) checkBattleCardZoneIntegrity('repairHandCardInstanceIds');
+ return repaired;
+}
+
+function drawCardsToPlayerHand(count, context = 'cardEffectDraw') {
+ if (!player) return [];
+ const drawn = drawCards(count, true);
+ return addCardsToPlayerHand(drawn, context);
 }
 
 function takeTutorialCardForHand(name, fallbackCategory = '') {
@@ -9211,11 +9256,7 @@ function startReload() {
      }
 
      const drawCount = Math.max(1, RELOAD_DRAW_COUNT + playerPassives.reloadDrawBonus - drawPenalty);
-     const newCards = drawCards(drawCount, true);
-
-     player.hand.push(...newCards);
-     handleCurseCardsDrawn(newCards);
-     checkBattleCardZoneIntegrity('reloadComplete');
+     const newCards = addCardsToPlayerHand(drawCards(drawCount, true), 'reloadComplete');
      if (player.pendingReloadDoublePlay) {
       player.pendingReloadDoublePlay = false;
       player.doublePlayNextCard = true;
@@ -10866,7 +10907,9 @@ function saveDeckCustomize() {
    const hasCompletedVictory = Boolean(battleResultStats && battleResultStats.result === 'win');
    if (victoryNextLevelTransitionInProgress || currentScreen !== 'battle' || !hasCompletedVictory) return;
 
-   victoryNextLevelTransitionInProgress = true;
+    victoryNextLevelTransitionInProgress = true;
+    // A delayed relic popup must never survive into the passive/shop/event screen.
+    closeRelicRewardModal();
    const resultNextButton = document.getElementById('battle-result-next-button');
    if (resultNextButton) resultNextButton.disabled = true;
 
@@ -11500,28 +11543,60 @@ function playSound(type) {
   }
 
   function showRelicRewardModal(reward = lastRelicReward) {
-   if (!reward || !reward.relicId) return;
-   const modal = document.getElementById('relic-reward-modal');
-   const content = document.getElementById('relic-reward-modal-content');
-   if (!modal || !content) return;
+   if (!reward || !reward.relicId) return false;
+   if (!(gameOver || currentScreen === 'clear')) return false;
+   if (pendingShopChoice || pendingPassiveChoice || Boolean(pendingRandomEvent)) return false;
+    const modal = document.getElementById('relic-reward-modal');
+    const content = document.getElementById('relic-reward-modal-content');
+   if (!modal || !content) return false;
 
-   content.innerHTML = getRelicRewardModalHtml(reward);
-   modal.style.display = 'flex';
-   playSound('success');
+   forceHideOwnedDeckModal();
+   forceHideOwnedPassivesModal();
+    content.innerHTML = getRelicRewardModalHtml(reward);
+   modal.classList.add('is-open');
+   modal.style.setProperty('display', 'flex', 'important');
+   modal.setAttribute('aria-hidden', 'false');
+   modal.scrollTop = 0;
+    playSound('success');
+   requestAnimationFrame(() => modal.querySelector('.relic-reward-ok')?.focus());
+   return true;
   }
 
   function closeRelicRewardModal(event) {
-   if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
-   const modal = document.getElementById('relic-reward-modal');
-   if (modal) modal.style.display = 'none';
+    if (event && event.target && event.currentTarget && event.target !== event.currentTarget) return;
+   relicRewardModalRequestId += 1;
+   if (relicRewardModalTimer) {
+    clearTimeout(relicRewardModalTimer);
+    relicRewardModalTimer = null;
+   }
+    const modal = document.getElementById('relic-reward-modal');
+   const content = document.getElementById('relic-reward-modal-content');
+   if (modal) {
+    modal.classList.remove('is-open');
+    modal.style.setProperty('display', 'none', 'important');
+    modal.setAttribute('aria-hidden', 'true');
+   }
+   if (content) content.innerHTML = '';
   }
 
   function showPendingRelicRewardModalIfNeeded() {
-   if (relicRewardModalShownForRun || !lastRelicReward || !lastRelicReward.relicId) return;
-   if (!(gameOver || currentScreen === 'clear')) return;
+    if (relicRewardModalShownForRun || !lastRelicReward || !lastRelicReward.relicId) return;
+    if (!(gameOver || currentScreen === 'clear')) return;
+   if (pendingShopChoice || pendingPassiveChoice || Boolean(pendingRandomEvent)) return;
 
-   relicRewardModalShownForRun = true;
-   setTimeout(() => showRelicRewardModal(lastRelicReward), 120);
+    relicRewardModalShownForRun = true;
+   const rewardId = lastRelicReward.relicId;
+   const requestId = ++relicRewardModalRequestId;
+   if (relicRewardModalTimer) clearTimeout(relicRewardModalTimer);
+   relicRewardModalTimer = setTimeout(() => {
+    relicRewardModalTimer = null;
+    const rewardStillCurrent = requestId === relicRewardModalRequestId
+     && lastRelicReward?.relicId === rewardId;
+    if (!rewardStillCurrent || !showRelicRewardModal(lastRelicReward)) {
+     // Permit a later render to retry only when this is still the same reward.
+     if (lastRelicReward?.relicId === rewardId) relicRewardModalShownForRun = false;
+    }
+   }, 120);
   }
 
   function getBattleResultHtml() {
@@ -17209,6 +17284,8 @@ function updateDeckHoverDetail() {
 
 
 function getBattleCardDisplayValue(card) {
+ const damagePreview = getLiveCardDamagePreview(card);
+ if (damagePreview) return damagePreview.valueText;
   if (!card) return getEffectiveCardValue(card);
 
  if (isBombCardType(card.type)) {
@@ -17248,6 +17325,234 @@ function getBattleCardDisplayValue(card) {
   : getEffectiveCardValue(card);
 }
 
+function applyLiveDamageModifiers(rawDamage, options = {}) {
+ let damage = Math.max(0, Number(rawDamage || 0));
+ if (!Number.isFinite(damage)) damage = 0;
+
+ if (options.playerCardDamage && playerPassives.rareBerserkHalfHp && player && player.hp <= Math.floor(getPlayerMaxHp() / 2)) {
+  damage *= 2;
+ }
+
+ const curseResonance = countCurseCardsInBattleZones() * Math.max(0, Number(playerPassives.curseDamagePercentPerCard || 0));
+ if (curseResonance > 0 && damage > 0) damage = Math.ceil(damage * (1 + curseResonance));
+
+ if (cpu && Number(cpu.freeze || 0) > 0) {
+  const frozenBonus = Math.max(0, Number(playerPassives.frozenVulnerabilityDamageBonus || 0) + getFieldEffectFrozenDamageBonus());
+  if (frozenBonus > 0 && damage > 0) damage = Math.ceil(damage * (1 + frozenBonus));
+ }
+
+ if (cpu && Number(cpu.poisonTurns || 0) > 0 && Number(cpu.poisonVulnerabilityTurns || 0) > 0 && damage > 0) {
+  damage = Math.ceil(damage * 1.5);
+ }
+
+ return Math.max(0, Math.floor(damage));
+}
+
+function simulateLiveEnemyHpDamage(rawHits, options = {}) {
+ if (!cpu || cpu.invincible) return { total: 0, hits: rawHits.map(() => 0) };
+ let block = options.ignoreBlock ? 0 : Math.max(0, Number(cpu.block || 0) - Math.max(0, Number(cpu.defenseDownTurns || 0) > 0 ? Number(cpu.defenseDownValue || 0) : 0));
+ let hp = Math.max(0, Number(cpu.hp || 0));
+ let tenacityAvailable = enemyHasPassive('tenacity') && !cpu.enemyTenacityUsed;
+ const hits = [];
+
+ rawHits.forEach(raw => {
+  const incoming = applyLiveDamageModifiers(raw, options);
+  const blocked = Math.min(block, incoming);
+  block = Math.max(0, block - incoming);
+  let dealt = Math.min(hp, Math.max(0, incoming - blocked));
+  if (tenacityAvailable && dealt > 0 && hp - dealt <= 0) {
+   dealt = Math.max(0, hp - 1);
+   tenacityAvailable = false;
+  }
+  hp = Math.max(0, hp - dealt);
+  hits.push(dealt);
+ });
+
+ return { total: hits.reduce((sum, value) => sum + value, 0), hits };
+}
+
+function getLiveCardDamagePreview(card, recursionDepth = 0) {
+ if (!card || !player || !cpu || recursionDepth > 1) return null;
+ const type = String(card.type || '');
+ let rawHits = [];
+ let printedHits = [];
+ let note = '';
+ let chance = '';
+ let ignoreBlock = false;
+ let playerCardDamage = true;
+
+ const effective = (source = card) => Math.max(0, Number(getEffectiveCardValue(source) || 0));
+ const one = (raw, printed = Number(card.value || 0)) => {
+  rawHits = [Math.max(0, Number(raw || 0))];
+  printedHits = [Math.max(0, Number(printed || 0))];
+ };
+
+ if (type === 'echo-repeat') {
+  const source = player.lastPlayedCardForEcho;
+  if (!source || ['echo-repeat', 'chaos-hand'].includes(source.type)) return null;
+  const copied = getLiveCardDamagePreview(source, recursionDepth + 1);
+  return copied ? { ...copied, detailText: `再発動：${source.name} / ${copied.detailText}` } : null;
+ }
+
+ if (type === 'percent-hp-attack') {
+  one(Math.max(1, Math.floor(Number(cpu.hp || 0) * Math.max(1, Number(card.value || 10)) / 100)), 0);
+  note = `敵HP${Math.max(1, Number(card.value || 10))}%`;
+ } else if (type === 'revenge-attack') {
+  one(Math.max(0, getPlayerMaxHp() - Number(player.hp || 0)), 0);
+  note = '被ダメ参照';
+ } else if (type === 'berserk-strike') {
+  const selfDamage = Math.max(1, Math.floor(Number(player.hp || 0) * 0.2));
+  one(effective({ ...card, type: 'attack', value: selfDamage * Math.max(1, Number(card.value || 3)) }), Number(card.value || 3));
+  note = `HP-${selfDamage}`;
+ } else if (type === 'blood-slash') {
+  one(effective({ ...card, type: 'attack', value: Number(card.value || 10) }));
+ } else if (type === 'scaling-attack') {
+  const base = getScalingCardCurrentValue(card);
+  one(effective({ ...card, value: base }), base);
+  note = `成長値${base}`;
+ } else if (type === 'pet-spirit-attack') {
+  one(getPetSpiritAttackValue(card), Number(card.value || 0));
+  note = `ペット行動${Math.max(0, Number(playerPassives.petSpiritAttackActions || 0))}回`;
+ } else if (type === 'paralyze-bonus-attack') {
+  const active = Boolean(Number(cpu.paralysis || 0) > 0 || (cpu.paralyzed && Number(cpu.paralysisTimer || 0) > 0));
+  one(effective(card) + (active ? Number(card.bonus || 5) : 0));
+  note = active ? `麻痺追撃+${Number(card.bonus || 5)}` : '麻痺追撃なし';
+ } else if (type === 'freeze-bonus-attack' || type === 'field-ice-follow') {
+  const active = Number(cpu.freeze || 0) > 0;
+  const source = type === 'field-ice-follow' ? { ...card, type: 'attack' } : card;
+  one(effective(source) + (active ? Number(card.bonus || (type === 'field-ice-follow' ? 5 : 10)) : 0));
+  note = active ? '凍結追撃あり' : '凍結追撃なし';
+ } else if (type === 'freeze-triple-attack') {
+  const hits = Number(cpu.freeze || 0) > 0 ? Math.max(1, Number(card.hits || 3)) : 1;
+  rawHits = Array(hits).fill(effective(card));
+  printedHits = Array(hits).fill(Math.max(0, Number(card.value || 0)));
+  note = hits > 1 ? '凍結連撃' : '非凍結';
+ } else if (type === 'finisher-attack') {
+  const active = Number(cpu.hp || 0) <= Math.floor(Math.max(1, getEnemyMaxHp()) * Number(card.threshold || 0.5));
+  one(effective(card) + (active ? Number(card.bonus || 8) : 0));
+  note = active ? 'HP条件成立' : 'HP条件未成立';
+ } else if (type === 'burn-bonus-attack') {
+  const active = Boolean(cpu.burn);
+  one(effective(card) + (active ? Number(card.bonus || 5) : 0));
+  note = active ? '火傷特効あり' : '火傷特効なし';
+ } else if (type === 'timer-execute-attack') {
+  const active = Number(enemyTimer || 0) <= Math.max(0, Number(card.threshold || 2));
+  one(effective(card) + (active ? Number(card.bonus || 10) : 0));
+  note = active ? '処刑条件成立' : '処刑条件未成立';
+ } else if (type === 'pursuit-attack') {
+  const active = Math.max(0, player.hand.length - 1) <= 2;
+  one(effective(card) + (active ? Number(card.bonus || 3) : 0));
+  note = active ? '手札条件成立' : '手札条件未成立';
+ } else if (type === 'counter-blade') {
+  const active = isEnemyPreparingAttack();
+  one(effective(card) + (active ? Number(card.bonus || 4) : 0));
+  note = active ? '攻撃準備追撃あり' : '追撃なし';
+ } else if (type === 'poison-fang') {
+  const bonus = Math.floor(getEnemyPoisonAmount() * Math.max(0, Number(card.poisonScale ?? 0.25)));
+  one(effective(card) + bonus);
+  note = `毒追撃+${bonus}`;
+ } else if (type === 'poison-burst') {
+  const consumed = Math.floor(getEnemyPoisonAmount() * Math.max(0, Math.min(1, Number(card.consumeRatio ?? 0.5))));
+  one(Math.floor(consumed * Math.max(0, Number(card.value || 0.75))), 0);
+  playerCardDamage = false;
+  note = `毒${consumed}消費`;
+ } else if (type === 'poison-banquet') {
+  one(getEnemyPoisonAmount(), 0);
+  playerCardDamage = false;
+  note = `毒${getEnemyPoisonAmount()}消費`;
+ } else if (type === 'double-slash' || type === 'rare-double-attack' || type === 'curse-chain-attack') {
+  let hits = type === 'rare-double-attack' ? 5 : Math.max(1, Number(card.hits || 2));
+  if (type === 'curse-chain-attack' && countCurseCardsInPlayerBuild() >= 2) hits += Math.max(1, Number(card.bonusHit || 1));
+  rawHits = Array(hits).fill(effective(card));
+  printedHits = Array(hits).fill(Math.max(0, Number(card.value || 0)));
+  note = `${hits}ヒット`;
+ } else if (type === 'chance-attack' || type === 'high-risk-attack') {
+  const multiplier = getChanceSuccessEffectMultiplier();
+  one(effective(card) * multiplier);
+  chance = player.nextChanceCardGuaranteed ? '確定時' : `成功時${Math.round(Number(card.chance || 0) * 100)}%`;
+ } else if (type === 'risky-self-attack') {
+  one(effective(card));
+  chance = player.nextChanceCardGuaranteed ? '確定時' : '成功時50%';
+ } else if (type === 'gamble-attack') {
+  const boost = Math.max(0, Number(player.petAttackBoost || 0));
+  const multiplier = player.enhanceNextAttack ? 2 : 1;
+  const minResult = simulateLiveEnemyHpDamage([boost * multiplier], { playerCardDamage: true });
+  const maxResult = simulateLiveEnemyHpDamage([(10 + boost) * multiplier], { playerCardDamage: true });
+  return { valueText: `${minResult.total}〜${maxResult.total}`, detailText: `実ダメ ${minResult.total}〜${maxResult.total}（ランダム）`, changed: true };
+ } else if (type === 'pierce-attack') {
+  one(effective(card));
+  ignoreBlock = true;
+  note = '防御無視';
+ } else if (type === 'field-fog-blade') {
+  const active = isFieldEffectActive('abyss_fog');
+  one(effective({ ...card, type: 'attack' }) + (active ? Number(card.bonus || 4) : 0));
+  note = active ? '深淵の霧追撃あり' : '追撃なし';
+ } else if (type === 'field-gravity-slash' || type === 'field-toxic-blade') {
+  one(effective({ ...card, type: 'attack' }));
+ } else if (type === 'curse-hand-attack') {
+  const count = countCurseCardsInPlayerBuild();
+  one(effective({ ...card, value: Number(card.value || 8) + count * Number(card.perCurse || 2) }), Number(card.value || 8));
+  note = `構築呪い${count}枚`;
+ } else if (type === 'curse-threshold-attack-draw') {
+  const count = countCurseCardsInPlayerBuild();
+  one(effective({ ...card, value: Number(card.value || 14) + (count >= 1 ? Number(card.bonus || 8) : 0) }), Number(card.value || 14));
+  note = count >= 1 ? '呪い条件成立' : '呪い条件未成立';
+ } else if (type === 'curse-total-aoe-attack' || type === 'curse-total-aoe-judgment') {
+  const count = countCurseCardsInBattleZones();
+  one(effective({ ...card, value: Number(card.value || 0) + count * Number(card.perCurse || 0) }), Number(card.value || 0));
+  note = `戦闘領域の呪い${count}枚`;
+ } else if (type === 'bomb-powder-damage') {
+  const count = getEnemyBombs().length;
+  one(count * Math.max(0, Number(card.value || 2)), 0);
+  playerCardDamage = false;
+  note = `爆弾${count}個`;
+ } else if (['bomb-emergency-detonate', 'bomb-detonate-all', 'bomb-doomsday'].includes(type)) {
+  const cardMultiplier = type === 'bomb-doomsday' ? Number(card.damageMultiplier || 2) : type === 'bomb-emergency-detonate' ? Number(card.damageMultiplier || 0.7) : 1;
+  rawHits = getEnemyBombs().map(bomb => Math.max(0, Math.round(Number(bomb.damage || 0) * Number(bomb.damageMultiplier || 1) * cardMultiplier * getEnemyBombDamageMultiplier() * (1 + Math.max(0, Number(playerPassives.bombDamageBonusMultiplier || 0))) * getFieldEffectBombDamageMultiplier())));
+  printedHits = rawHits.slice();
+  playerCardDamage = false;
+  note = `爆弾${rawHits.length}個を即起爆`;
+  if (!rawHits.length) rawHits = [0];
+ } else if (type === 'desperate-power') {
+  const active = Number(player.hp || 0) <= Math.floor(getPlayerMaxHp() / 2);
+  one(active ? effective(card) : 0);
+  note = active ? 'HP条件成立' : 'HP条件未成立';
+ } else if (isAttackCardType(type)) {
+  let raw = effective(card);
+  if (type === 'attack') {
+   const threshold = Number(card.enemyHpThreshold || 0);
+   if (threshold > 0 && Number(cpu.maxHp || 0) > 0 && Number(cpu.hp || 0) <= Number(cpu.maxHp || 0) * threshold) {
+    raw += Number(card.bonus || 0);
+    note = `HP${Math.round(threshold * 100)}%条件成立`;
+   }
+  }
+  one(raw);
+ } else {
+  return null;
+ }
+
+ if (!rawHits.length) return null;
+ const result = simulateLiveEnemyHpDamage(rawHits, { ignoreBlock, playerCardDamage });
+ const printedTotal = printedHits.reduce((sum, value) => sum + value, 0);
+ const hitText = result.hits.length > 1 && result.hits.every(value => value === result.hits[0])
+  ? `${result.hits[0]}×${result.hits.length}＝${result.total}`
+  : result.hits.length > 1 ? `${result.hits.join('+')}＝${result.total}` : `${result.total}`;
+ const context = [chance, note].filter(Boolean).join(' / ');
+ const changed = printedTotal !== result.total || result.hits.length > 1 || Boolean(context) || Number(cpu.block || 0) > 0;
+ const baseText = printedTotal > 0 && printedTotal !== result.total ? `基本${printedTotal} → ` : '';
+ return {
+  valueText: result.total,
+  detailText: `${baseText}実ダメ ${hitText}${context ? `（${context}）` : ''}`,
+  changed,
+ };
+}
+
+function getLiveCardDamagePreviewHtml(card) {
+ const preview = getLiveCardDamagePreview(card);
+ if (!preview) return '';
+ return `<div class="live-damage-preview${preview.changed ? ' is-modified' : ''}">${escapeHtml(preview.detailText)}</div>`;
+}
+
 function getDisplayCardText(card) {
     if (card.type === 'self-damage-attack') {
      return '10ダメージ / 与えたダメージの1/2を受ける';
@@ -17260,11 +17565,17 @@ function getDisplayCardText(card) {
 
 
   const value = getBattleCardDisplayValue(card);
+  const liveDamagePreview = getLiveCardDamagePreview(card);
 
   if (isBombCardType(card.type)) {
    if (card.type === 'bomb-powder-damage') return `設置中の爆弾${getEnemyBombs().length}個 × ${card.value || 2}ダメージ`;
+   if (liveDamagePreview) return getBaseCardDisplayText(card);
    return getBaseCardDisplayText(card);
   }
+
+  // 即時ダメージの現在値は専用の予測欄へ集約し、本文はカード本来の条件・効果を残す。
+  // これにより「現在値に、本文記載の条件ボーナスがさらに足される」ような二重解釈を防ぐ。
+  if (liveDamagePreview) return getBaseCardDisplayText(card);
 
   if (card.type === 'blood-slash') {
   const selfDamage = Math.max(0, Number(card.selfDamage || 2));
@@ -17583,6 +17894,8 @@ function getOwnedDeckCardsHtml() {
 
 function openOwnedDeckModal() {
  playUiSelectSound();
+ if (!(pendingShopChoice || pendingPassiveChoice || Boolean(pendingRandomEvent))) return;
+ forceHideOwnedPassivesModal();
  ownedDeckModalOpen = true;
  renderOwnedDeckModal();
 }
@@ -17607,7 +17920,7 @@ function closeOwnedDeckModal() {
  // 先に確実に閉じる。効果音側で例外が出ても閉じる処理を止めない。
  forceHideOwnedDeckModal();
  try {
-  playUiCancelSound();
+  playUiSelectSound();
  } catch (error) {
   console.warn('close sound failed', error);
  }
@@ -17625,7 +17938,7 @@ function renderOwnedDeckModal() {
  if (!modal || !list) return;
 
  const canShow = ownedDeckModalOpen && (pendingShopChoice || pendingPassiveChoice || Boolean(pendingRandomEvent));
- modal.style.display = canShow ? 'flex' : 'none';
+ modal.style.setProperty('display', canShow ? 'flex' : 'none', 'important');
  modal.classList.toggle('is-open', canShow);
  modal.setAttribute('aria-hidden', canShow ? 'false' : 'true');
 
@@ -17726,6 +18039,8 @@ function getOwnedPassivesHtml() {
 
 function openOwnedPassivesModal() {
  playUiSelectSound();
+ if (!(pendingShopChoice || pendingPassiveChoice || Boolean(pendingRandomEvent))) return;
+ forceHideOwnedDeckModal();
  ownedPassivesModalHardClosed = false;
  ownedPassivesModalOpen = true;
  renderOwnedPassivesModal();
@@ -17757,7 +18072,7 @@ function closeOwnedPassivesModal(event) {
  setTimeout(() => forceHideOwnedPassivesModal(), 0);
  setTimeout(() => forceHideOwnedPassivesModal(), 50);
  try {
-  playUiCancelSound();
+  playUiSelectSound();
  } catch (error) {
   console.warn('close passive modal sound failed', error);
  }
@@ -17773,7 +18088,7 @@ function renderOwnedPassivesModal() {
  if (!modal || !list) return;
 
  const canShow = ownedPassivesModalOpen && !ownedPassivesModalHardClosed && (pendingShopChoice || pendingPassiveChoice || Boolean(pendingRandomEvent));
- modal.style.display = canShow ? 'flex' : 'none';
+ modal.style.setProperty('display', canShow ? 'flex' : 'none', 'important');
  modal.classList.toggle('is-open', canShow);
  modal.setAttribute('aria-hidden', canShow ? 'false' : 'true');
 
@@ -17824,8 +18139,8 @@ function updateShopModalVisibility() {
     && Array.isArray(currentShopCards)
     && currentShopCards.length > 0;
 
-   shopModal.classList.toggle('is-open', shouldShowShop);
-   shopModal.style.display = shouldShowShop ? 'flex' : 'none';
+    shopModal.classList.toggle('is-open', shouldShowShop);
+   shopModal.style.setProperty('display', shouldShowShop ? 'flex' : 'none', 'important');
    shopModal.setAttribute('aria-hidden', shouldShowShop ? 'false' : 'true');
   }
 
@@ -19264,32 +19579,38 @@ function render() {
     if (currentScreen === 'save-slot') renderSaveSlotList('save');
    }
 
-   document.getElementById('title-screen').style.display = currentScreen === 'title' ? 'flex' : 'none';
+   const setScreenDisplay = (id, display) => {
+    const element = document.getElementById(id);
+    if (element) element.style.display = display;
+    return element;
+   };
+
+   setScreenDisplay('title-screen', currentScreen === 'title' ? 'flex' : 'none');
    renderMenuStatusSummary();
-   document.getElementById('collection-screen').style.display = currentScreen === 'collection' ? 'flex' : 'none';
-   document.getElementById('card-library-screen').style.display = currentScreen === 'card-library' ? 'flex' : 'none';
-   document.getElementById('enemy-library-screen').style.display = currentScreen === 'enemy-library' ? 'flex' : 'none';
-   document.getElementById('passive-library-screen').style.display = currentScreen === 'passive-library' ? 'flex' : 'none';
-   document.getElementById('achievement-library-screen').style.display = currentScreen === 'achievement-library' ? 'flex' : 'none';
-   document.getElementById('random-event-library-screen').style.display = currentScreen === 'random-event-library' ? 'flex' : 'none';
-   document.getElementById('field-effect-library-screen').style.display = currentScreen === 'field-effect-library' ? 'flex' : 'none';
-   document.getElementById('relic-library-screen').style.display = currentScreen === 'relic-library' ? 'flex' : 'none';
-   document.getElementById('relic-equip-screen').style.display = currentScreen === 'relic-equip' ? 'flex' : 'none';
-   document.getElementById('pet-library-screen').style.display = currentScreen === 'pet-library' ? 'flex' : 'none';
-   document.getElementById('battle-history-screen').style.display = currentScreen === 'battle-history' ? 'flex' : 'none';
+   setScreenDisplay('collection-screen', currentScreen === 'collection' ? 'flex' : 'none');
+   setScreenDisplay('card-library-screen', currentScreen === 'card-library' ? 'flex' : 'none');
+   setScreenDisplay('enemy-library-screen', currentScreen === 'enemy-library' ? 'flex' : 'none');
+   setScreenDisplay('passive-library-screen', currentScreen === 'passive-library' ? 'flex' : 'none');
+   setScreenDisplay('achievement-library-screen', currentScreen === 'achievement-library' ? 'flex' : 'none');
+   setScreenDisplay('random-event-library-screen', currentScreen === 'random-event-library' ? 'flex' : 'none');
+   setScreenDisplay('field-effect-library-screen', currentScreen === 'field-effect-library' ? 'flex' : 'none');
+   setScreenDisplay('relic-library-screen', currentScreen === 'relic-library' ? 'flex' : 'none');
+   setScreenDisplay('relic-equip-screen', currentScreen === 'relic-equip' ? 'flex' : 'none');
+   setScreenDisplay('pet-library-screen', currentScreen === 'pet-library' ? 'flex' : 'none');
+   setScreenDisplay('battle-history-screen', currentScreen === 'battle-history' ? 'flex' : 'none');
    const rankingScreen = document.getElementById('ranking-screen');
    if (rankingScreen) rankingScreen.style.display = currentScreen === 'ranking' ? 'flex' : 'none';
-   document.getElementById('help-screen').style.display = currentScreen === 'help' ? 'flex' : 'none';
+   setScreenDisplay('help-screen', currentScreen === 'help' ? 'flex' : 'none');
    if (currentScreen === 'help') setupHelpGuideCards();
-   document.getElementById('clear-screen').style.display = currentScreen === 'clear' ? 'flex' : 'none';
+   setScreenDisplay('clear-screen', currentScreen === 'clear' ? 'flex' : 'none');
    if (currentScreen === 'clear') renderClearScreen();
-   document.getElementById('customize-screen').style.display = currentScreen === 'customize' ? 'block' : 'none';
-   document.getElementById('pet-select-screen').style.display = currentScreen === 'pet-select' ? 'block' : 'none';
+   setScreenDisplay('customize-screen', currentScreen === 'customize' ? 'block' : 'none');
+   setScreenDisplay('pet-select-screen', currentScreen === 'pet-select' ? 'block' : 'none');
    const battleScreen = document.getElementById('battle-screen');
-   battleScreen.style.display = currentScreen === 'battle' ? 'block' : 'none';
+   if (battleScreen) battleScreen.style.display = currentScreen === 'battle' ? 'block' : 'none';
    Object.values(FIELD_EFFECT_DEFINITIONS).forEach(field => {
-    const active = currentScreen === 'battle' && currentFieldEffectId === field.id;
-    battleScreen.classList.toggle(field.className, active);
+     const active = currentScreen === 'battle' && currentFieldEffectId === field.id;
+    if (battleScreen) battleScreen.classList.toggle(field.className, active);
     document.body.classList.toggle(field.className, active);
    });
    document.body.classList.toggle('abyss-field-active', currentScreen === 'battle' && Boolean(currentFieldEffectId));
@@ -19515,6 +19836,7 @@ const cards = document.getElementById('cards');
    }
 
    if (cards && player) {
+   ensurePlayerHandCardInstanceIds();
    cards.classList.toggle('paralyzed-hand', Boolean(player.paralyzed && player.paralysisTimer > 0));
    cards.classList.toggle('frozen-hand', isPlayerFrozen());
    cards.dataset.handCount = String(Array.isArray(player.hand) ? player.hand.length : 0);
@@ -19536,10 +19858,13 @@ const cards = document.getElementById('cards');
      const inactive = bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || isRandomEventInputBlocked() || isPlayerFrozen();
 
      button.className = `card ${getCardVisualClass(card)} ${card.type || ''} ${card.type ? `${card.type}-card` : ''}${getCardRarityClass(card)}${(player.cooldown || inactive) ? ' disabled' : ''}${canQueueClick ? ' action-queue-enabled' : ''}${queueNumber > 0 ? ' action-queued' : ''}`;
+     button.type = 'button';
      button.dataset.cardId = card.id;
+     button.setAttribute('aria-disabled', (player.cooldown || inactive) && !canQueueClick ? 'true' : 'false');
 
      const displayValue = getBattleCardDisplayValue(card);
      const displayText = getDisplayCardText(card);
+     const liveDamagePreview = getLiveCardDamagePreviewHtml(card);
 
      button.innerHTML = `
       ${queueNumber > 0 ? `<div class="action-queue-badge">${getActionQueueLabel(queueNumber)}</div>` : ''}
@@ -19550,6 +19875,7 @@ const cards = document.getElementById('cards');
        <div class="card-icon">${getCardIcon(card.type)}</div>
       </div>
       <div class="value">${displayValue}</div>
+      ${liveDamagePreview}
       <div class="card-text">${displayText}</div>
       <div class="card-cooldown">${getEffectiveCardCooldownText(card)}</div>
      `;
