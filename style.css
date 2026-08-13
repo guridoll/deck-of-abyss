@@ -18469,9 +18469,9 @@ body.battle-defeat-slowmo .battle-area {
   max-height: 232px;
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: 48px 54px 42px;
-  gap: 8px;
-  padding: 14px 14px 42px !important;
+  grid-template-rows: 48px 58px 40px;
+  gap: 6px;
+  padding: 14px 14px 46px !important;
   transform-origin: center bottom !important;
   transition:
     transform 0.14s ease,
@@ -18549,9 +18549,9 @@ body.battle-defeat-slowmo .battle-area {
 }
 
 #battle-screen #cards.cards .card .card-text {
-  min-height: 42px !important;
-  max-height: 42px !important;
-  height: 42px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  height: 40px !important;
   margin: 0 !important;
   padding: 6px 9px !important;
   display: -webkit-box !important;
@@ -18566,6 +18566,9 @@ body.battle-defeat-slowmo .battle-area {
 #battle-screen #cards.cards .card .card-cooldown {
   right: 10px;
   bottom: 8px;
+  max-width: calc(100% - 20px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #battle-screen #cards.cards .card:hover,
@@ -20711,23 +20714,4 @@ body > #sound-settings-modal .sound-settings-dialog {
 .curse-theme-card .library-card-text,
 .curse-theme-card .shop-card-text {
   color: #e4e4e7 !important;
-}
-.card .live-damage-preview {
-  margin: 0.15rem 0.35rem 0.2rem;
-  padding: 0.22rem 0.35rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 0.35rem;
-  background: rgba(8, 12, 20, 0.58);
-  color: rgba(245, 248, 255, 0.88);
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1.25;
-  text-align: center;
-}
-
-.card .live-damage-preview.is-modified {
-  border-color: rgba(255, 210, 92, 0.72);
-  background: linear-gradient(135deg, rgba(72, 45, 5, 0.82), rgba(26, 20, 12, 0.78));
-  color: #ffe599;
-  box-shadow: 0 0 0.45rem rgba(255, 189, 47, 0.2);
 }

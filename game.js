@@ -17349,24 +17349,10 @@ function applyLiveDamageModifiers(rawDamage, options = {}) {
 }
 
 function simulateLiveEnemyHpDamage(rawHits, options = {}) {
- if (!cpu || cpu.invincible) return { total: 0, hits: rawHits.map(() => 0) };
- let block = options.ignoreBlock ? 0 : Math.max(0, Number(cpu.block || 0) - Math.max(0, Number(cpu.defenseDownTurns || 0) > 0 ? Number(cpu.defenseDownValue || 0) : 0));
- let hp = Math.max(0, Number(cpu.hp || 0));
- let tenacityAvailable = enemyHasPassive('tenacity') && !cpu.enemyTenacityUsed;
- const hits = [];
-
- rawHits.forEach(raw => {
-  const incoming = applyLiveDamageModifiers(raw, options);
-  const blocked = Math.min(block, incoming);
-  block = Math.max(0, block - incoming);
-  let dealt = Math.min(hp, Math.max(0, incoming - blocked));
-  if (tenacityAvailable && dealt > 0 && hp - dealt <= 0) {
-   dealt = Math.max(0, hp - 1);
-   tenacityAvailable = false;
-  }
-  hp = Math.max(0, hp - dealt);
-  hits.push(dealt);
- });
+ if (!cpu) return { total: 0, hits: rawHits.map(() => 0) };
+ // Hand cards show outgoing damage after attacker-side bonuses and conditions.
+ // Enemy HP, defense/block and fatal-hit clamps belong only to resolution.
+ const hits = rawHits.map(raw => applyLiveDamageModifiers(raw, options));
 
  return { total: hits.reduce((sum, value) => sum + value, 0), hits };
 }
@@ -17478,7 +17464,7 @@ function getLiveCardDamagePreview(card, recursionDepth = 0) {
   const multiplier = player.enhanceNextAttack ? 2 : 1;
   const minResult = simulateLiveEnemyHpDamage([boost * multiplier], { playerCardDamage: true });
   const maxResult = simulateLiveEnemyHpDamage([(10 + boost) * multiplier], { playerCardDamage: true });
-  return { valueText: `${minResult.total}〜${maxResult.total}`, detailText: `実ダメ ${minResult.total}〜${maxResult.total}（ランダム）`, changed: true };
+  return { valueText: `${minResult.total}〜${maxResult.total}`, total: maxResult.total, hits: maxResult.hits, chance: 'ランダム', note: '', changed: true };
  } else if (type === 'pierce-attack') {
   one(effective(card));
   ignoreBlock = true;
@@ -17538,44 +17524,106 @@ function getLiveCardDamagePreview(card, recursionDepth = 0) {
   ? `${result.hits[0]}×${result.hits.length}＝${result.total}`
   : result.hits.length > 1 ? `${result.hits.join('+')}＝${result.total}` : `${result.total}`;
  const context = [chance, note].filter(Boolean).join(' / ');
- const changed = printedTotal !== result.total || result.hits.length > 1 || Boolean(context) || Number(cpu.block || 0) > 0;
- const baseText = printedTotal > 0 && printedTotal !== result.total ? `基本${printedTotal} → ` : '';
- return {
+ const changed = printedTotal !== result.total || result.hits.length > 1 || Boolean(context);
+  return {
   valueText: result.total,
-  detailText: `${baseText}実ダメ ${hitText}${context ? `（${context}）` : ''}`,
+  total: result.total,
+  hits: result.hits,
+  hitText,
+  chance,
+  note,
+  context,
   changed,
  };
 }
 
-function getLiveCardDamagePreviewHtml(card) {
- const preview = getLiveCardDamagePreview(card);
- if (!preview) return '';
- return `<div class="live-damage-preview${preview.changed ? ' is-modified' : ''}">${escapeHtml(preview.detailText)}</div>`;
+function getBattleDamageSecondaryText(card, preview) {
+ if (!card || !preview) return '';
+ const type = String(card.type || '');
+ const hits = Array.isArray(preview.hits) ? preview.hits : [];
+ const hitCount = Math.max(1, hits.length || 1);
+ const countCurseZones = () => countCurseCardsInBattleZones();
+
+ if (type === 'echo-repeat') {
+  const source = player?.lastPlayedCardForEcho;
+  return source ? `「${source.name}」を再発動` : '直前のカードを再発動';
+ }
+ if (type === 'gamble-attack') return '0〜10からランダム';
+ if (type === 'chance-attack' || type === 'high-risk-attack') {
+  return `成功率${Math.round(Number(card.chance || (type === 'high-risk-attack' ? 0.1 : 0.5)) * 100)}%`;
+ }
+ if (type === 'risky-self-attack') return `成功50% / 失敗時HP-${card.selfDamage || 5}`;
+ if (type === 'double-slash' || type === 'rare-double-attack') return `${hitCount}ヒット`;
+ if (type === 'freeze-triple-attack') return Number(cpu?.freeze || 0) > 0 ? `${hitCount}ヒット（凍結中）` : '凍結中：3ヒット';
+ if (type === 'curse-chain-attack') return `${hitCount}ヒット / 構築呪い2枚以上：+1ヒット`;
+
+ if (type === 'reload-first-draw') return player?.firstCardAfterReload ? 'リロード直後：1ドロー' : 'リロード直後のみ1ドロー';
+ if (type === 'paralyze-bonus-attack') return `敵が麻痺中：+${card.bonus || 5}`;
+ if (type === 'freeze-bonus-attack') return `敵が凍結中：+${card.bonus || 10}`;
+ if (type === 'finisher-attack') return `敵HP50%以下：+${card.bonus || 8}`;
+ if (type === 'burn-bonus-attack') {
+  const burn = card.chance != null ? `${Math.round(Number(card.chance) * 100)}%：火傷${card.turns || 3}T / ` : '';
+  return `${burn}火傷中：+${card.bonus || 5}`;
+ }
+ if (type === 'timer-execute-attack') return `敵タイマー${card.threshold || 2}秒以下：+${card.bonus || 10}`;
+ if (type === 'pursuit-attack') return `使用後の手札2枚以下：+${card.bonus || 3}`;
+ if (type === 'counter-blade') return `敵が攻撃準備中：+${card.bonus || 4}`;
+ if (type === 'field-fog-blade') return `深淵の霧：+${card.bonus || 4}`;
+ if (type === 'field-ice-follow') return `敵が凍結中：+${card.bonus || 5}`;
+ if (type === 'field-toxic-blade') return `毒${isFieldEffectActive('toxic_rain') ? card.fieldPoison || 5 : card.poison || 2}付与`;
+ if (type === 'field-gravity-slash') return `重圧中：敵防御-${card.defenseRemove || 3}`;
+
+ if (type === 'dein') return `30%：麻痺${card.turns || 3}T`;
+ if (type === 'freeze') return '凍結付与';
+ if (type === 'ice-needle') return `${Math.round(Number(card.chance || 0.2) * 100)}%：凍結${card.turns || 1}T`;
+ if (type === 'poison') return `毒${card.turns || 3}付与`;
+ if (type === 'burn') return `${Math.round(Number(card.chance ?? 0.5) * 100)}%：火傷${card.turns || 3}T`;
+ if (type === 'poison-fang') return `敵の毒×${Math.round(Math.max(0, Number(card.poisonScale ?? 0.25)) * 100)}%を加算`;
+ if (type === 'poison-burst') return `敵の毒${Number(card.consumeRatio || 0.5) >= 1 ? 'を全消費' : 'を半分消費'}`;
+ if (type === 'poison-banquet') return '敵の毒を全消費 / 毒耐性50%';
+
+ if (type === 'curse-hand-attack') return `構築山札の呪い×${card.perCurse || 2}を加算`;
+ if (type === 'curse-threshold-attack-draw') return `構築呪い1枚以上：+${card.bonus || 8} / 呪い1枚ドロー`;
+ if (type === 'curse-total-aoe-attack') return `敵全体 / 呪い${countCurseZones()}枚×${card.perCurse || 3}を加算`;
+ if (type === 'curse-total-aoe-judgment') return `敵全体 / 呪い${countCurseZones()}枚×${card.perCurse || 5} / 最大HP-${card.selfMaxHp || 5}`;
+
+ if (type === 'percent-hp-attack') return `敵の現在HP×${Math.max(1, Number(card.value || 10))}%`;
+ if (type === 'revenge-attack') return '失ったHPを参照';
+ if (type === 'berserk-strike') return `現在HP20%消費`;
+ if (type === 'blood-slash') return `HP-${card.selfDamage || 2}`;
+ if (type === 'self-damage-attack') return '反動：与ダメの1/2';
+ if (type === 'drain-sword') return '与ダメの1/2回復';
+ if (type === 'attack-defense') return `防御+${card.defense || 3}`;
+ if (type === 'pierce-attack') return '防御無視';
+ if (type === 'desperate-power') return 'HP50%以下のみ使用可';
+ if (type === 'scaling-attack') return '使用ごとにこのカード+2';
+ if (type === 'pet-spirit-attack') return `ペット行動ごとに+${card.growth || 3}（最大${card.maxValue || 40}）`;
+ if (type === 'attack' && Number(card.enemyHpThreshold || 0) > 0) {
+  return `敵HP${Math.round(Number(card.enemyHpThreshold) * 100)}%以下：+${card.bonus || 0}`;
+ }
+
+ if (type === 'bomb-powder-damage') return `設置爆弾${getEnemyBombs().length}個×${card.value || 2}`;
+ if (type === 'bomb-emergency-detonate') return '全爆弾を70%威力で即起爆';
+ if (type === 'bomb-detonate-all') return '全爆弾を即起爆';
+ if (type === 'bomb-doomsday') return '全爆弾を2倍威力で即起爆';
+
+ if (hitCount > 1) return `${hitCount}ヒット`;
+ if (['curse-total-aoe-attack', 'curse-total-aoe-judgment'].includes(type) || /全体/.test(String(card.text || ''))) return '敵全体';
+ return '単体攻撃';
 }
 
 function getDisplayCardText(card) {
-    if (card.type === 'self-damage-attack') {
-     return '10ダメージ / 与えたダメージの1/2を受ける';
-    }
-
-
- if (card.type === 'paralyze-bonus-attack') {
-  return '2ダメージ / 敵が麻痺なら追加5ダメージ';
- }
-
-
   const value = getBattleCardDisplayValue(card);
   const liveDamagePreview = getLiveCardDamagePreview(card);
 
   if (isBombCardType(card.type)) {
    if (card.type === 'bomb-powder-damage') return `設置中の爆弾${getEnemyBombs().length}個 × ${card.value || 2}ダメージ`;
-   if (liveDamagePreview) return getBaseCardDisplayText(card);
+   if (liveDamagePreview) return getBattleDamageSecondaryText(card, liveDamagePreview);
    return getBaseCardDisplayText(card);
   }
 
-  // 即時ダメージの現在値は専用の予測欄へ集約し、本文はカード本来の条件・効果を残す。
-  // これにより「現在値に、本文記載の条件ボーナスがさらに足される」ような二重解釈を防ぐ。
-  if (liveDamagePreview) return getBaseCardDisplayText(card);
+  // 中央の主数値が現在の最終実ダメージ。本文は条件と副次効果だけを簡潔に示す。
+  if (liveDamagePreview) return getBattleDamageSecondaryText(card, liveDamagePreview);
 
   if (card.type === 'blood-slash') {
   const selfDamage = Math.max(0, Number(card.selfDamage || 2));
@@ -19864,7 +19912,6 @@ const cards = document.getElementById('cards');
 
      const displayValue = getBattleCardDisplayValue(card);
      const displayText = getDisplayCardText(card);
-     const liveDamagePreview = getLiveCardDamagePreviewHtml(card);
 
      button.innerHTML = `
       ${queueNumber > 0 ? `<div class="action-queue-badge">${getActionQueueLabel(queueNumber)}</div>` : ''}
@@ -19873,10 +19920,9 @@ const cards = document.getElementById('cards');
       <div class="card-top">
        <div>${card.name}</div>
        <div class="card-icon">${getCardIcon(card.type)}</div>
-      </div>
-      <div class="value">${displayValue}</div>
-      ${liveDamagePreview}
-      <div class="card-text">${displayText}</div>
+       </div>
+       <div class="value">${displayValue}</div>
+       <div class="card-text">${displayText}</div>
       <div class="card-cooldown">${getEffectiveCardCooldownText(card)}</div>
      `;
 
