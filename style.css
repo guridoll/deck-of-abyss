@@ -20684,3 +20684,31 @@ body > #sound-settings-modal .sound-settings-dialog {
   border-color: rgba(45, 212, 191, 0.36);
   color: #ccfbf1;
 }
+
+/* Unified ashen presentation for the nine curse-build cards. Rarity overlays remain intact. */
+.curse-theme-card {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(226, 232, 240, 0.16), transparent 30%),
+    linear-gradient(155deg, rgba(82, 82, 91, 0.98), rgba(39, 39, 42, 0.99) 56%, rgba(24, 24, 27, 0.99)) !important;
+  border-color: rgba(212, 212, 216, 0.52) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(244, 244, 245, 0.07),
+    0 10px 24px rgba(0, 0, 0, 0.32) !important;
+  color: #f4f4f5;
+}
+
+.curse-theme-card .card-title,
+.curse-theme-card .customize-card-header,
+.curse-theme-card .library-card-header,
+.curse-theme-card .shop-card-header,
+.curse-theme-card .value {
+  color: #fafafa !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+.curse-theme-card .card-text,
+.curse-theme-card .customize-card-text,
+.curse-theme-card .library-card-text,
+.curse-theme-card .shop-card-text {
+  color: #e4e4e7 !important;
+}

@@ -44,6 +44,7 @@
   function getCardLibraryCategoryFilters() {
    return [
     { id: 'all', name: 'すべて' },
+    { id: 'curse', name: '呪い' },
     { id: 'attack', name: '攻撃' },
     { id: 'defense', name: '防御' },
     { id: 'status', name: '状態異常' },
@@ -89,7 +90,13 @@
     return categories;
    }
 
-   if (String(type).startsWith('curse-')) {
+    if (card?.visualTheme === 'curse') {
+     addCardLibraryCategory(categories, 'status');
+     addCardLibraryCategory(categories, 'curse');
+     return categories;
+    }
+
+    if (String(type).startsWith('curse-')) {
     addCardLibraryCategory(categories, 'status');
     return categories;
    }
@@ -211,6 +218,7 @@
 
   function getCardLibraryCategoryLabel(card) {
    const map = {
+    curse: '呪い',
     attack: '攻撃',
     defense: '防御',
     status: '状態異常',

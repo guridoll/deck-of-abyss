@@ -56,6 +56,7 @@ if (document.readyState === 'loading') {
 }
 
 const MAX_HP = 40;
+const BASE_ENEMY_POISON_TICK_DAMAGE = 3;
 const DEPTH_PROGRESS_STORAGE_KEY = 'deckOfAbyssDepthProgressV1';
 const DEPTH_CONFIG = {
  1: { id: 1, name: '深度1', label: '深度1：浅層', description: '特になし', enemyHpMultiplier: 0.7, enemyAttackMultiplier: 0.7, playerMaxHp: 60, enemyPassives: false, multiEnemyPassives: false },
@@ -131,6 +132,12 @@ const RARE_CARD_COOLDOWN = 5;
    { id: 'toxic_rain_vial', name: '毒雨の小瓶', source: '2層敗北', table: 'depth2Defeat', icon: '☠', effect: '腐毒の雨で戦闘開始時、毒3付与', description: '雨粒を閉じ込めた小瓶。割れると毒気が広がる。', effects: { fieldToxicRainStartPoison: 3 } },
    { id: 'frozen_air_charm', name: '凍空の護符', source: '2層敗北', table: 'depth2Defeat', icon: '❄', effect: '凍てつく空気の被凍結解除クリック増加を無効化', description: '凍える空気の中でも指先を動かせる護符。', effects: { ignoreFreezingAirClickPenalty: 1 } },
    { id: 'deep_layer_wedge', name: '深層の楔', source: '3層敗北', table: 'depth3Defeat', icon: '◇', effect: '敵パッシブでフィールド発生時、戦闘開始時1ドロー', description: '敵が支配する領域に打ち込み、流れを読み取る楔。', effects: { enemyFieldStartDraw: 1 } },
+   { id: 'black_thread_bookmark', name: '黒糸のしおり', source: '1層敗北', table: 'depth1Defeat', icon: '☽', effect: '呪い関連カード出現率+3%', description: '黒い糸が、呪われた頁へと導くしおり。', effects: { curseCardRate: 0.03 } },
+   { id: 'sealed_fragment', name: '封印の欠片', source: '1層クリア', table: 'depth1Clear', icon: '▧', effect: '呪い関連カード出現率+10%', description: '砕けた封印から、禁じられた力が漏れ出す。', effects: { curseCardRate: 0.10 } },
+   { id: 'curse_compass', name: '呪詛の羅針盤', source: '2層敗北', table: 'depth2Defeat', icon: '☷', effect: '呪い関連カード出現率+5% / 呪い関連イベント出現比重+1.5', description: '針はいつも、災いの濃い方角を指す。', effects: { curseCardRate: 0.05, eventCurseWeightBonus: 1.5 } },
+   { id: 'forbidden_book_page', name: '禁書の頁', source: '2層クリア', table: 'depth2Clear', icon: '▤', effect: '呪い関連カード出現率+10% / レア呪い関連カード出現率+5%', description: '触れるだけで、禁じられた術式が頭に流れ込む。', effects: { curseCardRate: 0.10, rareCurseCardRate: 0.05 } },
+   { id: 'abyss_bookshelf', name: '奈落の書架', source: '3層敗北', table: 'depth3Defeat', icon: '▥', effect: '呪い関連カード出現率+7% / 呪い関連イベント出現比重+1.5', description: '奈落へ続く書架。読む者を選ばず呪いを授ける。', effects: { curseCardRate: 0.07, eventCurseWeightBonus: 1.5 } },
+   { id: 'doomsday_contract', name: '終末の契約書', source: '3層クリア', table: 'depth3Clear', icon: '☿', effect: '呪い関連カード出現率+15% / 呪い関連パッシブ出現率+5%', description: '終末を代価に、呪いを力へ変える契約書。', effects: { curseCardRate: 0.15, cursePassiveRate: 0.05 } },
   ];
   const RELIC_VICTORY_DISCOVERY_CHANCE = { 1: 0.08, 2: 0.10, 3: 0.12 };
 
@@ -1037,7 +1044,19 @@ const PET_POOL = [
    },
   ];
 
-  CARD_POOL.push(...CURSE_CARD_POOL);
+  const CURSE_BUILD_CARD_POOL = [
+   { name: '呪詛転写', type: 'curse-hand-attack', visualTheme: 'curse', value: 8, perCurse: 2, cooldown: 1, text: '8ダメージ / 構築山札にある呪い1枚につき+2ダメージ' },
+   { name: '禍福の護符', type: 'curse-hand-defense', visualTheme: 'curse', value: 4, cooldown: 1, text: '構築山札にある呪い1枚につき防御+4' },
+   { name: '黒雨', type: 'curse-hand-poison', visualTheme: 'curse', value: 3, perCurse: 2, cooldown: 1, text: '毒3付与 / 構築山札にある呪い1枚につき毒+2' },
+   { name: '代償の刃', type: 'curse-threshold-attack-draw', visualTheme: 'curse', value: 14, bonus: 8, cooldown: 2, rare: true, text: '14ダメージ / 構築山札に呪いが1枚以上なら+8ダメージ / その後、呪いを1枚ドロー' },
+   { name: '災厄の連鎖', type: 'curse-chain-attack', visualTheme: 'curse', value: 6, hits: 2, bonusHit: 1, cooldown: 2, rare: true, text: '6ダメージ×2 / 構築山札に呪いが2枚以上ならさらに6ダメージ' },
+   { name: '禁忌の加護', type: 'curse-threshold-defense-draw', visualTheme: 'curse', value: 8, cooldown: 2, rare: true, text: '防御+8 / 構築山札に呪いが2枚以上なら1ドロー' },
+   { name: '呪詛の奔流', type: 'curse-total-aoe-attack', visualTheme: 'curse', value: 12, perCurse: 3, cooldown: 2.5, epic: true, text: '敵全体に12ダメージ / 山札・手札・捨て札の呪い1枚につき+3ダメージ' },
+   { name: '黒雨の饗宴', type: 'curse-total-poison', visualTheme: 'curse', value: 5, perCurse: 1, cooldown: 2.5, epic: true, text: '毒5付与 / 山札・手札・捨て札の呪い1枚につき毒+1' },
+   { name: '深淵の審判', type: 'curse-total-aoe-judgment', visualTheme: 'curse', value: 25, perCurse: 5, selfMaxHp: 5, cooldown: 3, legendary: true, text: '敵全体に25ダメージ / 山札・手札・捨て札の呪い1枚につき+5ダメージ / 使用後、最大HP-5' },
+  ];
+
+  CARD_POOL.push(...CURSE_CARD_POOL, ...CURSE_BUILD_CARD_POOL);
 
 
   const BASIC_INITIAL_CARD_NAMES = [
@@ -1183,6 +1202,15 @@ const PET_POOL = [
    '環境固定': 'rare',
    '境界破り': 'epic',
    '深淵改変': 'legendary',
+   '呪詛転写': 'normal',
+   '禍福の護符': 'normal',
+   '黒雨': 'normal',
+   '代償の刃': 'rare',
+   '災厄の連鎖': 'rare',
+   '禁忌の加護': 'rare',
+   '呪詛の奔流': 'epic',
+   '黒雨の饗宴': 'epic',
+   '深淵の審判': 'legendary',
   };
 
   function normalizeCardRarity(card) {
@@ -1219,6 +1247,7 @@ const PET_POOL = [
        rarity,
        rarityLabel,
        type: card.type || '',
+       visualTheme: card.visualTheme || '',
        text: getBaseCardDisplayText(card),
        cooldown: getCardCooldownText(card),
       };
@@ -1308,6 +1337,106 @@ const PET_POOL = [
    if (rarity === 'rare') return 'RARE';
    if (rarity === 'curse') return 'CURSE';
    return '';
+  }
+
+  function isCurseBuildCard(card) {
+   return String(card?.type || '').startsWith('curse-') && !isCurseCard(card);
+  }
+
+  function countCurseCardsInBattleZones() {
+   const drawPile = (Array.isArray(playerDeck) ? playerDeck : []).filter(isCurseCard).length;
+   const hand = (Array.isArray(player?.hand) ? player.hand : []).filter(isCurseCard).length;
+   const discarded = Object.entries(player?.exhaustedBattleCardNames || {}).reduce((sum, [name, count]) => {
+    const source = CARD_POOL.find(card => card.name === name);
+    return sum + (source && isCurseCard(source) ? Math.max(0, Number(count || 0)) : 0);
+   }, 0);
+   return drawPile + hand + discarded;
+  }
+
+  function countCurseCardsInPlayerBuild() {
+   return Object.entries(deckCustomize || {}).reduce((sum, [cardName, count]) => {
+    const source = CARD_POOL.find(card => card.name === cardName);
+    return sum + (source && isCurseCard(source) ? Math.max(0, Math.floor(Number(count || 0))) : 0);
+   }, 0);
+  }
+
+  function addNormalCurseCardsToDeck(count, source = '効果') {
+   const amount = Math.max(0, Math.floor(Number(count || 0)));
+   const added = [];
+   for (let index = 0; index < amount; index++) {
+    const curse = CURSE_CARD_POOL[Math.floor(Math.random() * CURSE_CARD_POOL.length)];
+    if (!curse) break;
+    addCardToDeckByName(curse.name, source);
+    added.push(curse);
+   }
+   return added;
+  }
+
+  function markCardsDiscardedForCurrentBattle(cards) {
+   if (!player) return;
+   (Array.isArray(cards) ? cards : []).forEach(card => {
+    if (!card?.name || card.temporaryBattleCard || card.generatedBattleCard) return;
+    player.exhaustedBattleCardNames[card.name] = Math.max(0, Number(player.exhaustedBattleCardNames[card.name] || 0)) + 1;
+   });
+  }
+
+  function handleCurseCardsDrawn(cards) {
+   if (!player) return 0;
+   const curseCount = (Array.isArray(cards) ? cards : []).filter(isCurseCard).length;
+   if (curseCount <= 0) return 0;
+   const block = curseCount * Math.max(0, Number(playerPassives.curseDrawBlock || 0));
+   const attackBonus = curseCount * Math.max(0, Number(playerPassives.curseDrawNextAttack || 0));
+   if (block > 0) {
+    player.block += block;
+    recordAchievementMax('maxBlock', player.block || 0);
+    showDamagePopup('player-hp-change', `防御+${block}`);
+    addLog(`呪詛適応：防御+${block}`);
+   }
+   if (attackBonus > 0) {
+    player.nextCurseAttackBonus = Math.max(0, Number(player.nextCurseAttackBonus || 0)) + attackBonus;
+    addLog(`厄災の循環：次の攻撃カード+${player.nextCurseAttackBonus}ダメージ`);
+   }
+   return curseCount;
+  }
+
+  function handleCurseCardsDiscarded(cards) {
+   const curseCount = (Array.isArray(cards) ? cards : []).filter(isCurseCard).length;
+   if (curseCount <= 0 || !cpu || !player) return 0;
+   const damage = curseCount * Math.max(0, Number(playerPassives.curseDiscardAoeDamage || 0));
+   if (damage <= 0) return 0;
+   const result = applyDamage(cpu, damage);
+   showDamagePopup('cpu-hp-change', `-${result.damage}`);
+   triggerDamageShake('.cpu-img');
+   addLog(`災禍の回収：敵全体に${result.damage}ダメージ`);
+   checkWinner();
+   return result.damage;
+  }
+
+  function drawCurseCardToHand() {
+   if (!player || !Array.isArray(playerDeck)) return null;
+   const indices = playerDeck.map((card, index) => isCurseCard(card) ? index : -1).filter(index => index >= 0);
+   if (!indices.length) return null;
+   const index = indices[Math.floor(Math.random() * indices.length)];
+   const [card] = playerDeck.splice(index, 1);
+   player.hand.push(card);
+   deckCount = playerDeck.length;
+   recordCardDiscovery(card.name);
+   handleCurseCardsDrawn([card]);
+   checkBattleCardZoneIntegrity('drawCurseCardToHand');
+   return card;
+  }
+
+  function applyCurseTurnStartPassive() {
+   if (!player) return 0;
+   const perCurse = Math.max(0, Number(playerPassives.curseTurnStartBlockPerCard || 0));
+   const block = countCurseCardsInPlayerBuild() * perCurse;
+   if (block > 0) {
+    player.block += block;
+    recordAchievementMax('maxBlock', player.block || 0);
+    showDamagePopup('player-hp-change', `防御+${block}`);
+    addLog(`禁書の才覚：防御+${block}`);
+   }
+   return block;
   }
 
   function getCardBuildPointCost(card) {
@@ -1749,6 +1878,13 @@ const PET_POOL = [
    healBonus: 0,
    petActionCostReduce: 0,
    poisonDamageBonus: 0,
+   curseDrawBlock: 0,
+   curseDrawNextAttack: 0,
+   curseTurnStartBlockPerCard: 0,
+   cursedPagesObtained: 0,
+   cursePoisonTickDamageBonus: 0,
+   curseDiscardAoeDamage: 0,
+   curseDamagePercentPerCard: 0,
    poisonApplyBonus: 0,
    poisonDrawChance: 0,
    poisonHealOnDamage: 0,
@@ -1846,6 +1982,7 @@ const PET_POOL = [
   const SAVE_SLOT_COLLECTION_STORAGE_KEY = 'cardBattleSaveSlotsV1';
   const SAVE_SLOT_COLLECTION_STORAGE_KEY_V2 = 'cardBattleSaveSlotsV2';
   let currentSaveSlot = null;
+  let activeDepthProgress = null;
   const ENCOUNTERED_ENEMIES_STORAGE_KEY = 'cardBattleEncounteredEnemies';
   const DISCOVERED_CARDS_STORAGE_KEY = 'cardBattleDiscoveredCards';
   const DISCOVERED_PASSIVES_STORAGE_KEY = 'cardBattleDiscoveredPassives';
@@ -2252,11 +2389,12 @@ const PET_POOL = [
   }
 
   function loadDepthProgress() {
-   return normalizeDepthProgress(safeReadJson(DEPTH_PROGRESS_STORAGE_KEY, {}));
+   return normalizeDepthProgress(activeDepthProgress);
   }
 
   function saveDepthProgress(progress) {
-   safeWriteJson(DEPTH_PROGRESS_STORAGE_KEY, normalizeDepthProgress(progress));
+   activeDepthProgress = normalizeDepthProgress(progress);
+   return activeDepthProgress;
   }
 
   function mergeDepthProgress(a, b) {
@@ -2494,20 +2632,37 @@ const PET_POOL = [
    slot = Number(slot);
    if (!isValidSaveSlot(slot)) return null;
 
+   const migrateLegacyDepthProgress = saveData => {
+    if (!saveData || typeof saveData !== 'object' || Object.prototype.hasOwnProperty.call(saveData, 'depthProgress')) {
+     return saveData;
+    }
+
+    // The old global value cannot be attributed reliably. Preserve it only for
+    // slot 1 (the legacy single-save migration target) and keep other slots isolated.
+    if (slot === 1) {
+     return {
+      ...saveData,
+      depthProgress: safeReadJson(DEPTH_PROGRESS_STORAGE_KEY, {}),
+     };
+    }
+
+    return saveData;
+   };
+
    const fixedSave = safeReadJson(getSaveSlotStorageKey(slot), null);
-   if (fixedSave && typeof fixedSave === 'object') return normalizeSaveData(fixedSave);
+   if (fixedSave && typeof fixedSave === 'object') return normalizeSaveData(migrateLegacyDepthProgress(fixedSave));
 
    // 旧実装で保存された可能性があるデータだけ、スロット1へ救済する。
    if (slot === 1) {
     const legacySingleSave = safeReadJson(SAVE_DATA_STORAGE_KEY, null);
-    if (legacySingleSave && typeof legacySingleSave === 'object') return normalizeSaveData(legacySingleSave);
+    if (legacySingleSave && typeof legacySingleSave === 'object') return normalizeSaveData(migrateLegacyDepthProgress(legacySingleSave));
 
     const legacyCollection = safeReadJson(SAVE_SLOT_COLLECTION_STORAGE_KEY_V2, null) || safeReadJson(SAVE_SLOT_COLLECTION_STORAGE_KEY, null);
     const legacySlot = legacyCollection?.slots?.['1'] || legacyCollection?.['1'];
-    if (legacySlot && typeof legacySlot === 'object') return normalizeSaveData(legacySlot);
+    if (legacySlot && typeof legacySlot === 'object') return normalizeSaveData(migrateLegacyDepthProgress(legacySlot));
 
     const oldIndividualKeySave = safeReadJson(`${SAVE_SLOT_STORAGE_KEY_PREFIX}1`, null);
-    if (oldIndividualKeySave && typeof oldIndividualKeySave === 'object') return normalizeSaveData(oldIndividualKeySave);
+    if (oldIndividualKeySave && typeof oldIndividualKeySave === 'object') return normalizeSaveData(migrateLegacyDepthProgress(oldIndividualKeySave));
    }
 
    return null;
@@ -2737,7 +2892,9 @@ const PET_POOL = [
    resetPetProgressForDive();
    currentDepth = normalizeDepth(normalized.currentDepth || currentDepth);
    selectedNewGameDepth = currentDepth;
-   saveDepthProgress(mergeDepthProgress(loadDepthProgress(), normalized.depthProgress));
+   // A loaded slot is authoritative for progression. Never merge the former
+   // global runtime value, which would leak unlocks between save slots.
+   saveDepthProgress(normalized.depthProgress);
 
    safeWriteJson(ENCOUNTERED_ENEMIES_STORAGE_KEY, normalized.discoveredEnemies || {});
    safeWriteJson(DISCOVERED_CARDS_STORAGE_KEY, normalized.discoveredCards || {});
@@ -2771,6 +2928,8 @@ const PET_POOL = [
   function startNewGameData() {
    playUiSelectSound();
 
+   currentSaveSlot = null;
+   saveDepthProgress(normalizeDepthProgress());
    currentScreen = 'player-name';
    selectedNewGameDepth = getHighestUnlockedDepth();
    render();
@@ -2811,6 +2970,7 @@ const PET_POOL = [
    if (error) error.textContent = '';
 
    currentSaveSlot = null;
+   saveDepthProgress(normalizeDepthProgress());
    clearRuntimeDiscoveryStorage();
    currentDepth = 1;
    selectedNewGameDepth = getHighestUnlockedDepth();
@@ -4034,6 +4194,11 @@ function isAttackCardType(type) {
   || type === 'field-ice-follow'
   || type === 'field-fog-blade'
   || type === 'field-gravity-slash'
+  || type === 'curse-hand-attack'
+  || type === 'curse-threshold-attack-draw'
+  || type === 'curse-chain-attack'
+  || type === 'curse-total-aoe-attack'
+  || type === 'curse-total-aoe-judgment'
    || type === 'pet-spirit-attack';
 }
 
@@ -4077,6 +4242,8 @@ function isDefenseCardType(type) {
   || type === 'chance-defense'
   || type === 'parry-guard'
   || type === 'prepared-guard'
+  || type === 'curse-hand-defense'
+  || type === 'curse-threshold-defense-draw'
   || type === 'pet-spirit-defense';
 }
 
@@ -4093,7 +4260,7 @@ function getEffectiveCardValue(card) {
    if (player && Array.isArray(player.hand) && player.hand.length <= 2) {
     value += Math.max(0, Number(playerPassives.lowHandAttackBonus || 0));
    }
-   if (player && Number(player.tempAttackBuffTurns || 0) > 0) {
+  if (player && Number(player.tempAttackBuffTurns || 0) > 0) {
     value += Math.max(0, Number(player.tempAttackBuffValue || 0));
    }
 
@@ -4416,6 +4583,29 @@ function getNormalPassiveOptions() {
     playerPassives.rareCriticalDouble = true;
    },
   },
+  {
+   id: 'curseAdaptation', icon: '☽🛡', rarity: 'normal', name: '呪詛適応',
+   text: '呪いカードを1枚ドローするたび、防御+3。',
+   apply() { playerPassives.curseDrawBlock = Math.max(0, Number(playerPassives.curseDrawBlock || 0)) + 3; },
+  },
+  {
+   id: 'calamityCycle', icon: '☽⚔', rarity: 'normal', name: '厄災の循環',
+   text: '呪いを1枚ドローするたび、次の攻撃カードのダメージ+4。',
+   apply() { playerPassives.curseDrawNextAttack = Math.max(0, Number(playerPassives.curseDrawNextAttack || 0)) + 4; },
+  },
+  {
+   id: 'forbiddenBookTalent', icon: '☽▤', rarity: 'normal', name: '禁書の才覚',
+   text: 'ターン開始時、構築山札にある呪い1枚につき防御+1。',
+   apply() { playerPassives.curseTurnStartBlockPerCard = Math.max(0, Number(playerPassives.curseTurnStartBlockPerCard || 0)) + 1; },
+  },
+  {
+   id: 'cursedPages', icon: '☽📚', rarity: 'normal', name: '呪われた頁',
+   text: '取得時、山札に通常の呪いカードを3枚追加する。',
+   apply() {
+    playerPassives.cursedPagesObtained = Math.max(0, Number(playerPassives.cursedPagesObtained || 0)) + 1;
+    addNormalCurseCardsToDeck(3, '呪われた頁');
+   },
+  },
  ];
 }
 
@@ -4630,6 +4820,21 @@ function getRarePassiveOptions() {
     playerPassives.packAssaultPassive = true;
    },
   },
+  {
+   id: 'blackAmplification', icon: '☠☽', rarity: 'rare', name: '黒き増幅',
+   text: '毒で与える1回のダメージ+1。毒の付与量は増えない。',
+   apply() { playerPassives.cursePoisonTickDamageBonus = Math.max(0, Number(playerPassives.cursePoisonTickDamageBonus || 0)) + 1; },
+  },
+  {
+   id: 'calamityRecovery', icon: '☽↺', rarity: 'rare', name: '災禍の回収',
+   text: '呪いを1枚捨てるたび、敵全体に5ダメージ。',
+   apply() { playerPassives.curseDiscardAoeDamage = Math.max(0, Number(playerPassives.curseDiscardAoeDamage || 0)) + 5; },
+  },
+  {
+   id: 'curseResonance', icon: '☽響', rarity: 'rare', name: '呪詛共鳴',
+   text: '山札・手札・捨て札の呪い1枚につき、与えるダメージ+3%。',
+   apply() { playerPassives.curseDamagePercentPerCard = Math.max(0, Number(playerPassives.curseDamagePercentPerCard || 0)) + 0.03; },
+  },
  ];
 }
 
@@ -4697,6 +4902,10 @@ function getCardRelicRateBonus(card) {
  if (type.startsWith('pet') || textIncludesAny(`${name} ${text}`, ['ペット', '獣', '呼び鈴', '急かし', '連携', 'ご褒美', '特訓'])) {
   bonus += getRelicEffectTotal('petCardRate');
  }
+ if (isCurseBuildCard(card)) {
+  bonus += getRelicEffectTotal('curseCardRate');
+  if (rarity === 'rare') bonus += getRelicEffectTotal('rareCurseCardRate');
+ }
  if (rarity === 'rare') {
   bonus += getRelicEffectTotal('rareCardRate');
  }
@@ -4719,6 +4928,9 @@ function getPassiveRelicRateBonus(passive) {
  if (textIncludesAny(text, ['ペット', '獣', '共鳴', '鎖行動', '群れ'])) {
   bonus += getRelicEffectTotal('petPassiveRate');
  }
+ if (textIncludesAny(text, ['呪い', '呪詛', '厄災', '災禍', '禁書', '呪われた', '黒き増幅'])) {
+  bonus += getRelicEffectTotal('cursePassiveRate');
+ }
  if (rarity === 'rare') {
   bonus += getRelicEffectTotal('rarePassiveRate');
  }
@@ -4736,6 +4948,9 @@ function pickWeightedUniqueItems(items, count, getWeight) {
   if (total <= 0) {
    picked.push(source.shift());
    continue;
+  }
+  if (player && Number(player.nextCurseAttackBonus || 0) > 0) {
+   value += Math.max(0, Number(player.nextCurseAttackBonus || 0));
   }
 
   let roll = Math.random() * total;
@@ -4799,6 +5014,7 @@ const RANDOM_EVENT_CATEGORY_IDS = {
   'mimic_mirror',
   'abyss_library',
   'time_distortion',
+  'cursed_archive',
  ]),
  cardRemove: new Set([
   'cursed_chest',
@@ -4827,6 +5043,14 @@ const RANDOM_EVENT_CATEGORY_IDS = {
   'abyss_library',
   'time_distortion',
  ]),
+ curseRelated: new Set([
+  'cursed_chest',
+  'small_altar',
+  'abyss_bet',
+  'epic_bargain',
+  'forbidden_research',
+  'cursed_archive',
+ ]),
 };
 
 function getRandomEventWeight(event) {
@@ -4846,6 +5070,9 @@ function getRandomEventWeight(event) {
  if (RANDOM_EVENT_CATEGORY_IDS.highValue.has(eventId)) {
   multiplier += getRelicEffectTotal('eventHighValueWeightBonus');
  }
+ if (RANDOM_EVENT_CATEGORY_IDS.curseRelated.has(eventId)) {
+  multiplier += getRelicEffectTotal('eventCurseWeightBonus');
+ }
 
  return Math.max(1, baseWeight * multiplier);
 }
@@ -4860,6 +5087,9 @@ function isRandomEventAvailable(event) {
  }
  if (event.id === 'poison_altar') {
   return getRandomEventCardPool('poison').length > 0;
+ }
+ if (event.id === 'cursed_archive') {
+  return getRandomEventCardPool('curseBuild').length > 0;
  }
  if (event.id === 'powder_storehouse_event') {
   return getRandomEventCardPool('bomb').length > 0;
@@ -4891,6 +5121,7 @@ function getRandomEventDefinitions() {
   { id: 'blood_contract', title: '血の契約', description: '赤黒い羊皮紙が、強いカードと小さな代償を求めている。', effect: 'レアカード候補3枚から1枚選んで追加する', downside: '最大HP-2', steps: [{ type: 'maxHp', amount: -2 }, { type: 'cardChoice', count: 3, pool: 'rare' }] },
   { id: 'old_chest', title: '古びた宝箱', description: '錆びた留め金の奥に、使えそうなカードが眠っている。', effect: 'ランダムなカードを2枚追加する', downside: 'なし', steps: [{ type: 'addRandomCards', count: 2, pool: 'all' }] },
   { id: 'cursed_chest', title: '呪われた宝箱', description: '中身は魅力的だが、開けた瞬間に山札の一部が軋む。', effect: 'レアカードをランダムで1枚追加する', downside: 'ランダムな所持カードを1枚削除する', steps: [{ type: 'addRandomCards', count: 1, pool: 'rare' }, { type: 'removeRandom' }] },
+  { id: 'cursed_archive', title: '呪詛の書庫', description: '黒い頁がひとりでにめくれ、呪いを力へ変える術を示す。', effect: '呪い関連カードをランダムで1枚追加する', downside: 'なし', steps: [{ type: 'addRandomCards', count: 1, pool: 'curseBuild' }] },
   { id: 'mystery_merchant', title: '謎の商人', description: '顔の見えない商人が、代金の代わりに生命力を少しだけ求める。', effect: 'カード候補3枚から1枚選んで追加する', downside: '最大HP-1', steps: [{ type: 'maxHp', amount: -1 }, { type: 'cardChoice', count: 3, pool: 'all' }] },
   { id: 'dark_doctor', title: '闇医者', description: '粗雑だが確かな処置。強くはなるが、何かを失う。', effect: '最大HP+3', downside: 'ランダムな所持カードを1枚削除する', steps: [{ type: 'maxHp', amount: 3 }, { type: 'removeRandom' }] },
   { id: 'life_spring', title: '生命の泉', description: '淡い光を放つ泉が、肉体の器を少し広げる。', effect: '最大HP+2', downside: 'なし', steps: [{ type: 'maxHp', amount: 2 }] },
@@ -5307,12 +5538,14 @@ function getRandomEventCardPool(poolType = 'all') {
   pool = basePool.filter(isPetBuildCard);
  } else if (poolType === 'blood') {
   pool = basePool.filter(isBloodBuildCard);
+ } else if (poolType === 'curseBuild') {
+  pool = basePool.filter(isCurseBuildCard);
  } else if (poolType === 'evolved') {
   pool = getEvolutionRewardCardPool();
  } else if (poolType === 'discovered') {
   pool = getDiscoveredEventCardPool();
  }
- const strictPools = new Set(['poison', 'bomb', 'pet', 'blood', 'evolved', 'discovered']);
+ const strictPools = new Set(['poison', 'bomb', 'pet', 'blood', 'curseBuild', 'evolved', 'discovered']);
  return pool.length || strictPools.has(poolType) ? pool : basePool;
 }
 
@@ -7139,6 +7372,8 @@ function chooseBombToCompress(bombId) {
 function applyBattleStartPassives() {
  if (!cpu || pendingPassiveChoice || pendingShopChoice) return;
 
+ applyCurseTurnStartPassive();
+
  const relicStartDrawBonus = Math.max(0, Math.floor(Number(getRelicEffectTotal('battleStartDraw') || 0)));
  const startDrawBonus = Math.max(0, Number(playerPassives.startDrawBonus || 0)) + relicStartDrawBonus;
  if (startDrawBonus > 0) {
@@ -7150,14 +7385,14 @@ function applyBattleStartPassives() {
 
  const relicPetExp = Math.max(0, Math.floor(Number(getRelicEffectTotal('battleStartPetExp') || 0)));
  if (relicPetExp > 0) {
-  addPetExp(relicPetExp, '遺物');
+  addPetExp(relicPetExp, '異物');
  }
 
  const startBlockChance = Math.max(0, Math.min(1, Number(getRelicEffectTotal('startBlockChance') || 0)));
  const startBlockAmount = Math.max(0, Math.floor(Number(getRelicEffectTotal('startBlock') || 0)));
  if (player && startBlockChance > 0 && startBlockAmount > 0 && Math.random() < startBlockChance) {
   player.block = Math.max(0, Number(player.block || 0)) + startBlockAmount;
-  addLog(`遺物：戦闘開始時にブロック+${startBlockAmount}`);
+  addLog(`異物：戦闘開始時にブロック+${startBlockAmount}`);
   showDamagePopup('player-hp-change', `防御+${startBlockAmount}`);
  }
 
@@ -7169,8 +7404,8 @@ function applyBattleStartPassives() {
    const temporaryCard = createTemporaryBattleCard(picked);
    player.hand.push(temporaryCard);
    recordCardDiscovery(picked.name);
-   addLog(`遺物：${picked.name}をこの戦闘中だけ手札に追加`);
-   triggerCardResultReveal([temporaryCard], '遺物', 'この戦闘中のみ', { delay: 420 });
+   addLog(`異物：${picked.name}をこの戦闘中だけ手札に追加`);
+   triggerCardResultReveal([temporaryCard], '異物', 'この戦闘中のみ', { delay: 420 });
   }
  }
 
@@ -7885,7 +8120,8 @@ function drawCardsToPlayerHand(count) {
  if (!player) return [];
  const drawn = drawCards(count, true);
  if (drawn.length > 0) {
-  player.hand.push(...drawn);
+ player.hand.push(...drawn);
+  handleCurseCardsDrawn(drawn);
   checkBattleCardZoneIntegrity('drawCardsToPlayerHand');
  }
  return drawn;
@@ -8043,7 +8279,7 @@ function renderRelicLibraryScreen() {
    ` : `
     <div class="relic-library-mark unknown">?</div>
     <div class="relic-library-title">？？？</div>
-    <div class="relic-library-effect">未発見の遺物です。</div>
+    <div class="relic-library-effect">未発見の異物です。</div>
     <div class="relic-library-owned unknown">未発見</div>
    `;
    grid.appendChild(card);
@@ -8060,7 +8296,7 @@ function getRelicLibraryDetailHtml(relicId) {
     <div class="relic-library-detail-body">
      <div class="relic-library-detail-kicker">UNKNOWN RELIC</div>
      <h2>？？？</h2>
-     <p>未発見の遺物です。</p>
+     <p>未発見の異物です。</p>
     </div>
    </div>
   `;
@@ -8127,7 +8363,7 @@ function renderRelicEquipScreen() {
      <div class="relic-equipped-slot${relic ? '' : ' empty'}${unlocked ? '' : ' locked'}">
       <span>${escapeHtml(getRelicSlotLabel(index))}</span>
       <strong>${escapeHtml(unlocked ? (relic?.name || '未装備') : '未解放')}</strong>
-      ${relic ? `<small>${escapeHtml(relic.effect)}</small>` : `<small>${escapeHtml(unlocked ? '取得済み遺物から装備できます。' : getRelicSlotUnlockText(index))}</small>`}
+      ${relic ? `<small>${escapeHtml(relic.effect)}</small>` : `<small>${escapeHtml(unlocked ? '取得済み異物から装備できます。' : getRelicSlotUnlockText(index))}</small>`}
      </div>
     `;
    }).join('')}
@@ -8135,7 +8371,7 @@ function renderRelicEquipScreen() {
  `;
 
  if (!ownedRelics.length) {
-  list.innerHTML = `${equippedSummaryHtml}<div class="relic-equip-empty">まだ遺物を発見していません。</div>`;
+  list.innerHTML = `${equippedSummaryHtml}<div class="relic-equip-empty">まだ異物を発見していません。</div>`;
   return;
  }
 
@@ -8353,6 +8589,8 @@ function discardRandomPlayerHandCard(options = {}) {
 
  const selected = candidates[Math.floor(Math.random() * candidates.length)];
  const [discarded] = player.hand.splice(selected.index, 1);
+ markCardsDiscardedForCurrentBattle(discarded ? [discarded] : []);
+ handleCurseCardsDiscarded(discarded ? [discarded] : []);
  return discarded || null;
 }
 
@@ -8975,6 +9213,7 @@ function startReload() {
      const newCards = drawCards(drawCount, true);
 
      player.hand.push(...newCards);
+     handleCurseCardsDrawn(newCards);
      checkBattleCardZoneIntegrity('reloadComplete');
      if (player.pendingReloadDoublePlay) {
       player.pendingReloadDoublePlay = false;
@@ -9017,8 +9256,11 @@ function startReload() {
    if (gameOver || bossRevivalInProgress || pendingPassiveChoice || pendingShopChoice || fieldSelectionOpen || isRandomEventInputBlocked() || !player || player.reloading || player.cooldown || isPlayerFrozen()) return;
    if (player.hand.length === 0) return;
 
-   queueReloadCurseEffects(player.hand);
+   const discardedHand = [...player.hand];
+   queueReloadCurseEffects(discardedHand);
+   markCardsDiscardedForCurrentBattle(discardedHand);
    player.hand = [];
+   handleCurseCardsDiscarded(discardedHand);
 
    addLog('手札をすべて捨てた');
 
@@ -9928,8 +10170,8 @@ function saveDeckCustomize() {
     actionLabel: '確認した',
    },
    'prep-relic': {
-    title: '遺物を確認する',
-    text: '遺物欄では装備中の遺物を確認します。効果を発揮するのは装備中の遺物だけです。',
+    title: '異物を確認する',
+    text: '異物欄では装備中の異物を確認します。効果を発揮するのは装備中の異物だけです。',
     actionLabel: '確認した',
    },
    'prep-depth': {
@@ -10308,13 +10550,13 @@ function saveDeckCustomize() {
 
       <section class="predeparture-panel">
        <div class="predeparture-panel-head">
-        <h2>遺物</h2>
-        <button class="ui-button ui-button-secondary" type="button" disabled>遺物変更</button>
+        <h2>異物</h2>
+        <button class="ui-button ui-button-secondary" type="button" disabled>異物変更</button>
        </div>
        <div class="predeparture-relic-slots">
         <div class="predeparture-relic-body empty">
          <div class="predeparture-relic-icon">◇</div>
-         <div><div class="predeparture-main-name">未装備</div><p>装備中の遺物だけが探索中に効果を発揮します。</p></div>
+         <div><div class="predeparture-main-name">未装備</div><p>装備中の異物だけが探索中に効果を発揮します。</p></div>
         </div>
         <div class="predeparture-relic-body locked">
          <div class="predeparture-relic-icon">🔒</div>
@@ -10347,7 +10589,7 @@ function saveDeckCustomize() {
        </div>
        <div class="tutorial-prep-actions">
         <button class="ui-button ui-button-primary${getTutorialTargetClass('deck-save')}" type="button" ${mock.deckAdded ? '' : 'disabled'} onclick="tutorialSaveDeck()">山札設定を保存</button>
-        <button class="ui-button ui-button-secondary${getTutorialTargetClass('pet-check')}" type="button" ${mock.saved ? '' : 'disabled'} onclick="tutorialConfirmPetRelic()">ペット・遺物を確認</button>
+        <button class="ui-button ui-button-secondary${getTutorialTargetClass('pet-check')}" type="button" ${mock.saved ? '' : 'disabled'} onclick="tutorialConfirmPetRelic()">ペット・異物を確認</button>
        </div>
       </section>
      </div>
@@ -10385,7 +10627,7 @@ function saveDeckCustomize() {
         <div class="hp-bar"><div class="hp-fill" style="width:100%;"></div></div>
         <div class="status-badges${passiveTarget}"><span class="status-badge">状態異常なし</span></div>
         <div class="passive-effect-badges${passiveTarget}">
-         <div class="passive-effect-badge">💎 装備中遺物</div>
+         <div class="passive-effect-badge">💎 装備中異物</div>
          <div class="passive-effect-badge">🔥 攻撃+2</div>
         </div>
        </div>
@@ -10432,7 +10674,7 @@ function saveDeckCustomize() {
    return `
     <div class="tutorial-done-card">
      <h2>チュートリアル完了</h2>
-     <p>山札調整、ペット・遺物確認、カード使用、行動予約、リロード、防御の流れを確認しました。</p>
+     <p>山札調整、ペット・異物確認、カード使用、行動予約、リロード、防御の流れを確認しました。</p>
      <button class="ui-button ui-button-primary tutorial-target" type="button" onclick="cancelTutorial()">メニューへ戻る</button>
     </div>
    `;
@@ -10546,6 +10788,13 @@ function saveDeckCustomize() {
     healBonus: 0,
     petActionCostReduce: 0,
     poisonDamageBonus: 0,
+    curseDrawBlock: 0,
+    curseDrawNextAttack: 0,
+    curseTurnStartBlockPerCard: 0,
+    cursedPagesObtained: 0,
+    cursePoisonTickDamageBonus: 0,
+    curseDiscardAoeDamage: 0,
+    curseDamagePercentPerCard: 0,
     poisonApplyBonus: 0,
     poisonDrawChance: 0,
     poisonHealOnDamage: 0,
@@ -10762,9 +11011,11 @@ function saveDeckCustomize() {
      scalingAttackUses: 0,
      scalingDefenseUses: 0,
      tempAttackBuffValue: 0,
-     tempAttackBuffTurns: 0,
+    tempAttackBuffTurns: 0,
+     nextCurseAttackBonus: 0,
     };
    arrangeTutorialBattleHand();
+   handleCurseCardsDrawn(player.hand);
 
    cpu = {
     hp: getEnemyMaxHp(),
@@ -10794,7 +11045,7 @@ function saveDeckCustomize() {
      pendingEnemyActionDelayAmount: 0,
      bombs: [],
      enemyTenacityUsed: false,
-     enemyTenacityTriggered: false,
+    enemyTenacityTriggered: false,
     };
 
     pendingVoidEntranceAnimation = enemyLevel >= 20 && isVoidBossEnemyId() && cpu.phase === 1;
@@ -11115,7 +11366,7 @@ function playSound(type) {
    const value = String(text || '');
    if (value.startsWith('あなた：')) return { className: 'log-player', label: 'カード' };
    if (value.startsWith('ペット：') || value.includes('ペット') || value.startsWith('共鳴：') || value.startsWith('鎖行動：') || value.startsWith('ご褒美：')) return { className: 'log-pet', label: 'ペット' };
-   if (value.startsWith('遺物：') || value.includes('：戦闘開始時') || value.includes('ランタン') || value.includes('水晶') || value.includes('重靴') || value.includes('小瓶')) return { className: 'log-relic', label: '遺物' };
+   if (value.startsWith('異物：') || value.includes('：戦闘開始時') || value.includes('ランタン') || value.includes('水晶') || value.includes('重靴') || value.includes('小瓶')) return { className: 'log-relic', label: '異物' };
    if (value.includes('フィールド') || value.includes('環境') || value.includes('深淵環境')) return { className: 'log-field', label: '場' };
    if (value.startsWith('毒：') || value.startsWith('爆弾：') || value.startsWith('凍結') || value.includes('火傷') || value.includes('麻痺') || value.includes('状態異常')) return { className: 'log-status', label: '状態' };
    if (value.includes(getEnemyName()) || value.includes('Lv.') || value.startsWith('深淵騎士ヴォイド')) return { className: 'log-enemy', label: '敵' };
@@ -11197,7 +11448,7 @@ function playSound(type) {
    if (!reward || !reward.relicId) return '';
    return `
     <div class="relic-reward-result">
-     <div class="relic-reward-kicker">遺物発見</div>
+     <div class="relic-reward-kicker">異物発見</div>
      <div class="relic-reward-name">${escapeHtml(reward.name || '')}</div>
      <div class="relic-reward-effect"><span>効果</span><strong>${escapeHtml(reward.effect || '')}</strong></div>
     </div>
@@ -11209,7 +11460,7 @@ function playSound(type) {
    const relic = getRelicById(reward.relicId);
    const icon = relic?.icon || '◆';
    return `
-    <div class="relic-reward-modal-kicker">遺物発見！</div>
+    <div class="relic-reward-modal-kicker">異物発見！</div>
     <div class="relic-reward-modal-icon">${escapeHtml(icon)}</div>
     <div class="relic-reward-modal-name">${escapeHtml(reward.name || relic?.name || '')}</div>
     <div class="relic-reward-modal-effect">
@@ -11392,6 +11643,12 @@ function playSound(type) {
    const beforeHp = target.hp;
    let incomingDamage = Math.max(0, Number(damage || 0));
    if (!Number.isFinite(incomingDamage)) incomingDamage = 0;
+   const curseResonanceBonus = target === cpu
+    ? countCurseCardsInBattleZones() * Math.max(0, Number(playerPassives.curseDamagePercentPerCard || 0))
+    : 0;
+   if (curseResonanceBonus > 0 && incomingDamage > 0) {
+    incomingDamage = Math.ceil(incomingDamage * (1 + curseResonanceBonus));
+   }
    const lowHpReduction = target === player && player && incomingDamage > 0 && player.hp <= Math.floor(getPlayerMaxHp() * 0.3)
     ? Math.max(0, Number(playerPassives.lowHpDamageReduction || 0))
     : 0;
@@ -12533,6 +12790,9 @@ function consumeAttackBoostsAfterAttack() {
 
  if (playerPassives.packAssaultReady) {
   playerPassives.packAssaultReady = false;
+ }
+ if (Number(player.nextCurseAttackBonus || 0) > 0) {
+  player.nextCurseAttackBonus = 0;
  }
 }
 
@@ -14340,6 +14600,102 @@ if (card.type === 'rare-attack') {
      playSound(opened ? 'success' : 'miss');
     }
 
+   if (card.type === 'curse-hand-attack') {
+     const curseCount = countCurseCardsInPlayerBuild();
+     const damage = getEffectiveCardValue({ ...card, value: Number(card.value || 8) + curseCount * Number(card.perCurse || 2), type: card.type });
+    const result = applyPlayerCardDamage(damage);
+    consumeAttackBoostsAfterAttack();
+    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+    triggerDamageShake('.cpu-img');
+     addLog(`あなた：${card.name} (${result.damage}ダメージ / 構築山札の呪い${curseCount}枚)`);
+    playSound(result.fullyBlocked ? 'guard' : 'attack');
+   }
+
+   if (card.type === 'curse-hand-defense') {
+     const curseCount = countCurseCardsInPlayerBuild();
+    const defense = getEffectiveCardValue({ ...card, value: curseCount * Number(card.value || 4), type: card.type });
+    player.block += defense;
+    recordAchievementMax('maxBlock', player.block || 0);
+    consumeDefenseBoostsAfterDefense();
+    showDamagePopup('player-hp-change', `防御+${defense}`);
+    triggerCardVisualEffect('.player-img', 'guard');
+     addLog(`あなた：${card.name} (防御+${defense} / 構築山札の呪い${curseCount}枚)`);
+    playSound('defense');
+   }
+
+   if (card.type === 'curse-hand-poison') {
+     const curseCount = countCurseCardsInPlayerBuild();
+    const amount = Number(card.value || 3) + curseCount * Number(card.perCurse || 2);
+    const poison = applyPoisonToEnemy(amount);
+    triggerPoisonEffect('.cpu-img');
+     addLog(`あなた：${card.name} (毒+${poison.applied} / 構築山札の呪い${curseCount}枚)`);
+    playSound(poison.applied > 0 ? 'poison' : 'miss');
+   }
+
+   if (card.type === 'curse-threshold-attack-draw') {
+     const curseCount = countCurseCardsInPlayerBuild();
+    const damage = getEffectiveCardValue({ ...card, value: Number(card.value || 14) + (curseCount >= 1 ? Number(card.bonus || 8) : 0), type: card.type });
+    const result = applyPlayerCardDamage(damage);
+    consumeAttackBoostsAfterAttack();
+    const drawn = drawCurseCardToHand();
+    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+    triggerDamageShake('.cpu-img');
+    addLog(`あなた：${card.name} (${result.damage}ダメージ${curseCount >= 1 ? ' / +8' : ''} / 呪いドロー${drawn ? 1 : 0}枚)`);
+    playSound(result.fullyBlocked ? 'guard' : 'attack');
+   }
+
+   if (card.type === 'curse-chain-attack') {
+     const curseCount = countCurseCardsInPlayerBuild();
+    const hits = Math.max(2, Number(card.hits || 2)) + (curseCount >= 2 ? Math.max(1, Number(card.bonusHit || 1)) : 0);
+    const perHit = getEffectiveCardValue(card);
+    let total = 0;
+    for (let index = 0; index < hits; index++) total += applyPlayerCardDamage(perHit).damage;
+    consumeAttackBoostsAfterAttack();
+    showDamagePopup('cpu-hp-change', `-${total}`);
+    triggerDamageShake('.cpu-img');
+    addLog(`あなた：${card.name} (${perHit}ダメージ×${hits} / 合計${total})`);
+    playSound(total > 0 ? 'attack' : 'guard');
+   }
+
+   if (card.type === 'curse-threshold-defense-draw') {
+     const curseCount = countCurseCardsInPlayerBuild();
+    const defense = getEffectiveCardValue(card);
+    player.block += defense;
+    recordAchievementMax('maxBlock', player.block || 0);
+    consumeDefenseBoostsAfterDefense();
+    const drawn = curseCount >= 2 ? drawCardsToPlayerHand(1) : [];
+    showDamagePopup('player-hp-change', `防御+${defense}`);
+    addLog(`あなた：${card.name} (防御+${defense}${curseCount >= 2 ? ` / ${drawn.length}ドロー` : ''})`);
+    playSound('defense');
+   }
+
+   if (card.type === 'curse-total-aoe-attack' || card.type === 'curse-total-aoe-judgment') {
+    const curseCount = countCurseCardsInBattleZones();
+    const damage = getEffectiveCardValue({ ...card, value: Number(card.value || 0) + curseCount * Number(card.perCurse || 0), type: card.type });
+    const result = applyPlayerCardDamage(damage);
+    consumeAttackBoostsAfterAttack();
+    if (card.type === 'curse-total-aoe-judgment') {
+     const penalty = Math.max(0, Number(card.selfMaxHp || 5));
+     const minimumBonus = 1 - getPlayerBaseMaxHp();
+     playerPassives.maxHp = Math.max(minimumBonus, Number(playerPassives.maxHp || 0) - penalty);
+     player.hp = Math.min(player.hp, getPlayerMaxHp());
+     showDamagePopup('player-hp-change', `最大HP-${penalty}`);
+    }
+    showDamagePopup('cpu-hp-change', getDamagePopupText(result));
+    triggerDamageShake('.cpu-img');
+    addLog(`あなた：${card.name} (敵全体に${result.damage}ダメージ / 呪い${curseCount}枚${card.type === 'curse-total-aoe-judgment' ? ' / 最大HP-5' : ''})`);
+    playSound(result.fullyBlocked ? 'guard' : 'attack');
+   }
+
+   if (card.type === 'curse-total-poison') {
+    const curseCount = countCurseCardsInBattleZones();
+    const amount = Number(card.value || 5) + curseCount * Number(card.perCurse || 1);
+    const poison = applyPoisonToEnemy(amount);
+    triggerPoisonEffect('.cpu-img');
+    addLog(`あなた：${card.name} (毒+${poison.applied} / 呪い${curseCount}枚)`);
+    playSound(poison.applied > 0 ? 'poison' : 'miss');
+   }
+
     const playedCardIndex = player.hand.findIndex(c => c.id === card.id);
    if (playedCardIndex !== -1) {
     player.hand.splice(playedCardIndex, 1);
@@ -14421,7 +14777,7 @@ if (card.type === 'rare-attack') {
    const overdriveActive = Number(playerPassives.poisonOverdriveThreshold || 0) > 0
     && poisonStacks >= Number(playerPassives.poisonOverdriveThreshold || 0);
    const overdriveMultiplier = overdriveActive ? Math.max(1, Number(playerPassives.poisonOverdriveMultiplier || 1)) : 1;
-   const poisonDamage = (1 + (playerPassives.poisonDamageBonus || 0) + thresholdBonus) * overdriveMultiplier;
+   const poisonDamage = (BASE_ENEMY_POISON_TICK_DAMAGE + (playerPassives.poisonDamageBonus || 0) + (playerPassives.cursePoisonTickDamageBonus || 0) + thresholdBonus) * overdriveMultiplier;
    const result = applyDamage(cpu, poisonDamage, { ignoreBlock: true, preserveBlock: true, poisonDamage: true });
 
    cpu.poisonTurns--;
@@ -14886,6 +15242,7 @@ if (card.type === 'rare-attack') {
      showDamagePopup('player-hp-change', `防御+${nextTurnBlockBonus}`);
      addLog(`次ターン防御：防御+${nextTurnBlockBonus}`);
     }
+    applyCurseTurnStartPassive();
    }
 
    if (cpu && cpu.hand.length < 10) {
@@ -15657,7 +16014,8 @@ function getCustomizeTabs() {
     { id: 'all', name: 'すべて' },
     { id: 'attack', name: '攻撃' },
     { id: 'defense', name: '防御' },
-    { id: 'status', name: '状態異常' },
+     { id: 'status', name: '状態異常' },
+     { id: 'curse', name: '呪い' },
     { id: 'support', name: '補助' },
     { id: 'paralysis', name: '麻痺系' },
     { id: 'freeze', name: '凍結系' },
@@ -15697,6 +16055,11 @@ function getCustomizeTabs() {
     return categories;
    }
 
+    if (isCurseBuildCard(card)) {
+     addCardCategory(categories, 'status');
+     addCardCategory(categories, 'curse');
+    }
+
    if (isBombCardType(type)) {
     addCardCategory(categories, 'status');
     addCardCategory(categories, 'bomb');
@@ -15722,6 +16085,7 @@ function getCustomizeTabs() {
     addCardCategory(categories, 'status');
     addCardCategory(categories, 'poison');
    }
+   if (type === 'curse-hand-poison' || type === 'curse-total-poison') addCardCategory(categories, 'poison');
    if (type.includes('chance') || type.includes('gamble') || type === 'high-risk-attack' || /確率|MISS|賭け|一撃狙い|ラッキー/.test(nameAndText)) {
     addCardCategory(categories, 'gamble');
    }
@@ -15752,17 +16116,19 @@ function getCustomizeTabs() {
     || type === 'timer-execute-attack'
     || type === 'pierce-attack'
     || type === 'attack-defense'
-    || type === 'scaling-attack') {
+   || type === 'scaling-attack') {
     addCardCategory(categories, 'attack');
    }
+   if (isAttackCardType(type)) addCardCategory(categories, 'attack');
 
    if (type === 'defense'
     || type === 'rare-defense'
     || type === 'reflect-next-attack'
     || type === 'endure-next-attack'
-    || type === 'chance-defense') {
+   || type === 'chance-defense') {
     addCardCategory(categories, 'defense');
    }
+   if (isDefenseCardType(type)) addCardCategory(categories, 'defense');
 
    if (type === 'dein'
     || type === 'pure-paralysis'
@@ -16212,15 +16578,12 @@ function renderCustomizeScreen() {
      if (!canAdd) div.dataset.lockReason = lockReason;
 
      div.innerHTML = `
-      <div class="customize-card-badges">
-       <span class="customize-mini-badge rarity-${escapeHtml(getCardRarity(card))}">${escapeHtml(getCardRarityBadge(card) || 'N')}</span>
-       <span class="customize-mini-badge point">${pointCost}pt</span>
-       <span class="customize-mini-badge count">${currentCount}/${maxCount}枚</span>
-      </div>
-      <div class="customize-card-header">
-       <span>${getCardIcon(card.type)} ${escapeHtml(card.name)}</span>
-       <span>${escapeHtml(getPreDepartureCardTypeLabel(card))}</span>
-      </div>
+       <div class="customize-card-badges">
+        <span class="customize-mini-badge rarity-${escapeHtml(getCardRarity(card))}">${escapeHtml(getCardRarityBadge(card) || 'N')}</span>
+       </div>
+       <div class="customize-card-header">
+        <span>${getCardIcon(card.type)} ${escapeHtml(card.name)}</span>
+       </div>
       <div class="customize-card-meta-row">
        <span class="deck-card-chip deck-card-rarity-chip rarity-${escapeHtml(getCardRarity(card))}">${escapeHtml(getCardRarityDisplayName(card))}</span>
        <span class="deck-card-chip deck-card-type-chip">${escapeHtml(getPreDepartureCardTypeLabel(card))}</span>
@@ -16319,6 +16682,12 @@ function getCardVisualClass(card) {
    if (String(card.type || '').startsWith('field-')) {
     classes.push('field-card');
    }
+
+   const visualTheme = String(card.visualTheme || '');
+    if (visualTheme === 'attack') classes.push('attack', 'attack-card');
+    if (visualTheme === 'defense') classes.push('defense', 'defense-card');
+    if (visualTheme === 'poison') classes.push('poison', 'poison-card');
+    if (visualTheme === 'curse') classes.push('curse-theme-card');
 
 return classes.join(' ');
   }
@@ -17498,7 +17867,7 @@ function renderCollectionScreen() {
   { title: 'カード図鑑', progress: progress.cards, description: '発見済みカードと未発見カードの収集状況を確認します。', action: 'showCardLibraryScreen()' },
   { title: 'パッシブ図鑑', progress: progress.passives, description: '取得したパッシブと効果を確認します。', action: 'showPassiveLibraryScreen()' },
   { title: 'ペット図鑑', progress: progress.pets, description: '解放済みペットと確認済み進化情報を確認します。', action: 'showPetLibraryScreen()' },
-  { title: '遺物図鑑', progress: progress.relics, description: '発見済み遺物と効果を確認します。', action: 'showRelicLibraryScreen()' },
+  { title: '異物図鑑', progress: progress.relics, description: '発見済み異物と効果を確認します。', action: 'showRelicLibraryScreen()' },
   { title: 'イベント図鑑', progress: progress.events, description: '遭遇したランダムイベントの内容を確認します。', action: 'showRandomEventLibraryScreen()' },
   { title: 'フィールド図鑑', progress: progress.fields, description: '戦闘中に発生する深淵環境と効果を確認します。', action: 'showFieldEffectLibraryScreen()' },
   { title: '実績一覧', progress: progress.achievements, description: '達成済み実績と進捗を確認します。', action: 'showAchievementLibraryScreen()' },
@@ -18322,6 +18691,13 @@ if (playerPassives.poisonDamageBonus > 0) {
 
 if (playerPassives.petActionCostReduce > 0) badges.push(`<div class="passive-effect-badge">🐾 ペット必要枚数 -${playerPassives.petActionCostReduce}</div>`);
 
+   if (Number(playerPassives.cursePoisonTickDamageBonus || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 毒1回ダメ+${playerPassives.cursePoisonTickDamageBonus}</div>`);
+   if (Number(playerPassives.curseDrawBlock || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 呪いドロー毎 防御+${playerPassives.curseDrawBlock}</div>`);
+   if (Number(playerPassives.curseDrawNextAttack || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 呪いドロー毎 次攻撃+${playerPassives.curseDrawNextAttack}</div>`);
+   if (Number(playerPassives.curseTurnStartBlockPerCard || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ ターン開始 呪い毎防御+${playerPassives.curseTurnStartBlockPerCard}</div>`);
+   if (Number(playerPassives.curseDiscardAoeDamage || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 呪い破棄毎 全体${playerPassives.curseDiscardAoeDamage}ダメ</div>`);
+   if (Number(playerPassives.curseDamagePercentPerCard || 0) > 0) badges.push(`<div class="passive-effect-badge">☽ 呪い毎 与ダメ+${Math.round(playerPassives.curseDamagePercentPerCard * 100)}%</div>`);
+
    const passiveTooltip = getCurrentRunPassiveTooltipText();
    return badges.map(badge => addPassiveBadgeTooltip(badge, passiveTooltip)).join('');
   }
@@ -18420,7 +18796,7 @@ function renderPassiveEffectBadges() {
 
    return items.map(item => {
     const countLabel = item.count > 1 ? ` ×${item.count}` : '';
-    const tooltip = `${item.type === 'relic' ? '遺物' : 'パッシブ'}：${item.name}${countLabel}\n効果：${item.text || ''}`.trim();
+    const tooltip = `${item.type === 'relic' ? '異物' : 'パッシブ'}：${item.name}${countLabel}\n効果：${item.text || ''}`.trim();
     return `
      <div class="battle-icon-badge battle-icon-${item.type}" tabindex="0" data-tooltip="${escapeHtml(tooltip)}" title="${escapeHtml(tooltip)}">
       <span class="battle-icon-symbol">${escapeHtml(item.icon)}</span>
@@ -18490,7 +18866,8 @@ function updateEnemyTimerText() {
    const labels = {
     attack: '攻撃',
     defense: '防御',
-    status: '状態異常',
+     status: '状態異常',
+     curse: '呪い',
     support: '補助',
     paralysis: '麻痺系',
     freeze: '凍結系',
@@ -18653,7 +19030,7 @@ function updateEnemyTimerText() {
       <div>
        <div class="predeparture-relic-slot-label">${escapeHtml(getRelicSlotLabel(index))}</div>
        <div class="predeparture-main-name">${unlocked ? '未装備' : '未解放'}</div>
-       <p>${escapeHtml(unlocked ? '取得済み遺物から装備できます。' : getRelicSlotUnlockText(index))}</p>
+       <p>${escapeHtml(unlocked ? '取得済み異物から装備できます。' : getRelicSlotUnlockText(index))}</p>
       </div>
      </div>
     `;
@@ -18661,8 +19038,8 @@ function updateEnemyTimerText() {
    return `
     <section class="predeparture-panel predeparture-relic-panel">
      <div class="predeparture-panel-head">
-      <h2>遺物</h2>
-      <button class="ui-button ui-button-secondary" onclick="showRelicEquipScreen()">遺物変更</button>
+      <h2>異物</h2>
+      <button class="ui-button ui-button-secondary" onclick="showRelicEquipScreen()">異物変更</button>
      </div>
      <div class="predeparture-relic-slots">${slotCards}</div>
     </section>

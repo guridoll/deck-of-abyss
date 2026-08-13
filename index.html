@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Deck of Abyss</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=v23-customizer-detail-dedupe" />
 </head>
 
 <body>
@@ -203,12 +203,12 @@
 
   <div id="relic-equip-screen" class="screen library-screen relic-equip-screen" style="display:none;">
     <div class="library-header">
-      <h2>遺物変更</h2>
+      <h2>異物変更</h2>
       <div class="library-header-actions">
         <button class="ui-button ui-button-secondary" onclick="showPreDepartureScreen()">準備へ戻る</button>
       </div>
     </div>
-    <p class="library-description">深度クリアで装備枠が最大4枠まで解放されます。装備中の遺物のみ効果が発動します。</p>
+    <p class="library-description">深度クリアで装備枠が最大4枠まで解放されます。装備中の異物のみ効果が発動します。</p>
     <div id="relic-equip-list" class="relic-equip-list"></div>
     <div id="relic-equip-detail-modal" class="relic-equip-detail-modal" style="display:none;" onclick="closeRelicEquipDetailModal(event)">
       <div class="relic-equip-detail-dialog" onclick="event.stopPropagation()">
@@ -531,7 +531,7 @@
     
 
     <div id="battle-area" class="battle-area">
-      <div id="battle-icon-tray" class="battle-icon-tray" aria-label="装備中遺物とパッシブ"></div>
+      <div id="battle-icon-tray" class="battle-icon-tray" aria-label="装備中異物とパッシブ"></div>
       <div class="top-timer-wrap battle-area-timer-wrap">
         <div class="top-timer">
           敵行動まで
@@ -701,7 +701,7 @@
 <audio id="menu-bgm" src="assets/s/2wxaha28ers5.mp3" preload="auto" loop></audio>
   <script src="images.js"></script>
   <script src="js/enemy/enemies.js"></script>
-  <script src="js/library/cardLibrary.js"></script>
+  <script src="js/library/cardLibrary.js?v=v23-customizer-detail-dedupe"></script>
   <script src="js/library/passiveLibrary.js"></script>
   <script src="js/library/achievementLibrary.js"></script>
   <script src="js/library/battleHistoryView.js"></script>
@@ -713,7 +713,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="js/firebaseRanking.js"></script>
-  <script src="game.js"></script>
+  <script src="game.js?v=v23-customizer-detail-dedupe"></script>
 
   <script>
     (function () {
@@ -878,7 +878,7 @@
         <button class="ui-button ui-button-secondary" onclick="backToTitle()">メニュー画面に戻る</button>
       </div>
     </div>
-    <p class="library-description">発見したカード、敵、遺物などを確認できます。</p>
+    <p class="library-description">発見したカード、敵、異物などを確認できます。</p>
     <div id="collection-list" class="collection-list"></div>
   </div>
 
@@ -997,12 +997,12 @@
 
   <div id="relic-library-screen" class="screen library-screen" style="display:none;">
     <div class="library-header">
-      <h2>遺物図鑑</h2>
+      <h2>異物図鑑</h2>
       <div class="library-header-actions">
         <button class="ui-button ui-button-secondary" onclick="showCollectionScreen()">コレクションに戻る</button>
       </div>
     </div>
-    <p class="library-description">探索で発見した遺物を確認できます。未発見の遺物は詳細が伏せられます。</p>
+    <p class="library-description">探索で発見した異物を確認できます。未発見の異物は詳細が伏せられます。</p>
     <div id="relic-library-list" class="relic-library-list"></div>
     <div id="relic-library-detail-modal" class="relic-library-detail-modal" style="display:none;" onclick="closeRelicLibraryDetailModal(event)">
       <div class="relic-library-detail-dialog" onclick="event.stopPropagation()">
@@ -1134,9 +1134,9 @@
         </section>
 
         <section class="battle-guide-card guide-relics">
-          <div class="battle-guide-card-title"><span class="battle-guide-icon">◇</span><h3>遺物</h3></div>
-          <p>探索中に発見できる特殊な装備です。準備画面で装備した遺物だけが、探索中ずっと効果を発揮します。</p>
-          <p>各戦闘勝利後に低確率で発見でき、深度クリア時にはより強力な遺物を獲得できます。発見した遺物は遺物図鑑に登録されます。</p>
+          <div class="battle-guide-card-title"><span class="battle-guide-icon">◇</span><h3>異物</h3></div>
+          <p>探索中に発見できる特殊な装備です。準備画面で装備した異物だけが、探索中ずっと効果を発揮します。</p>
+          <p>各戦闘勝利後に低確率で発見でき、深度クリア時にはより強力な異物を獲得できます。発見した異物は異物図鑑に登録されます。</p>
           <p>装備枠は初期1枠です。深度1、2、3をクリアするごとに1枠ずつ増え、最大4枠まで装備できます。</p>
         </section>
 
