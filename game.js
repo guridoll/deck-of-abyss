@@ -1957,6 +1957,7 @@ const PET_POOL = [
   let battleResultStats = null;
   let enemyDefeatResolutionPending = false;
   let enemyDefeatResolutionTimer = null;
+  let victoryNextLevelTransitionInProgress = false;
   let pendingVoidEntranceAnimation = false;
   let runStartedAt = null;
   let currentRunDeckSnapshot = {};
@@ -10862,45 +10863,73 @@ function saveDeckCustomize() {
   }
 
   function nextLevel() {
-   enemyTimerStarted = false;
-   if (enemyTimerInterval) {
-    clearInterval(enemyTimerInterval);
-    enemyTimerInterval = null;
-   }
+   const hasCompletedVictory = Boolean(battleResultStats && battleResultStats.result === 'win');
+   if (victoryNextLevelTransitionInProgress || currentScreen !== 'battle' || !hasCompletedVictory) return;
 
-   playUiSelectSound();
-   const next = enemyLevel + 1;
-   recordAchievementMax('highestLevel', next);
+   victoryNextLevelTransitionInProgress = true;
+   const resultNextButton = document.getElementById('battle-result-next-button');
+   if (resultNextButton) resultNextButton.disabled = true;
 
-   // パッシブ選択とショップが重なる場合は、パッシブ選択を優先する
-   if (shouldShowPassiveChoice(next)) {
-    pendingPassiveChoice = true;
-    pendingNextLevel = next;
-    pendingPreviewEnemyId = chooseEnemyIdForLevel(next, currentDepth);
-    currentPassiveChoices = getRandomPassiveChoices(getPassiveChoiceCount(3), getPassivePoolForNextLevel(next));
-    gameOver = false;
+   try {
+    enemyTimerStarted = false;
+    if (enemyTimerInterval) {
+     clearInterval(enemyTimerInterval);
+     enemyTimerInterval = null;
+    }
 
-    stopEnemyTimer();
-    stopReload();
-    stopCooldown();
-    stopDeckReload();
+    playUiSelectSound();
+    const next = enemyLevel + 1;
+    recordAchievementMax('highestLevel', next);
 
+    // 勝利で更新された実績・履歴・異物などを、画面遷移より先に現在のスロットへ退避する。
+    // セーブスロット未選択時は従来どおり何も書き込まず、安全に進行を続ける。
+    saveCurrentGameData(false);
+
+    // パッシブ選択とショップが重なる場合は、パッシブ選択を優先する
+    if (shouldShowPassiveChoice(next)) {
+     pendingPassiveChoice = true;
+     pendingNextLevel = next;
+     pendingPreviewEnemyId = chooseEnemyIdForLevel(next, currentDepth);
+     currentPassiveChoices = getRandomPassiveChoices(getPassiveChoiceCount(3), getPassivePoolForNextLevel(next));
+     gameOver = false;
+
+     stopEnemyTimer();
+     stopReload();
+     stopCooldown();
+     stopDeckReload();
+
+     render();
+     return;
+    }
+
+    if (shouldShowShopAfterVictory(enemyLevel)) {
+     openShop(next);
+     return;
+    }
+
+    if (shouldOfferRandomEvent(enemyLevel, next)) {
+     beginRandomEvent(next);
+     return;
+    }
+
+    startNextBattleFromPendingLevel(next);
+   } catch (error) {
+    console.error('Failed to continue from the victory result.', error);
+    gameOver = true;
     render();
-    return;
+   } finally {
+    victoryNextLevelTransitionInProgress = false;
+    const currentNextButton = document.getElementById('battle-result-next-button');
+    if (currentNextButton) currentNextButton.disabled = false;
    }
+  }
 
-   if (shouldShowShopAfterVictory(enemyLevel)) {
-    openShop(next);
-    return;
-   }
-
-   if (shouldOfferRandomEvent(enemyLevel, next)) {
-    beginRandomEvent(next);
-    return;
-   }
-
-   startNextBattleFromPendingLevel(next);
-}
+  function bindBattleResultActions() {
+   const resultNextButton = document.getElementById('battle-result-next-button');
+   if (!resultNextButton || resultNextButton.dataset.nextLevelBound === 'true') return;
+   resultNextButton.dataset.nextLevelBound = 'true';
+   resultNextButton.addEventListener('click', nextLevel);
+  }
 
   function resetGame(keepTimer = true, keepPassives = false) {
    clearPlayerParalysis();
@@ -19722,6 +19751,7 @@ const cards = document.getElementById('cards');
 
     if (resultNextButton) {
      resultNextButton.style.display = playerWon ? '' : 'none';
+     resultNextButton.disabled = victoryNextLevelTransitionInProgress;
     }
 
     if (resultMenuButton) {
@@ -19802,6 +19832,8 @@ window.openOwnedDeckModal = openOwnedDeckModal;
 window.closeOwnedDeckModal = closeOwnedDeckModal;
 window.renderOwnedDeckModal = renderOwnedDeckModal;
 window.forceHideOwnedDeckModal = forceHideOwnedDeckModal;
+window.nextLevel = nextLevel;
+bindBattleResultActions();
 render();
 
 window.backToTitle = backToTitle;
